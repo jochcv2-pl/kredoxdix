@@ -1,0 +1,79 @@
+# =============================================================================
+# Kredix — Docker Compose (développement local)
+# Standard DEC-005 : 100% open-source, auto-hébergé sur VPS Ubuntu.
+#
+# Démarrage : docker compose up -d
+# Arrêt      : docker compose down
+# Logs       : docker compose logs -f postgres
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # PostgreSQL 17 — Base de données principale
+  # Persistance via volume nommé kredix_pgdata.
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:17-alpine
+    container_name: kredix-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: kredix
+      POSTGRES_PASSWORD: kredix
+      POSTGRES_DB: kredix
+    volumes:
+      - kredix_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kredix -d kredix"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - kredix-network
+
+  # ---------------------------------------------------------------------------
+  # Zitadel — Serveur d'authentification (auto-hébergé)
+  # Activer en Phase 3 (admin/CMS). Pour l'instant commenté.
+  # ---------------------------------------------------------------------------
+  # zitadel:
+  #   image: zitadel/zitadel:latest
+  #   container_name: kredix-zitadel
+  #   restart: unless-stopped
+  #   command: start-from-init --masterkeyFromEnv
+  #   environment:
+  #     ZITADEL_MASTERKEY: "kredix-masterkey-change-in-prod-32chars!"
+  #     ZITADEL_EXTERNALSECURE: false
+  #     ZITADEL_EXTERNALDOMAIN: localhost
+  #     ZITADEL_DATABASE_POSTGRES_HOST: postgres
+  #     ZITADEL_DATABASE_POSTGRES_PORT: 5432
+  #     ZITADEL_DATABASE_POSTGRES_DATABASE: kredix
+  #     ZITADEL_DATABASE_POSTGRES_USER_USERNAME: kredix
+  #     ZITADEL_DATABASE_POSTGRES_USER_PASSWORD: kredix
+  #     ZITADEL_DATABASE_POSTGRES_USER_SSL_MODE: disable
+  #     ZITADEL_DATABASE_POSTGRES_ADMIN_USERNAME: kredix
+  #     ZITADEL_DATABASE_POSTGRES_ADMIN_PASSWORD: kredix
+  #     ZITADEL_DATABASE_POSTGRES_ADMIN_SSL_MODE: disable
+  #   ports:
+  #     - "8080:8080"
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   networks:
+  #     - kredix-network
+
+# =============================================================================
+# Volumes persistants
+# =============================================================================
+volumes:
+  kredix_pgdata:
+    name: kredix_pgdata
+
+# =============================================================================
+# Réseau bridge partagé entre les services
+# =============================================================================
+networks:
+  kredix-network:
+    name: kredix-network
+    driver: bridge

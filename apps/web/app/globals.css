@@ -1,0 +1,176 @@
+@import "tailwindcss";
+
+/* =============================================================================
+   KREDIX — DESIGN TOKENS
+   Extraits du fichier HTML de référence (kredix-site.html)
+   DEC-K1 : aucune déviation visuelle autorisée.
+   ========================================================================== */
+
+@theme {
+  /* ----- COULEURS PRIMAIRES (bleu) ----- */
+  --color-blue: #2b8bde;
+  --color-blue-dark: #1e6fb8;
+  --color-blue-deep: #155a99;
+
+  /* ----- COULEURS ACCENT (orange) ----- */
+  --color-orange: #f97316;
+  --color-orange-soft: #fff4e8;
+  --color-orange-border: #fcd9b0;
+
+  /* ----- TEXTES ----- */
+  --color-ink: #0f172a;
+  --color-slate: #64748b;
+  --color-slate-light: #94a3b8;
+
+  /* ----- LIGNES ET FONDS ----- */
+  --color-line: #e2e8f0;
+  --color-line-soft: #edf2f7;
+  --color-bg-soft: #f8fafc;
+
+  /* ----- TYPOGRAPHIE ----- */
+  --font-sans: "Montserrat", sans-serif;
+
+  /* ----- BORDER RADIUS ----- */
+  --radius-sm: 9px;
+  --radius-md: 11px;
+  --radius-lg: 14px;
+  --radius-xl: 16px;
+  --radius-pill: 22px;
+
+  /* ----- SHADOWS ----- */
+  --shadow-orange: 0 8px 24px rgba(249, 115, 22, 0.32);
+  --shadow-orange-hover: 0 12px 28px rgba(249, 115, 22, 0.4);
+  --shadow-blue: 0 10px 34px rgba(43, 139, 222, 0.24);
+  --shadow-card: 0 6px 30px rgba(43, 139, 222, 0.08);
+}
+
+/* =============================================================================
+   BASE STYLES — Reproduction exacte des styles globaux du HTML
+   ========================================================================== */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 76px; /* hauteur nav sticky pour scroll vers ancres */
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--color-ink);
+  background: #fff;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+img {
+  display: block;
+}
+
+/* =============================================================================
+   LAYOUT — Conteneur centré
+   ========================================================================== */
+
+.wrap {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* =============================================================================
+   COMPOSANTS — Styles spécifiques non-exprimables en classes Tailwind
+   Reproduction exacte du HTML de référence (DEC-K1 : pixel-perfect).
+   ========================================================================== */
+
+/* ----- SELECTS (flèche custom) ----- */
+.sim-select,
+.lead-input[type="text"],
+.lead-input[type="tel"],
+.lead-input[type="number"],
+.lead-input:not([type]) {
+  background-color: var(--color-bg-soft);
+}
+
+/* Le select du simulateur a un fond blanc */
+.sim-select {
+  background-color: #fff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+}
+
+/* Selects du formulaire avec flèche + fond bg-soft */
+.lead-input:not([type]):is(select),
+select.lead-input {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 11px center;
+}
+
+/* Focus inputs formulaire */
+.lead-input:focus {
+  border-color: var(--color-blue);
+  background-color: #fff;
+}
+
+/* Placeholder */
+.lead-input::placeholder {
+  color: #cbd5e0;
+  font-weight: 400;
+}
+
+/* Champs pré-remplis par le simulateur (.filled) */
+.lead-filled {
+  background-color: #fff9f2 !important;
+  border-color: var(--color-orange-border) !important;
+}
+
+/* ----- SLIDERS (range) ----- */
+.sim-range {
+  -webkit-appearance: none;
+  appearance: none;
+}
+.sim-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 21px;
+  height: 21px;
+  border-radius: 50%;
+  background: var(--color-orange);
+  cursor: pointer;
+  border: 3px solid #fff;
+  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.4);
+}
+.sim-range::-moz-range-thumb {
+  width: 21px;
+  height: 21px;
+  border-radius: 50%;
+  background: var(--color-orange);
+  cursor: pointer;
+  border: 3px solid #fff;
+  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.4);
+}
+
+/* ----- RESPONSIVE (reproduction du HTML de référence) ----- */
+@media (max-width: 860px) {
+  .hero h1 {
+    font-size: 34px;
+  }
+  .section-title {
+    font-size: 24px;
+  }
+}
+
+@media (max-width: 520px) {
+  .hero h1 {
+    font-size: 28px;
+  }
+}

@@ -1,0 +1,50 @@
+# Dépendances
+node_modules/
+.pnpm-store/
+
+# Build
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+
+# Environnement
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Base de données
+*.db
+*.db-journal
+prisma/dev.db
+
+# Cache
+.turbo/
+.cache/
+.next/cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+
+# Testing
+coverage/
+
+# Misc
+*.pem
+.DOV

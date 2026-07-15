@@ -1,0 +1,14 @@
+node_modules
+.next
+out
+dist
+build
+.git
+.env
+.env.local
+.env.*.local
+*.log
+.turbo
+coverage
+README.md
+docs

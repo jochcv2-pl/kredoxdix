@@ -1,0 +1,103 @@
+# =============================================================================
+# Kredix — Docker Compose (production / VPS)
+# Override / stack complète de production.
+#
+# Usage :
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Pré-requis :
+#   - Fichier .env à la racine (POSTGRES_PASSWORD, DATABASE_URL, NEXT_PUBLIC_*).
+#   - Caddyfile configuré avec le domaine réel (remplacer kredix.local).
+#   - Ports 80/443 ouverts sur le VPS pour Let's Encrypt.
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # web — Application Next.js (apps/web) buildée depuis le Dockerfile racine.
+  # Le build standalone (output: 'standalone') tourne via `node server.js`.
+  # ---------------------------------------------------------------------------
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    container_name: kredix-web
+    restart: unless-stopped
+    expose:
+      - "3000"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+      AUTH_SECRET: ${AUTH_SECRET}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - kredix-network
+
+  # ---------------------------------------------------------------------------
+  # postgres — Base de données (mot de passe depuis .env, jamais hardcodé).
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:17-alpine
+    container_name: kredix-postgres
+    restart: unless-stopped
+    # Pas de port exposé en prod : accessible uniquement via le réseau interne.
+    # Pour maintenance : exécuter un shell dans le conteneur ou tunnel SSH.
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-kredix}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-kredix}
+    volumes:
+      - kredix_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-kredix} -d ${POSTGRES_DB:-kredix}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - kredix-network
+
+  # ---------------------------------------------------------------------------
+  # caddy — Reverse proxy + HTTPS automatique (Let's Encrypt).
+  # Sert le Caddyfile et stocke les certificats dans le volume caddy_data.
+  # ---------------------------------------------------------------------------
+  caddy:
+    image: caddy:2-alpine
+    container_name: kredix-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      # Permet de passer le domaine en variable d'env (ACME email optionnelle).
+      ACME_EMAIL: ${ACME_EMAIL:-admin@kredix.local}
+    depends_on:
+      - web
+    networks:
+      - kredix-network
+
+# =============================================================================
+# Volumes persistants
+# =============================================================================
+volumes:
+  kredix_pgdata:
+    name: kredix_pgdata
+  caddy_data:
+    name: kredix_caddy_data
+  caddy_config:
+    name: kredix_caddy_config
+
+# =============================================================================
+# Réseau bridge partagé entre les services
+# =============================================================================
+networks:
+  kredix-network:
+    name: kredix-network
+    driver: bridge

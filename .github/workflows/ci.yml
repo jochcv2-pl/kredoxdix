@@ -1,0 +1,166 @@
+# =============================================================================
+# Kredix — CI/CD GitHub Actions
+# S'exécute sur push et PR vers main.
+#
+# Jobs parallèles :
+#   - quality      : typecheck + lint + build
+#   - security-scan: Gitleaks (secrets) + Trivy (vulnérabilités) — rôle Kyle
+#   - test         : tests + DB PostgreSQL (dépend de quality)
+# =============================================================================
+name: CI
+
+on:
+  push:
+    branches: [main]
+    # Ignore les changements de pure doc : pas besoin de lancer la CI.
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - "LICENSE"
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - "LICENSE"
+
+# Annule les runs obsolètes sur la même branche (évite le gaspillage de CI).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Droits minimum requis (le job security-scan n'a pas besoin d'écriture).
+permissions:
+  contents: read
+
+jobs:
+  # ===========================================================================
+  # Job 1 — quality : typecheck, lint, build
+  # ===========================================================================
+  quality:
+    name: Typecheck / Lint / Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Build
+        run: pnpm build
+
+  # ===========================================================================
+  # Job 2 — security-scan (rôle Kyle, red team défensif)
+  # Audit sécurité pré-déploiement : détection de secrets + vulnérabilités deps.
+  # S'exécute en parallèle de "quality" pour remonter les alertes plus vite.
+  # ===========================================================================
+  security-scan:
+    name: Security (Kyle) — Gitleaks + Trivy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write  # pour uploader les résultats en SARIF
+    steps:
+      - name: Checkout (full history pour Gitleaks)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # ---------------------------------------------------------------------
+      # Gitleaks — Secret scanning statique.
+      # Détecte les credentials/tokens/clés commités dans le code et l'historique
+      # git. FAIL le workflow si un secret est détecté.
+      # ---------------------------------------------------------------------
+      - name: Gitleaks (secret scanning)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Optionnel : définir GITLEAKS_LICENSE pour le mode org/privé.
+          # GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+      # ---------------------------------------------------------------------
+      # Trivy — Scan de vulnérabilités sur le filesystem (dépendances NPM).
+      # ignore-unfixed : ignore les CVE sans correctif publié (réduit le bruit).
+      # severity CRITICAL : fait FAILER la CI sur une vulnérabilité critique.
+      # ---------------------------------------------------------------------
+      - name: Trivy (vulnérabilités dépendances)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          ignore-unfixed: true
+          severity: CRITICAL
+          exit-code: "1"
+          format: table
+
+  # ===========================================================================
+  # Job 3 — test : tests E2E/unitaires avec PostgreSQL de service.
+  # Dépend de "quality" : on ne lance les tests que si le build est sain.
+  # ===========================================================================
+  test:
+    name: Tests (PostgreSQL)
+    runs-on: ubuntu-latest
+    needs: quality
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: kredix
+          POSTGRES_PASSWORD: kredix
+          POSTGRES_DB: kredix
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U kredix -d kredix"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # Pointe vers le postgres du service GitHub Actions.
+      DATABASE_URL: postgresql://kredix:kredix@localhost:5432/kredix?schema=public
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm db:generate
+
+      - name: Push schema to test DB
+        run: pnpm db:push
+
+      - name: Run tests
+        run: pnpm test

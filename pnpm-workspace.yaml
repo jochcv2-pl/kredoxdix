@@ -1,0 +1,23 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+  - "packages/@kredix/*"
+
+allowBuilds:
+  '@prisma/client': set this to true or false
+  '@prisma/engines': set this to true or false
+  esbuild: set this to true or false
+  prisma: set this to true or false
+  sharp: set this to true or false
+
+onlyBuiltDependencies:
+  - "@prisma/client"
+  - "@tailwindcss/oxide"
+  - esbuild
+  - sharp
+
+# A-001 (Noveo) : pnpm 11 ne lit plus pnpm.* dans package.json — tout va ici.
+# Overrides pour forcer une version unique de @types/react en monorepo (A-005).
+overrides:
+  "@types/react": "19.1.0"
+  "@types/react-dom": "19.1.0"

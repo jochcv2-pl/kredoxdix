@@ -1,0 +1,19 @@
+{
+  "name": "@kredix/config",
+  "version": "0.1.0",
+  "private": true,
+  "files": [
+    "tsconfig/*.json",
+    "eslint/*.mjs",
+    "tailwind/*"
+  ],
+  "exports": {
+    "./tsconfig/base.json": "./tsconfig/base.json",
+    "./tsconfig/next.json": "./tsconfig/next.json",
+    "./tsconfig/react.json": "./tsconfig/react.json",
+    "./eslint/next.mjs": "./eslint/next.mjs"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}
