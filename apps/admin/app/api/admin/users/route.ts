@@ -14,7 +14,7 @@ import { z } from 'zod'
 import bcrypt from 'bcryptjs'
 import { prisma, AdminRole } from '@kredix/db'
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses'
-import { getCurrentAdmin } from '@/auth'
+import { requireAdmin } from '../../_lib/auth-server'
 
 // Champs publics d'un admin (jamais passwordHash ni twoFactorSecret).
 const publicAdminSelect = {
@@ -41,13 +41,8 @@ const createUserSchema = z.object({
 
 // GET /api/admin/users — liste tous les comptes admin.
 export async function GET() {
-  const me = await getCurrentAdmin()
-  if (!me) {
-    return errorResponse(ERR.UNAUTHORIZED.msg, ERR.UNAUTHORIZED.code, undefined, 401)
-  }
-  if (me.role !== 'admin') {
-    return errorResponse('Droits insuffisants', 'FORBIDDEN', undefined, 403)
-  }
+  const [, deny] = await requireAdmin()
+  if (deny) return deny
 
   try {
     const users = await prisma.adminUser.findMany({
@@ -62,13 +57,8 @@ export async function GET() {
 
 // POST /api/admin/users — crée un nouveau compte admin.
 export async function POST(req: NextRequest) {
-  const me = await getCurrentAdmin()
-  if (!me) {
-    return errorResponse(ERR.UNAUTHORIZED.msg, ERR.UNAUTHORIZED.code, undefined, 401)
-  }
-  if (me.role !== 'admin') {
-    return errorResponse('Droits insuffisants', 'FORBIDDEN', undefined, 403)
-  }
+  const [, deny] = await requireAdmin()
+  if (deny) return deny
 
   const [data, error] = await parseBody(req, createUserSchema)
   if (error) return error

@@ -137,5 +137,10 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
 export async function getCurrentAdmin() {
   const session = await auth()
   if (!session?.user?.id) return null
-  return prisma.adminUser.findUnique({ where: { id: session.user.id } })
+  // isActive check : un admin désactivé mais avec un JWT valide (24h max)
+  // se voit refuser l'accès aux routes API côté serveur.
+  // Le middleware (Edge) ne peut pas faire ce check DB, donc il est ici.
+  return prisma.adminUser.findFirst({
+    where: { id: session.user.id, isActive: true },
+  })
 }

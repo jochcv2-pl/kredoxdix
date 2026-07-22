@@ -14,7 +14,8 @@ import { z } from 'zod'
 import bcrypt from 'bcryptjs'
 import { prisma, AdminRole } from '@kredix/db'
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses'
-import { getCurrentAdmin } from '@/auth'
+import { isValidId } from '@/app/api/_lib/id-validation'
+import { requireAdmin } from '../../../_lib/auth-server'
 
 const publicAdminSelect = {
   id: true,
@@ -35,13 +36,6 @@ const updateUserSchema = z.object({
   isActive: z.boolean().optional(),
 })
 
-async function requireAdmin() {
-  const me = await getCurrentAdmin()
-  if (!me) return [null, errorResponse(ERR.UNAUTHORIZED.msg, ERR.UNAUTHORIZED.code, undefined, 401)] as const
-  if (me.role !== 'admin') return [null, errorResponse('Droits insuffisants', 'FORBIDDEN', undefined, 403)] as const
-  return [me, null] as const
-}
-
 // GET /api/admin/users/[id]
 export async function GET(
   _req: NextRequest,
@@ -53,6 +47,9 @@ export async function GET(
 
   try {
     const { id } = await params
+    if (!isValidId(id)) {
+      return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404)
+    }
     const user = await prisma.adminUser.findUnique({
       where: { id },
       select: publicAdminSelect,
@@ -79,6 +76,9 @@ export async function PATCH(
 
   try {
     const { id } = await params
+    if (!isValidId(id)) {
+      return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404)
+    }
     const existing = await prisma.adminUser.findUnique({ where: { id } })
     if (!existing) {
       return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404)
@@ -146,6 +146,9 @@ export async function DELETE(
 
   try {
     const { id } = await params
+    if (!isValidId(id)) {
+      return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404)
+    }
     if (id === me.id) {
       return errorResponse(
         'Vous ne pouvez pas supprimer votre propre compte',

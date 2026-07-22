@@ -7,6 +7,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma, GatewayProvider } from '@kredix/db';
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses';
+import { requireAuth } from '../_lib/auth-server';
 import { maskApiKey } from '@/app/api/_lib/security';
 
 // Schéma de création d'une passerelle.
@@ -21,6 +22,8 @@ const createGatewaySchema = z.object({
 // GET /api/gateways — liste toutes les passerelles, triées par label.
 // L'apiKey est MASQUÉE dans la réponse (jamais exposée en clair côté client).
 export async function GET() {
+  const [, deny] = await requireAuth();
+  if (deny) return deny;
   try {
     const gateways = await prisma.emailGateway.findMany({
       orderBy: { label: 'asc' },
@@ -38,6 +41,8 @@ export async function GET() {
 // POST /api/gateways — crée une passerelle.
 // Si isActive = true, désactive toutes les autres passerelles (transaction).
 export async function POST(req: NextRequest) {
+  const [, deny] = await requireAuth();
+  if (deny) return deny;
   try {
     const [data, error] = await parseBody(req, createGatewaySchema);
     if (error) return error;

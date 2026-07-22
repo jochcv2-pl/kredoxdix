@@ -6,9 +6,12 @@
 
 import { prisma } from '@kredix/db';
 import { successResponse, errorResponse, ERR } from '@/app/api/_lib/responses';
+import { requireAuth } from '../_lib/auth-server';
 
 // GET /api/banks — liste triée par displayOrder, avec compte de taux actifs.
 export async function GET() {
+  const [, deny] = await requireAuth();
+  if (deny) return deny;
   try {
     const banks = await prisma.bankPartner.findMany({
       orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],

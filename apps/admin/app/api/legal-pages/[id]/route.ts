@@ -6,6 +6,8 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@kredix/db';
 import { successResponse, errorResponse, ERR } from '@/app/api/_lib/responses';
+import { requireAuth } from '../../_lib/auth-server';
+import { isValidId } from '@/app/api/_lib/id-validation';
 
 // Champs optionnels pour la mise à jour d'une page légale.
 interface UpdateLegalPageBody {
@@ -22,8 +24,13 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const [, deny] = await requireAuth();
+  if (deny) return deny;
   try {
     const { id } = await params;
+    if (!isValidId(id)) {
+      return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);
+    }
     const page = await prisma.legalPage.findUnique({ where: { id } });
     if (!page) {
       return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);
@@ -40,8 +47,13 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const [, deny] = await requireAuth();
+  if (deny) return deny;
   try {
     const { id } = await params;
+    if (!isValidId(id)) {
+      return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);
+    }
 
     // La page doit exister avant toute modification.
     const existing = await prisma.legalPage.findUnique({ where: { id } });
@@ -162,8 +174,13 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const [, deny] = await requireAuth();
+  if (deny) return deny;
   try {
     const { id } = await params;
+    if (!isValidId(id)) {
+      return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);
+    }
     const existing = await prisma.legalPage.findUnique({ where: { id } });
     if (!existing) {
       return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);

@@ -7,6 +7,8 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@kredix/db';
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses';
+import { requireAuth } from '../../../../_lib/auth-server';
+import { isValidId } from '@/app/api/_lib/id-validation';
 
 // Schéma de mise à jour — seule la valeur est éditable.
 const updateMemorySchema = z.object({
@@ -18,8 +20,14 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; memoryId: string }> },
 ) {
+  const [, deny] = await requireAuth();
+  if (deny) return deny;
   try {
     const { id, memoryId } = await params;
+
+    if (!isValidId(id) || !isValidId(memoryId)) {
+      return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);
+    }
 
     const memory = await prisma.agentMemory.findFirst({
       where: { id: memoryId, agentId: id },
@@ -46,8 +54,14 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string; memoryId: string }> },
 ) {
+  const [, deny] = await requireAuth();
+  if (deny) return deny;
   try {
     const { id, memoryId } = await params;
+
+    if (!isValidId(id) || !isValidId(memoryId)) {
+      return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);
+    }
 
     const memory = await prisma.agentMemory.findFirst({
       where: { id: memoryId, agentId: id },

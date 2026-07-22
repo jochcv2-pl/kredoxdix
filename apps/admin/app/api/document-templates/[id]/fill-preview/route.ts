@@ -7,6 +7,8 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@kredix/db';
 import { errorResponse, ERR, parseBody } from '@/app/api/_lib/responses';
+import { requireAuth } from '../../../_lib/auth-server';
+import { isValidId } from '@/app/api/_lib/id-validation';
 import { fillPdfTemplate, PdfFillData } from '@/app/api/_lib/pdf-filler';
 import { getSetting } from '@/app/api/_lib/settings';
 
@@ -20,8 +22,13 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const [, deny] = await requireAuth();
+  if (deny) return deny;
   try {
     const { id } = await params;
+    if (!isValidId(id)) {
+      return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);
+    }
     const [data, error] = await parseBody(req, previewSchema);
     if (error) return error;
 

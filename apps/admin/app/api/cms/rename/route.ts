@@ -6,11 +6,14 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@kredix/db';
 import { successResponse, errorResponse, ERR } from '../../_lib/responses';
+import { requireAuth } from '../../_lib/auth-server';
 
 // POST /api/cms/rename — remplace oldName par newName dans toute la base.
 // Body : { newName: string }
 // Retourne { oldName, newName, settingsUpdated, templatesUpdated }.
 export async function POST(req: NextRequest) {
+  const [, deny] = await requireAuth();
+  if (deny) return deny;
   try {
     const body = (await req.json()) as { newName?: unknown };
     const newName = typeof body.newName === 'string' ? body.newName.trim() : '';

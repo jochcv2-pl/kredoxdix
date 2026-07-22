@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { prisma, SequenceExitReason, SuppressionReason } from "@kredix/db";
 import { successResponse, errorResponse } from "../../validators";
+import { verifyBearerSecret } from "../../_lib/security";
 
 // =============================================================================
 // POST /api/webhooks/email
@@ -36,11 +37,8 @@ const VALID_EVENTS: Record<string, SuppressionReason | null> = {
 };
 
 export async function POST(request: NextRequest) {
-  // ----- Authentification : secret partagé -----
-  const authHeader = request.headers.get("authorization");
-  const webhookSecret = process.env.WEBHOOK_EMAIL_SECRET;
-
-  if (!webhookSecret || authHeader !== `Bearer ${webhookSecret}`) {
+  // ----- Authentification : secret partagé (comparaison timing-safe) -----
+  if (!verifyBearerSecret(request.headers.get("authorization"), process.env.WEBHOOK_EMAIL_SECRET)) {
     return errorResponse("Non autorisé", "UNAUTHORIZED", undefined, 401);
   }
 

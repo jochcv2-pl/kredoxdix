@@ -6,6 +6,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@kredix/db';
 import { successResponse, errorResponse, ERR } from '@/app/api/_lib/responses';
+import { requireAuth } from '../_lib/auth-server';
 
 // Champs attendus pour la création d'une page légale.
 interface CreateLegalPageBody {
@@ -18,6 +19,8 @@ interface CreateLegalPageBody {
 
 // GET /api/legal-pages — liste toutes les pages légales, triées par ordre.
 export async function GET() {
+  const [, deny] = await requireAuth();
+  if (deny) return deny;
   try {
     const pages = await prisma.legalPage.findMany({
       orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
@@ -31,6 +34,8 @@ export async function GET() {
 // POST /api/legal-pages — crée une nouvelle page légale.
 // Retourne 201 ou 409 si le slug existe déjà.
 export async function POST(req: NextRequest) {
+  const [, deny] = await requireAuth();
+  if (deny) return deny;
   try {
     const body = (await req.json()) as CreateLegalPageBody;
 

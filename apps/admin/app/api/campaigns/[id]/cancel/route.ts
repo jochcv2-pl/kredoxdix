@@ -6,14 +6,22 @@
 import { NextRequest } from 'next/server';
 import { prisma, CampaignStatus } from '@kredix/db';
 import { successResponse, errorResponse, ERR } from '@/app/api/_lib/responses';
+import { requireAuth } from '../../../_lib/auth-server';
+import { isValidId } from '@/app/api/_lib/id-validation';
 
 // POST /api/campaigns/[id]/cancel — passe le statut à "cancelled".
 export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const [, deny] = await requireAuth();
+  if (deny) return deny;
   try {
     const { id } = await params;
+
+    if (!isValidId(id)) {
+      return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);
+    }
 
     const campaign = await prisma.campaign.findUnique({
       where: { id },

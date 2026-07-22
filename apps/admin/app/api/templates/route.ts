@@ -7,6 +7,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma, EmailTrigger, TemplateStatus } from '@kredix/db';
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses';
+import { requireAuth } from '../_lib/auth-server';
 
 // Schéma de création d'un template.
 const createTemplateSchema = z.object({
@@ -23,6 +24,8 @@ const createTemplateSchema = z.object({
 
 // GET /api/templates — liste tous les templates, triés par trigger puis date.
 export async function GET() {
+  const [, deny] = await requireAuth();
+  if (deny) return deny;
   try {
     const templates = await prisma.emailTemplate.findMany({
       orderBy: [{ trigger: 'asc' }, { createdAt: 'asc' }],
@@ -35,6 +38,8 @@ export async function GET() {
 
 // POST /api/templates — crée un template (409 si un autre actif existe déjà pour le même trigger).
 export async function POST(req: NextRequest) {
+  const [, deny] = await requireAuth();
+  if (deny) return deny;
   try {
     const [data, error] = await parseBody(req, createTemplateSchema);
     if (error) return error;

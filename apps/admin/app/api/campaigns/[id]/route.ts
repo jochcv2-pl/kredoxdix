@@ -5,14 +5,22 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@kredix/db';
 import { successResponse, errorResponse, ERR } from '@/app/api/_lib/responses';
+import { requireAuth } from '../../_lib/auth-server';
+import { isValidId } from '@/app/api/_lib/id-validation';
 
 // GET /api/campaigns/[id] — détail + stats groupées par statut.
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const [, deny] = await requireAuth();
+  if (deny) return deny;
   try {
     const { id } = await params;
+
+    if (!isValidId(id)) {
+      return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);
+    }
 
     const campaign = await prisma.campaign.findUnique({
       where: { id },

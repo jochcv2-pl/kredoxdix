@@ -17,6 +17,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma, LeadStatus, SequenceExitReason } from '@kredix/db';
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses';
+import { requireAuth } from '../../_lib/auth-server';
+import { isValidId } from '@/app/api/_lib/id-validation';
 
 const patchLeadSchema = z.object({
   status: z.nativeEnum(LeadStatus),
@@ -28,8 +30,13 @@ export async function GET(
   _req: NextRequest,
   ctx: { params: Promise<{ id: string }> },
 ) {
+  const [, deny] = await requireAuth();
+  if (deny) return deny;
   try {
     const { id } = await ctx.params;
+    if (!isValidId(id)) {
+      return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);
+    }
     const lead = await prisma.lead.findUnique({ where: { id } });
 
     if (!lead) {
@@ -48,8 +55,13 @@ export async function PATCH(
   req: NextRequest,
   ctx: { params: Promise<{ id: string }> },
 ) {
+  const [, deny] = await requireAuth();
+  if (deny) return deny;
   try {
     const { id } = await ctx.params;
+    if (!isValidId(id)) {
+      return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);
+    }
     const [data, error] = await parseBody(req, patchLeadSchema);
     if (error) return error;
 

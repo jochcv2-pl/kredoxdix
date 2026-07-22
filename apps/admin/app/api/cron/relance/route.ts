@@ -5,6 +5,7 @@ import { getSetting, getSettingNumber, getActiveGateway } from '../../_lib/setti
 import { sendEmail } from '../../_lib/email-sender';
 import { interpolateTemplate, textToHtml } from '../../_lib/template-interpolation';
 import { getOfferAttachment } from '../../_lib/campaign-sender';
+import { verifyBearerSecret } from '../../_lib/security';
 
 // =============================================================================
 // POST /api/cron/relance
@@ -27,10 +28,8 @@ import { getOfferAttachment } from '../../_lib/campaign-sender';
 const DAY = 24 * 60 * 60 * 1000;
 
 export async function POST(req: NextRequest) {
-  // ----- Authentification : CRON_SECRET obligatoire -----
-  const authHeader = req.headers.get('authorization');
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+  // ----- Authentification : CRON_SECRET obligatoire (comparaison timing-safe) -----
+  if (!verifyBearerSecret(req.headers.get('authorization'), process.env.CRON_SECRET)) {
     return errorResponse(ERR.UNAUTHORIZED.msg, ERR.UNAUTHORIZED.code, undefined, 401);
   }
 

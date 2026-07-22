@@ -7,6 +7,8 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma, TemplateStatus } from '@kredix/db';
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses';
+import { isValidId } from '@/app/api/_lib/id-validation';
+import { requireAuth } from '../../_lib/auth-server';
 
 // Schéma de mise à jour — trigger volontairement absent (immutable après création).
 const updateTemplateSchema = z.object({
@@ -25,8 +27,13 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const [, deny] = await requireAuth();
+  if (deny) return deny;
   try {
     const { id } = await params;
+    if (!isValidId(id)) {
+      return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);
+    }
     const template = await prisma.emailTemplate.findUnique({ where: { id } });
     if (!template) {
       return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);
@@ -43,8 +50,13 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const [, deny] = await requireAuth();
+  if (deny) return deny;
   try {
     const { id } = await params;
+    if (!isValidId(id)) {
+      return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);
+    }
     const [data, error] = await parseBody(req, updateTemplateSchema);
     if (error) return error;
 
@@ -99,8 +111,13 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const [, deny] = await requireAuth();
+  if (deny) return deny;
   try {
     const { id } = await params;
+    if (!isValidId(id)) {
+      return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);
+    }
     const existing = await prisma.emailTemplate.findUnique({ where: { id } });
     if (!existing) {
       return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);

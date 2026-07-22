@@ -7,6 +7,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@kredix/db';
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses';
+import { requireAuth } from '../_lib/auth-server';
 
 // Schéma de création d'un template (métadonnées uniquement, pas de fichier).
 const createTemplateSchema = z.object({
@@ -17,6 +18,8 @@ const createTemplateSchema = z.object({
 
 // GET /api/document-templates — liste tous les templates triés par niveau puis date.
 export async function GET() {
+  const [, deny] = await requireAuth();
+  if (deny) return deny;
   try {
     const templates = await prisma.documentTemplate.findMany({
       orderBy: [{ level: 'asc' }, { createdAt: 'asc' }],
@@ -29,6 +32,8 @@ export async function GET() {
 
 // POST /api/document-templates — crée l'entrée métadonnées (sans fichier).
 export async function POST(req: NextRequest) {
+  const [, deny] = await requireAuth();
+  if (deny) return deny;
   try {
     const [data, error] = await parseBody(req, createTemplateSchema);
     if (error) return error;

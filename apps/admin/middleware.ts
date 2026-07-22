@@ -29,12 +29,16 @@ export default function middleware(req: NextRequest) {
   const method = req.method
 
   // --- Rate limiting sur les endpoints d'authentification sensibles ---
+  // En dev : limites assouplies (x10) pour permettre les tests E2E
+  // (51 tests qui font chacun plusieurs apiLogin — sinon le 10e login est bloqué).
+  // En prod : limites strictes (brute force protection).
+  const rlMultiplier = process.env.NODE_ENV === 'production' ? 1 : 10
   if (method === 'POST') {
     const ip = getClientIp(req.headers)
 
     if (pathname === '/api/auth/callback/credentials') {
-      // Login : 10 tentatives / minute / IP (brute force protection).
-      const rl = checkRateLimit(`login:${ip}`, 10, 60_000)
+      // Login : 10/min/IP en prod (100/min en dev pour tests E2E).
+      const rl = checkRateLimit(`login:${ip}`, 10 * rlMultiplier, 60_000)
       if (!rl.allowed) {
         return NextResponse.json(
           { error: 'Trop de tentatives. Réessayez dans 1 minute.' },
@@ -49,8 +53,8 @@ export default function middleware(req: NextRequest) {
     }
 
     if (pathname === '/api/auth/check-2fa') {
-      // Check-2fa : 20 requêtes / minute / IP (user enumeration protection).
-      const rl = checkRateLimit(`check2fa:${ip}`, 20, 60_000)
+      // Check-2fa : 20/min/IP en prod (200/min en dev pour tests E2E).
+      const rl = checkRateLimit(`check2fa:${ip}`, 20 * rlMultiplier, 60_000)
       if (!rl.allowed) {
         return NextResponse.json(
           { error: 'Trop de requêtes. Réessayez dans 1 minute.' },

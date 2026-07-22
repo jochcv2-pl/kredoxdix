@@ -6,6 +6,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma, LeadStatus } from '@kredix/db';
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses';
+import { requireAuth } from '../_lib/auth-server';
 
 // Source des destinataires possibles.
 const recipientSourceSchema = z.enum([
@@ -67,6 +68,8 @@ function buildRecipientWhere(source: string, leadIds: string[] | undefined) {
 
 // GET /api/campaigns — liste toutes les campagnes (template inclus).
 export async function GET() {
+  const [, deny] = await requireAuth();
+  if (deny) return deny;
   try {
     const campaigns = await prisma.campaign.findMany({
       orderBy: { createdAt: 'desc' },
@@ -80,6 +83,8 @@ export async function GET() {
 
 // POST /api/campaigns — crée une campagne + ses destinataires (transaction).
 export async function POST(req: NextRequest) {
+  const [, deny] = await requireAuth();
+  if (deny) return deny;
   try {
     const [data, error] = await parseBody(req, createCampaignSchema);
     if (error) return error;

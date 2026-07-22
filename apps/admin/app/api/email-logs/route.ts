@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@kredix/db';
 import { successResponse, errorResponse, ERR } from '../_lib/responses';
+import { requireAuth } from '../_lib/auth-server';
 
 // =============================================================================
 // GET /api/email-logs
@@ -17,6 +18,8 @@ import { successResponse, errorResponse, ERR } from '../_lib/responses';
 // =============================================================================
 
 export async function GET(req: NextRequest) {
+  const [, deny] = await requireAuth();
+  if (deny) return deny;
   try {
     const { searchParams } = new URL(req.url);
     const email = searchParams.get('email');

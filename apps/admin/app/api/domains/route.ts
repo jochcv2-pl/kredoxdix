@@ -7,6 +7,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma, DomainType } from '@kredix/db';
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses';
+import { requireAuth } from '../_lib/auth-server';
 
 // Validation basique du format de domaine (ex: kredix.fr, crm.kredix.fr).
 const DOMAIN_REGEX = /^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$/;
@@ -26,6 +27,8 @@ const createDomainSchema = z.object({
 
 // GET /api/domains — liste tous les domaines, triés par type puis date de création.
 export async function GET() {
+  const [, deny] = await requireAuth();
+  if (deny) return deny;
   try {
     const domains = await prisma.domain.findMany({
       orderBy: [{ type: 'asc' }, { createdAt: 'asc' }],
@@ -40,6 +43,8 @@ export async function GET() {
 // - 409 si le domaine existe déjà.
 // - Si isPrimary = true, retire le flag primaire des autres domaines du même type (transaction).
 export async function POST(req: NextRequest) {
+  const [, deny] = await requireAuth();
+  if (deny) return deny;
   try {
     const [data, error] = await parseBody(req, createDomainSchema);
     if (error) return error;

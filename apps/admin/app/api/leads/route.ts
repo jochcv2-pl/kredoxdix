@@ -14,6 +14,7 @@
 import { NextRequest } from 'next/server';
 import { prisma, LeadStatus } from '@kredix/db';
 import { successResponse, errorResponse, ERR } from '@/app/api/_lib/responses';
+import { requireAuth } from '../_lib/auth-server';
 
 const VALID_STATUSES: ReadonlySet<string> = new Set([
   'new',
@@ -51,6 +52,8 @@ interface LeadListItem {
 
 // GET /api/leads — liste paginée filtrée.
 export async function GET(req: NextRequest) {
+  const [, deny] = await requireAuth();
+  if (deny) return deny;
   try {
     const { searchParams } = new URL(req.url);
     const page = Math.max(1, Number(searchParams.get('page')) || 1);

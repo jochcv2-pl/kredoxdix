@@ -7,6 +7,8 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@kredix/db';
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses';
+import { requireAuth } from '../../../_lib/auth-server';
+import { isValidId } from '@/app/api/_lib/id-validation';
 
 // Schéma de création d'une entrée mémoire.
 const createMemorySchema = z.object({
@@ -19,8 +21,14 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const [, deny] = await requireAuth();
+  if (deny) return deny;
   try {
     const { id } = await params;
+
+    if (!isValidId(id)) {
+      return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);
+    }
 
     const agent = await prisma.agent.findUnique({ where: { id } });
     if (!agent) {
@@ -42,8 +50,14 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const [, deny] = await requireAuth();
+  if (deny) return deny;
   try {
     const { id } = await params;
+
+    if (!isValidId(id)) {
+      return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);
+    }
 
     const agent = await prisma.agent.findUnique({ where: { id } });
     if (!agent) {

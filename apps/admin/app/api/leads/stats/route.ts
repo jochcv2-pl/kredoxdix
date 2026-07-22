@@ -18,6 +18,7 @@
 
 import { prisma, LeadStatus } from '@kredix/db';
 import { successResponse, errorResponse, ERR } from '@/app/api/_lib/responses';
+import { requireAuth } from '../../_lib/auth-server';
 
 // Ordre canonique du pipeline (cohérent avec la vue Contacts).
 const PIPELINE_ORDER: LeadStatus[] = [
@@ -32,6 +33,8 @@ const PIPELINE_ORDER: LeadStatus[] = [
 
 // GET /api/leads/stats — agrégations dashboard.
 export async function GET() {
+  const [, deny] = await requireAuth();
+  if (deny) return deny;
   try {
     const now = new Date();
     const startOfToday = new Date(now);

@@ -9,13 +9,16 @@ import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import sharp from 'sharp';
 import { successResponse, errorResponse, ERR } from '../../_lib/responses';
+import { requireAuth } from '../../_lib/auth-server';
 
 // Taille maximale autorisée : 500 Ko.
 const MAX_FILE_SIZE = 500 * 1024;
 
-// Types MIME acceptés (SVG, PNG, ICO, JPEG).
+// Types MIME acceptés (PNG, ICO, JPEG).
+// SVG délibérément EXCLU : un SVG peut embarquer du JavaScript (XSS stocké).
+// Si un logo SVG est nécessaire, l'admin doit le fournir via un autre canal
+// (git, asset versionné) — pas via upload utilisateur.
 const ALLOWED_MIME_TYPES = new Set([
-  'image/svg+xml',
   'image/png',
   'image/x-icon',
   'image/vnd.microsoft.icon',
@@ -24,7 +27,6 @@ const ALLOWED_MIME_TYPES = new Set([
 
 // Extension associée à chaque type MIME (pour le nom de fichier généré).
 const EXT_BY_MIME: Record<string, string> = {
-  'image/svg+xml': '.svg',
   'image/png': '.png',
   'image/x-icon': '.ico',
   'image/vnd.microsoft.icon': '.ico',
@@ -70,7 +72,7 @@ async function checkImageDimensions(
   mimeType: string,
   type: string,
 ): Promise<{ width?: number; height?: number; warnings: string[] }> {
-  // SVG : pas de dimensions fiables (vectoriel) — on skippe la vérification
+  // SVG : pas supporté (sécurité — XSS store potentiel). Ignoré.
   if (mimeType === 'image/svg+xml') {
     return { warnings: [] };
   }
@@ -115,6 +117,8 @@ async function checkImageDimensions(
 // POST /api/cms/upload — enregistre le fichier reçu dans public/uploads/.
 // Retourne { url, filename, size, width?, height?, warnings[] }.
 export async function POST(req: NextRequest) {
+  const [, deny] = await requireAuth();
+  if (deny) return deny;
   try {
     const formData = await req.formData();
     const file = formData.get('file');
