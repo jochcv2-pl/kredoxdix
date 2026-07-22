@@ -8,6 +8,11 @@ import { prisma } from '@kredix/db';
 import { successResponse, errorResponse, ERR } from '../../_lib/responses';
 import { requireAuth } from '../../_lib/auth-server';
 
+// Validation du nouveau nom : lettres (incl. accents), chiffres, espaces,
+// et ponctuation courante. Max 100 caractères. Empêche injections HTML/JS
+// dans les templates d'email et les settings.
+const SITE_NAME_RE = /^[\p{L}\p{N}\s'.,&()\-]{1,100}$/u;
+
 // POST /api/cms/rename — remplace oldName par newName dans toute la base.
 // Body : { newName: string }
 // Retourne { oldName, newName, settingsUpdated, templatesUpdated }.
@@ -18,10 +23,10 @@ export async function POST(req: NextRequest) {
     const body = (await req.json()) as { newName?: unknown };
     const newName = typeof body.newName === 'string' ? body.newName.trim() : '';
 
-    // Validation : newName requis et non vide.
-    if (!newName) {
+    // Validation : newName requis, format strict (anti-injection).
+    if (!newName || !SITE_NAME_RE.test(newName)) {
       return errorResponse(
-        'Champ "newName" requis',
+        'Champ "newName" invalide (1-100 caractères : lettres, chiffres, espaces et ponctuation courante)',
         ERR.VALIDATION.code,
         undefined,
         422,

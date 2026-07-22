@@ -74,15 +74,22 @@ export function checkRateLimit(
 
 /**
  * Extrait l'IP du client depuis les headers (middleware Edge + routes API).
- * Priorise x-forwarded-for (reverse proxy Caddy/Nginx), fallback sur x-real-ip.
+ *
+ * En production derrière un reverse proxy (Caddy/Nginx), TRUST_PROXY doit
+ * être "true" (ou "1") pour lire x-forwarded-for / x-real-ip.
+ * Si TRUST_PROXY est absent ou faux, on ignore ces headers (sécurité :
+ * empêche le spoofing d'IP en accès direct sans proxy de confiance).
  */
 export function getClientIp(headers: Headers): string {
-  const forwarded = headers.get('x-forwarded-for');
-  if (forwarded) {
-    // x-forwarded-for peut contenir une liste : "client, proxy1, proxy2".
-    return forwarded.split(',')[0].trim();
+  const trustProxy = process.env.TRUST_PROXY === 'true' || process.env.TRUST_PROXY === '1';
+  if (trustProxy) {
+    const forwarded = headers.get('x-forwarded-for');
+    if (forwarded) {
+      // x-forwarded-for peut contenir une liste : "client, proxy1, proxy2".
+      return forwarded.split(',')[0].trim();
+    }
+    const realIp = headers.get('x-real-ip');
+    if (realIp) return realIp.trim();
   }
-  const realIp = headers.get('x-real-ip');
-  if (realIp) return realIp.trim();
   return 'unknown';
 }

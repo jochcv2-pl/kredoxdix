@@ -51,6 +51,8 @@ export default function Profil() {
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [notifs, setNotifs] = useState<Record<string, boolean>>({})
+  // Sécurité : mot de passe requis pour valider un changement d'email.
+  const [emailPassword, setEmailPassword] = useState('')
 
   // ---------------------------------------------------------------------------
   // Chargement initial
@@ -89,6 +91,7 @@ export default function Profil() {
     setSaving(true)
     setError(null)
     try {
+      const emailChanged = data ? email !== data.email : false
       const res = await fetch('/api/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -97,6 +100,8 @@ export default function Profil() {
           email,
           phone,
           notifications: notifs,
+          // currentPassword envoyé uniquement si l'email a changé.
+          ...(emailChanged ? { currentPassword: emailPassword } : {}),
         }),
       })
       if (!res.ok) {
@@ -110,6 +115,7 @@ export default function Profil() {
       setEmail(updated.email)
       setPhone(updated.phone)
       setNotifs(updated.notifications ?? {})
+      setEmailPassword('')
       setSavedAt(new Date())
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erreur inconnue')
@@ -224,6 +230,20 @@ export default function Profil() {
             <div className="modal-fg">
               <label>Email</label>
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={120} />
+              {data && email !== data.email && (
+                <div className="modal-fg" style={{ marginTop: 8 }}>
+                  <label>Mot de passe actuel <span style={{ color: 'var(--danger)' }}>*</span></label>
+                  <input
+                    type="password"
+                    value={emailPassword}
+                    onChange={(e) => setEmailPassword(e.target.value)}
+                    maxLength={128}
+                    placeholder="Requis pour changer l'email"
+                    autoComplete="current-password"
+                  />
+                  <small style={{ opacity: 0.7 }}>Confirmez votre mot de passe pour valider le changement d'email.</small>
+                </div>
+              )}
             </div>
             <div className="modal-fg">
               <label>Téléphone</label>

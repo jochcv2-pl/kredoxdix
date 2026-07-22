@@ -16,6 +16,7 @@
 
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
+import bcrypt from 'bcryptjs'
 import { prisma } from '@kredix/db'
 import { successResponse, errorResponse, ERR, parseBody } from '../_lib/responses'
 import { getCurrentAdmin } from '@/auth'
@@ -31,6 +32,8 @@ const NOTIF_KEYS = [
 const patchProfileSchema = z.object({
   displayName: z.string().min(1).max(80).optional(),
   email: z.string().email().max(120).optional(),
+  // Oblatoire si l'email change : confirmation du mot de passe courant.
+  currentPassword: z.string().min(1).max(128).optional(),
   phone: z.string().max(40).optional(),
   notifications: z
     .record(z.string(), z.boolean())
@@ -100,6 +103,26 @@ export async function PATCH(req: NextRequest) {
 
     // ----- Vérifier conflit email si changement -----
     if (data.email && data.email !== admin.email) {
+      // Sécurité : exiger le mot de passe courant pour un changement d'email
+      // (anti-takeover si la session est compromise / CSRF).
+      if (!data.currentPassword || !admin.passwordHash) {
+        return errorResponse(
+          'Confirmation du mot de passe requise pour changer l\'email',
+          'PASSWORD_REQUIRED',
+          undefined,
+          403,
+        )
+      }
+      const pwOk = await bcrypt.compare(data.currentPassword, admin.passwordHash)
+      if (!pwOk) {
+        return errorResponse(
+          'Mot de passe incorrect',
+          'WRONG_PASSWORD',
+          undefined,
+          401,
+        )
+      }
+
       const conflict = await prisma.adminUser.findUnique({ where: { email: data.email.toLowerCase() } })
       if (conflict && conflict.id !== admin.id) {
         return errorResponse('Cet email est déjà utilisé', ERR.CONFLICT.msg, ERR.CONFLICT.code, 409)
@@ -107,6 +130,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     // ----- Update AdminUser -----
+    // currentPassword n'est jamais écrit en DB — il sert uniquement de gate.
     const updated = await prisma.adminUser.update({
       where: { id: admin.id },
       data: {

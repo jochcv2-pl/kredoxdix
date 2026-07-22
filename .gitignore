@@ -9,10 +9,9 @@ dist/
 build/
 *.tsbuildinfo
 
-# Environnement
+# Environnement — ignorer tous les fichiers .env sauf l'exemple
 .env
-.env.local
-.env.*.local
+.env.*
 !.env.example
 
 # Base de données
@@ -47,7 +46,6 @@ coverage/
 
 # Misc
 *.pem
-.DOV
 
 # Temp / scripts de test
 Temp/
