@@ -1,0 +1,90 @@
+// =============================================================================
+// /api/rates — Liste et création des taux par banque / type de prêt / palier.
+// Modèle : Rate { bankId, loanType, amountMin, amountMax, annualRate, isActive }.
+// =============================================================================
+
+import { NextRequest } from 'next/server';
+import { z } from 'zod';
+import { prisma } from '@kredix/db';
+import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses';
+
+// Schéma de création — la contrainte d'unicité est (bankId, loanType, amountMin, amountMax).
+const createRateSchema = z.object({
+  bankId: z.string().min(1),
+  loanType: z.string().min(1),
+  amountMin: z.number().int().nonnegative(),
+  amountMax: z.number().int().nonnegative(),
+  annualRate: z.number().nonnegative(),
+  isActive: z.boolean().default(true),
+}).refine((d) => d.amountMin <= d.amountMax, {
+  message: 'amountMin doit être ≤ amountMax',
+  path: ['amountMax'],
+});
+
+// GET /api/rates — liste filtrable par banque et/ou type de prêt.
+// Ex: /api/rates?bankId=xxx  /api/rates?loanType=immo
+export async function GET(req: NextRequest) {
+  try {
+    const bankId = req.nextUrl.searchParams.get('bankId');
+    const loanType = req.nextUrl.searchParams.get('loanType');
+    const activeOnly = req.nextUrl.searchParams.get('active') === 'true';
+
+    const rates = await prisma.rate.findMany({
+      where: {
+        ...(bankId ? { bankId } : {}),
+        ...(loanType ? { loanType } : {}),
+        ...(activeOnly ? { isActive: true } : {}),
+      },
+      include: { bank: { select: { id: true, name: true, slug: true } } },
+      orderBy: [
+        { bank: { name: 'asc' } },
+        { loanType: 'asc' },
+        { amountMin: 'asc' },
+      ],
+    });
+
+    return successResponse(rates);
+  } catch {
+    return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500);
+  }
+}
+
+// POST /api/rates — crée un taux (409 si le palier existe déjà pour cette banque/type).
+export async function POST(req: NextRequest) {
+  try {
+    const [data, error] = await parseBody(req, createRateSchema);
+    if (error) return error;
+
+    // Vérifie l'existence de la banque.
+    const bank = await prisma.bankPartner.findUnique({ where: { id: data.bankId } });
+    if (!bank) {
+      return errorResponse('Banque introuvable', ERR.NOT_FOUND.code, undefined, 404);
+    }
+
+    // Contrainte d'unicité (bankId, loanType, amountMin, amountMax).
+    const existing = await prisma.rate.findFirst({
+      where: {
+        bankId: data.bankId,
+        loanType: data.loanType,
+        amountMin: data.amountMin,
+        amountMax: data.amountMax,
+      },
+    });
+    if (existing) {
+      return errorResponse(
+        'Un taux existe déjà pour ce palier (banque/type/montants)',
+        ERR.CONFLICT.code,
+        undefined,
+        409,
+      );
+    }
+
+    const rate = await prisma.rate.create({
+      data,
+      include: { bank: { select: { id: true, name: true, slug: true } } },
+    });
+    return successResponse(rate, 201);
+  } catch {
+    return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500);
+  }
+}

@@ -1,0 +1,773 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { Modal } from '@/components/Modal'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { Icon } from '@/components/Icon'
+import { AdminUsersPanel } from '@/components/AdminUsersPanel'
+
+// =============================================================================
+// Types
+// =============================================================================
+
+interface Setting {
+  key: string
+  value: string
+  category: string
+  description: string | null
+}
+
+interface Gateway {
+  id: string
+  provider: 'resend' | 'brevo' | 'smtp'
+  label: string
+  apiKey: string | null
+  config: Record<string, unknown>
+  isActive: boolean
+}
+
+// =============================================================================
+// Constantes — clés settings et maps d'affichage
+// =============================================================================
+
+const AI_KEYS = {
+  modelName: 'ai_model_name',
+  engine: 'ai_engine', // non seedé — créé à l'upsert
+  endpoint: 'ai_endpoint', // non seedé — créé à l'upsert
+  temperature: 'ai_temperature',
+  maxTokens: 'ai_max_tokens',
+} as const
+
+const CADENCE_KEYS = {
+  dailyCap: 'cadence_daily_cap',
+  intervalMin: 'cadence_interval_min',
+  intervalMax: 'cadence_interval_max',
+  warmupWeeks: 'cadence_warmup_weeks',
+  ipType: 'cadence_ip_type',
+  dedicatedIp: 'cadence_dedicated_ip',
+  sendingDomain: 'cadence_sending_domain',
+} as const
+
+const PROVIDER_LABEL: Record<Gateway['provider'], string> = {
+  resend: 'Resend',
+  brevo: 'Brevo',
+  smtp: 'SMTP Hostinger',
+}
+
+// =============================================================================
+// Composant principal
+// =============================================================================
+
+export default function Settings() {
+  const [settings, setSettings] = useState<Record<string, string>>({})
+  const [gateways, setGateways] = useState<Gateway[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const [saveModalOpen, setSaveModalOpen] = useState(false)
+  const [testModalOpen, setTestModalOpen] = useState(false)
+  const [newGatewayModalOpen, setNewGatewayModalOpen] = useState(false)
+  const [deleteGatewayTarget, setDeleteGatewayTarget] = useState<Gateway | null>(null)
+
+  // Chargement initial : settings + gateways en parallèle.
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const [sRes, gRes] = await Promise.all([
+          fetch('/api/settings'),
+          fetch('/api/gateways'),
+        ])
+        if (!sRes.ok || !gRes.ok) throw new Error('Échec chargement configuration')
+        const sJson = await sRes.json()
+        const gJson = await gRes.json()
+        const settingsList: Setting[] = sJson.data ?? sJson
+        const gatewaysList: Gateway[] = gJson.data ?? gJson
+
+        if (cancelled) return
+        const map: Record<string, string> = {}
+        for (const s of settingsList) map[s.key] = s.value
+        setSettings(map)
+        setGateways(gatewaysList)
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Erreur inconnue')
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // ---------------------------------------------------------------------------
+  // Handlers
+  // ---------------------------------------------------------------------------
+
+  const setSetting = (key: string, value: string) => {
+    setSettings((prev) => ({ ...prev, [key]: value }))
+  }
+
+  // Sauvegarde Modèle IA + Cadence (POST /api/settings — upsert).
+  const saveConfig = async () => {
+    setSaving(true)
+    setError(null)
+    try {
+      const payload: Array<{ key: string; value: string; category: string }> = [
+        { key: AI_KEYS.modelName, value: settings[AI_KEYS.modelName] ?? '', category: 'ai.model' },
+        { key: AI_KEYS.engine, value: settings[AI_KEYS.engine] ?? '', category: 'ai.model' },
+        { key: AI_KEYS.endpoint, value: settings[AI_KEYS.endpoint] ?? '', category: 'ai.model' },
+        { key: AI_KEYS.temperature, value: settings[AI_KEYS.temperature] ?? '', category: 'ai.model' },
+        { key: AI_KEYS.maxTokens, value: settings[AI_KEYS.maxTokens] ?? '', category: 'ai.model' },
+        { key: CADENCE_KEYS.dailyCap, value: settings[CADENCE_KEYS.dailyCap] ?? '', category: 'cadence' },
+        { key: CADENCE_KEYS.intervalMin, value: settings[CADENCE_KEYS.intervalMin] ?? '', category: 'cadence' },
+        { key: CADENCE_KEYS.intervalMax, value: settings[CADENCE_KEYS.intervalMax] ?? '', category: 'cadence' },
+        { key: CADENCE_KEYS.warmupWeeks, value: settings[CADENCE_KEYS.warmupWeeks] ?? '', category: 'cadence' },
+        { key: CADENCE_KEYS.ipType, value: settings[CADENCE_KEYS.ipType] ?? 'shared', category: 'cadence' },
+        { key: CADENCE_KEYS.dedicatedIp, value: settings[CADENCE_KEYS.dedicatedIp] ?? '', category: 'cadence' },
+        { key: CADENCE_KEYS.sendingDomain, value: settings[CADENCE_KEYS.sendingDomain] ?? '', category: 'cadence' },
+      ]
+
+      for (const p of payload) {
+        const res = await fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(p),
+        })
+        if (!res.ok) throw new Error(`Échec enregistrement ${p.key}`)
+      }
+      setSaveModalOpen(false)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erreur inconnue')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Active une passerelle (PATCH /api/gateways/[id] isActive=true — déclenche la
+  // désactivation transactionnelle des autres côté serveur).
+  const activateGateway = async (id: string) => {
+    setError(null)
+    try {
+      const res = await fetch(`/api/gateways/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: true }),
+      })
+      if (!res.ok) throw new Error('Échec activation')
+      const updated: Gateway = (await res.json()).data ?? (await res.json())
+      setGateways((prev) =>
+        prev.map((g) => ({ ...g, isActive: g.id === updated.id })),
+      )
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erreur inconnue')
+    }
+  }
+
+  // Met à jour apiKey/config d'une passerelle (PATCH /api/gateways/[id]).
+  const updateGateway = async (
+    id: string,
+    patch: Partial<Pick<Gateway, 'apiKey' | 'config' | 'label'>>,
+  ) => {
+    setError(null)
+    try {
+      const res = await fetch(`/api/gateways/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
+      })
+      if (!res.ok) throw new Error('Échec mise à jour passerelle')
+      const updated: Gateway = (await res.json()).data ?? (await res.json())
+      setGateways((prev) => prev.map((g) => (g.id === id ? updated : g)))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erreur inconnue')
+    }
+  }
+
+  // Crée une nouvelle passerelle (POST /api/gateways).
+  const createGateway = async (
+    provider: Gateway['provider'],
+    label: string,
+    apiKey: string,
+  ) => {
+    setError(null)
+    try {
+      const res = await fetch('/api/gateways', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider,
+          label: label || PROVIDER_LABEL[provider],
+          apiKey: apiKey || null,
+          isActive: false,
+        }),
+      })
+      if (!res.ok) throw new Error('Échec création passerelle')
+      const created: Gateway = (await res.json()).data ?? (await res.json())
+      setGateways((prev) => [...prev, created])
+      setNewGatewayModalOpen(false)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erreur inconnue')
+    }
+  }
+
+  const deleteGateway = async (id: string) => {
+    setError(null)
+    try {
+      const res = await fetch(`/api/gateways/${id}`, { method: 'DELETE' })
+      if (!res.ok && res.status !== 204) throw new Error('Échec suppression')
+      setGateways((prev) => prev.filter((g) => g.id !== id))
+      setDeleteGatewayTarget(null)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erreur inconnue')
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
+
+  if (loading) {
+    return (
+      <section className="view" id="settings">
+        <p className="field-hint">Chargement de la configuration…</p>
+      </section>
+    )
+  }
+
+  const activeGateway = gateways.find((g) => g.isActive)
+
+  return (
+    <section className="view" id="settings">
+      {error && (
+        <div className="info-band" style={{ background: '#fef2f2', color: '#991b1b', marginBottom: 16 }}>
+          <div className="imark" style={{ background: '#fecaca', color: '#991b1b' }}>!</div>
+          <div>{error}</div>
+        </div>
+      )}
+
+      <div className="set-grid">
+        {/* 0. Comptes administrateurs — gestion multi-admin (Phase 5 étape 3) */}
+        <AdminUsersPanel />
+
+        {/* 1. Modèle d'IA */}
+        <div className="panel">
+          <div className="panel-head">
+            <h3>Modèle d&apos;IA</h3>
+            <span className="link" onClick={() => setTestModalOpen(true)}>Tester la connexion</span>
+          </div>
+          <div className="panel-body" style={{ paddingTop: '16px' }}>
+            <p className="field-hint">
+              Connectez, configurez et changez le modèle depuis ici. Le CRM parle au modèle via une API compatible OpenAI, donc vous pouvez en changer sans toucher au reste.
+            </p>
+            <div className="frow">
+              <div className="fg">
+                <label>Modèle actif</label>
+                <input
+                  value={settings[AI_KEYS.modelName] ?? ''}
+                  onChange={(e) => setSetting(AI_KEYS.modelName, e.target.value)}
+                  placeholder="Ex : gpt-4o-mini, Qwen3-8B…"
+                />
+              </div>
+              <div className="fg">
+                <label>Moteur</label>
+                <input
+                  value={settings[AI_KEYS.engine] ?? ''}
+                  onChange={(e) => setSetting(AI_KEYS.engine, e.target.value)}
+                  placeholder="Ollama, vLLM, OpenAI…"
+                />
+              </div>
+              <div className="fg">
+                <label>Adresse du serveur (endpoint)</label>
+                <input
+                  value={settings[AI_KEYS.endpoint] ?? ''}
+                  onChange={(e) => setSetting(AI_KEYS.endpoint, e.target.value)}
+                  placeholder="http://localhost:11434/v1"
+                />
+              </div>
+              <div className="fg">
+                <label>Température</label>
+                <input
+                  value={settings[AI_KEYS.temperature] ?? ''}
+                  onChange={(e) => setSetting(AI_KEYS.temperature, e.target.value)}
+                  placeholder="0.3"
+                />
+              </div>
+              <div className="fg">
+                <label>Jetons max</label>
+                <input
+                  value={settings[AI_KEYS.maxTokens] ?? ''}
+                  onChange={(e) => setSetting(AI_KEYS.maxTokens, e.target.value)}
+                  placeholder="2048"
+                />
+              </div>
+            </div>
+            <div className="set-row">
+              <div className="set-label">
+                <b>État</b>
+                <small>La clé API est en variable d&apos;environnement serveur (jamais en DB).</small>
+              </div>
+              <span className="pill-on">Configuré</span>
+            </div>
+            <button className="btn btn-primary" style={{ marginTop: '12px' }} onClick={() => setSaveModalOpen(true)}>
+              Enregistrer la configuration
+            </button>
+          </div>
+        </div>
+
+        {/* 2. Sécurité des agents — verrouillée (lecture seule) */}
+        <div className="panel">
+          <div className="panel-head">
+            <h3>Sécurité des agents</h3>
+          </div>
+          <div className="panel-body" style={{ paddingTop: '14px' }}>
+            <p className="field-hint">
+              Règles appliquées à <b>tous</b> les agents, non désactivables. Elles s&apos;ajoutent au bridage de chaque rôle.
+            </p>
+            <div className="set-row">
+              <div className="set-label">
+                <b>Rester dans le rôle et le contexte</b>
+                <small>Aucune sortie du périmètre défini</small>
+              </div>
+              <span className="pill-on">Verrouillé</span>
+            </div>
+            <div className="set-row">
+              <div className="set-label">
+                <b>Confidentialité des données</b>
+                <small>Ne jamais transmettre de données clients/admin</small>
+              </div>
+              <span className="pill-on">Verrouillé</span>
+            </div>
+            <div className="set-row">
+              <div className="set-label">
+                <b>Refus des jeux / détournements</b>
+                <small>Avec un inconnu comme avec un admin</small>
+              </div>
+              <span className="pill-on">Verrouillé</span>
+            </div>
+            <div className="set-row">
+              <div className="set-label">
+                <b>Respect des limites</b>
+                <small>Jamais de dépassement des garde-fous</small>
+              </div>
+              <span className="pill-on">Verrouillé</span>
+            </div>
+            <div className="set-row">
+              <div className="set-label">
+                <b>Filtre entrée / sortie</b>
+                <small>Contrôle avant et après le modèle</small>
+              </div>
+              <span className="pill-on">Activé</span>
+            </div>
+          </div>
+        </div>
+
+        {/* 3. Couche de bridage — lecture seule */}
+        <div className="panel">
+          <div className="panel-head">
+            <h3>Couche de bridage</h3>
+          </div>
+          <div className="panel-body" style={{ paddingTop: '14px' }}>
+            <div className="set-row">
+              <div className="set-label">
+                <b>System prompt verrouillé</b>
+                <small>Rôles protégés</small>
+              </div>
+              <span className="pill-on">Activé</span>
+            </div>
+            <div className="set-row">
+              <div className="set-label">
+                <b>Sorties structurées</b>
+                <small>Format JSON imposé</small>
+              </div>
+              <span className="pill-on">Activé</span>
+            </div>
+            <div className="set-row">
+              <div className="set-label">
+                <b>Liste blanche d&apos;outils</b>
+                <small>Par agent</small>
+              </div>
+              <span className="pill-on">Activé</span>
+            </div>
+          </div>
+        </div>
+
+        {/* 4. Cadence d'envoi */}
+        <div className="panel">
+          <div className="panel-head">
+            <h3>Cadence d&apos;envoi (anti-spam)</h3>
+          </div>
+          <div className="panel-body" style={{ paddingTop: '14px' }}>
+            <p className="field-hint">
+              Le CRM planifie les envois avec des limites strictes pour protéger la réputation du domaine. L&apos;IA propose une cadence, le système l&apos;applique dans ces bornes.
+            </p>
+            <div className="set-row">
+              <div className="set-label">
+                <b>Montée en charge (warm-up)</b>
+                <small>Volume progressif les premières semaines</small>
+              </div>
+              <input
+                type="number"
+                className="set-input"
+                value={settings[CADENCE_KEYS.warmupWeeks] ?? ''}
+                onChange={(e) => setSetting(CADENCE_KEYS.warmupWeeks, e.target.value)}
+              />
+            </div>
+            <div className="set-row">
+              <div className="set-label">
+                <b>Plafond quotidien</b>
+                <small>Emails max par jour</small>
+              </div>
+              <input
+                type="number"
+                className="set-input"
+                value={settings[CADENCE_KEYS.dailyCap] ?? ''}
+                onChange={(e) => setSetting(CADENCE_KEYS.dailyCap, e.target.value)}
+              />
+            </div>
+            <div className="set-row">
+              <div className="set-label">
+                <b>Intervalle entre envois</b>
+                <small>Espacement aléatoire</small>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <input
+                  type="number"
+                  className="set-input set-input-sm"
+                  value={settings[CADENCE_KEYS.intervalMin] ?? ''}
+                  onChange={(e) => setSetting(CADENCE_KEYS.intervalMin, e.target.value)}
+                />
+                à
+                <input
+                  type="number"
+                  className="set-input set-input-sm"
+                  value={settings[CADENCE_KEYS.intervalMax] ?? ''}
+                  onChange={(e) => setSetting(CADENCE_KEYS.intervalMax, e.target.value)}
+                />
+                s
+              </div>
+            </div>
+            <div className="set-row">
+              <div className="set-label">
+                <b>Type d&apos;IP</b>
+                <small>shared (ESP partagée), dedicated (ESP dédiée), vps (VPS + IP dédiée)</small>
+              </div>
+              <select
+                className="set-select"
+                value={settings[CADENCE_KEYS.ipType] ?? 'shared'}
+                onChange={(e) => setSetting(CADENCE_KEYS.ipType, e.target.value)}
+              >
+                <option value="shared">IP partagée (ESP)</option>
+                <option value="dedicated">IP dédiée (ESP)</option>
+                <option value="vps">VPS + IP dédiée</option>
+              </select>
+            </div>
+            <div className="set-row">
+              <div className="set-label">
+                <b>Adresse IP du VPS (si dédiée)</b>
+                <small>Laisser vide si IP partagée</small>
+              </div>
+              <input
+                type="text"
+                className="set-input"
+                placeholder="Ex: 51.91.123.45"
+                value={settings[CADENCE_KEYS.dedicatedIp] ?? ''}
+                onChange={(e) => setSetting(CADENCE_KEYS.dedicatedIp, e.target.value)}
+              />
+            </div>
+            <div className="set-row">
+              <div className="set-label">
+                <b>Domaine d&apos;envoi</b>
+                <small>Doit être configuré chez le fournisseur (SPF/DKIM/DMARC)</small>
+              </div>
+              <input
+                type="text"
+                className="set-input"
+                placeholder="kredix.fr"
+                value={settings[CADENCE_KEYS.sendingDomain] ?? ''}
+                onChange={(e) => setSetting(CADENCE_KEYS.sendingDomain, e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* 5. Passerelles d'envoi */}
+        <div className="panel">
+          <div className="panel-head">
+            <h3>Passerelles d&apos;envoi</h3>
+            <span className="link" onClick={() => setNewGatewayModalOpen(true)}>+ Ajouter</span>
+          </div>
+          <div className="panel-body" style={{ paddingTop: '14px' }}>
+            <p className="field-hint">
+              Configurez plusieurs fournisseurs. L&apos;admin remplit la clé API de chacun ; seul le fournisseur <b>coché « Actif »</b> est utilisé pour l&apos;envoi.
+            </p>
+
+            {gateways.length === 0 && (
+              <p className="field-hint" style={{ padding: '12px 0', fontStyle: 'italic' }}>
+                Aucune passerelle configurée. Cliquez sur « + Ajouter » pour en créer une.
+              </p>
+            )}
+
+            {gateways.map((g) => (
+              <div key={g.id} className={g.isActive ? 'prov active-prov' : 'prov'}>
+                <div className="prov-head">
+                  <label className="prov-radio">
+                    <input
+                      type="radio"
+                      name="prov"
+                      checked={g.isActive}
+                      onChange={() => activateGateway(g.id)}
+                    />
+                    <b>{g.label}</b>
+                  </label>
+                  {g.isActive ? (
+                    <span className="prov-badge">Actif</span>
+                  ) : (
+                    <span className="prov-badge-off">Inactif</span>
+                  )}
+                </div>
+                <div className="frow" style={{ marginBottom: '0', marginTop: '12px' }}>
+                  <div className="fg">
+                    <label>Clé API</label>
+                    <input
+                      type="password"
+                      placeholder={g.provider === 'brevo' ? 'xkeysib-…' : 're_… / smtp pass'}
+                      defaultValue={g.apiKey ?? ''}
+                      onBlur={(e) => {
+                        if (e.target.value !== (g.apiKey ?? '')) {
+                          updateGateway(g.id, { apiKey: e.target.value })
+                        }
+                      }}
+                    />
+                  </div>
+                  <div className="fg">
+                    <label>Libellé</label>
+                    <input
+                      defaultValue={g.label}
+                      onBlur={(e) => {
+                        if (e.target.value !== g.label) {
+                          updateGateway(g.id, { label: e.target.value })
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+                  <button
+                    className="btn btn-ghost"
+                    style={{ fontSize: 12, padding: '6px 10px', color: 'var(--red)' }}
+                    onClick={() => setDeleteGatewayTarget(g)}
+                  >
+                    Supprimer
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            <div className="set-row" style={{ marginTop: '8px' }}>
+              <div className="set-label">
+                <b>SPF / DKIM / DMARC</b>
+                <small>Authentification du domaine actif (config DNS externe)</small>
+              </div>
+              <span className="pill-on">À configurer côté DNS</span>
+            </div>
+          </div>
+        </div>
+
+        {/* 6. Réponses des prospects — lecture seule (règle produit) */}
+        <div className="panel">
+          <div className="panel-head">
+            <h3>Réponses des prospects</h3>
+          </div>
+          <div className="panel-body" style={{ paddingTop: '14px' }}>
+            <div className="info-band" style={{ margin: '0 0 14px', background: 'var(--bg)', color: 'var(--slate)' }}>
+              <div className="imark" style={{ background: 'var(--line)', color: 'var(--slate)' }}>i</div>
+              <div>
+                Les agents IA ne font que la <b>prospection sortante</b>. Ils ne lisent pas et ne répondent pas aux emails des prospects.
+              </div>
+            </div>
+            <div className="set-row">
+              <div className="set-label">
+                <b>Réponses reçues</b>
+                <small>Destination des réponses</small>
+              </div>
+              <span className="set-val">Boîte du conseiller</span>
+            </div>
+            <div className="set-row">
+              <div className="set-label">
+                <b>Lecture par l&apos;IA</b>
+                <small>Emails entrants</small>
+              </div>
+              <span className="pill-off">Désactivé</span>
+            </div>
+            <div className="set-row">
+              <div className="set-label">
+                <b>Réponse automatique IA</b>
+                <small>Sur emails entrants</small>
+              </div>
+              <span className="pill-off">Désactivé</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* =========================================================================
+          MODAL SAVE — Modèle IA + Cadence
+          ========================================================================= */}
+      <Modal
+        isOpen={saveModalOpen}
+        onClose={() => setSaveModalOpen(false)}
+        title="Enregistrer la configuration"
+      >
+        <p className="field-hint">
+          La configuration sera sauvegardée. Le redémarrage des agents IA sera automatique.
+        </p>
+        <p style={{ fontSize: 13, color: 'var(--ink)', lineHeight: 1.6 }}>
+          <b>Modèle :</b> {settings[AI_KEYS.modelName] || '—'} ({settings[AI_KEYS.engine] || '—'})<br />
+          <b>Passerelle active :</b> {activeGateway ? activeGateway.label : 'Aucune'}<br />
+          <b>Cadence :</b> {settings[CADENCE_KEYS.dailyCap] || '—'} emails/jour max
+        </p>
+        <div className="modal-actions">
+          <button className="btn btn-ghost" onClick={() => setSaveModalOpen(false)} disabled={saving}>
+            Annuler
+          </button>
+          <button className="btn btn-primary" onClick={saveConfig} disabled={saving}>
+            {saving ? 'Enregistrement…' : 'Confirmer'}
+          </button>
+        </div>
+      </Modal>
+
+      {/* =========================================================================
+          MODAL TEST CONNECTION (placeholder)
+          ========================================================================= */}
+      <Modal
+        isOpen={testModalOpen}
+        onClose={() => setTestModalOpen(false)}
+        title="Tester la connexion au modèle"
+      >
+        <p className="field-hint">
+          Test de connexion au serveur IA en cours...
+        </p>
+        <p style={{ fontSize: 13, color: 'var(--green)', lineHeight: 1.8 }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <Icon name="check-circle" size={16} /> Endpoint accessible : {settings[AI_KEYS.endpoint] || '(non configuré)'}
+          </span>
+          <br />
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <Icon name="check-circle" size={16} /> Modèle {settings[AI_KEYS.modelName] || '—'} disponible
+          </span>
+        </p>
+        <div className="modal-actions">
+          <button className="btn btn-primary" onClick={() => setTestModalOpen(false)}>
+            Fermer
+          </button>
+        </div>
+      </Modal>
+
+      {/* =========================================================================
+          MODAL NEW GATEWAY
+          ========================================================================= */}
+      <Modal
+        isOpen={newGatewayModalOpen}
+        onClose={() => setNewGatewayModalOpen(false)}
+        title="Ajouter une passerelle d'envoi"
+      >
+        <NewGatewayForm
+          onCancel={() => setNewGatewayModalOpen(false)}
+          onCreate={createGateway}
+        />
+      </Modal>
+
+      {/* =========================================================================
+          DELETE GATEWAY CONFIRM
+          ========================================================================= */}
+      <ConfirmDialog
+        isOpen={!!deleteGatewayTarget}
+        variant="danger"
+        title="Supprimer la passerelle"
+        message={
+          <>
+            Voulez-vous vraiment supprimer <strong>{deleteGatewayTarget?.label}</strong> ?
+            {' '}Cette action est irréversible. Si c&apos;était la passerelle active, aucun envoi ne sera plus possible jusqu&apos;à en activer une autre.
+          </>
+        }
+        confirmLabel="Supprimer définitivement"
+        onConfirm={() => {
+          if (deleteGatewayTarget) {
+            deleteGateway(deleteGatewayTarget.id)
+          }
+        }}
+        onClose={() => setDeleteGatewayTarget(null)}
+      />
+    </section>
+  )
+}
+
+// =============================================================================
+// Sous-composant : formulaire nouvelle passerelle
+// =============================================================================
+
+function NewGatewayForm({
+  onCancel,
+  onCreate,
+}: {
+  onCancel: () => void
+  onCreate: (provider: Gateway['provider'], label: string, apiKey: string) => void
+}) {
+  const [provider, setProvider] = useState<Gateway['provider']>('resend')
+  const [label, setLabel] = useState('')
+  const [apiKey, setApiKey] = useState('')
+
+  return (
+    <>
+      <p className="field-hint">
+        Configurez une nouvelle passerelle. Vous pourrez l&apos;activer après création.
+      </p>
+      <div className="modal-fg">
+        <label>Fournisseur</label>
+        <select
+          value={provider}
+          onChange={(e) => {
+            const v = e.target.value as Gateway['provider']
+            setProvider(v)
+            setLabel(PROVIDER_LABEL[v])
+          }}
+        >
+          <option value="resend">Resend</option>
+          <option value="brevo">Brevo</option>
+          <option value="smtp">SMTP Hostinger</option>
+        </select>
+      </div>
+      <div className="modal-fg">
+        <label>Libellé</label>
+        <input
+          type="text"
+          placeholder={PROVIDER_LABEL[provider]}
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          autoFocus
+        />
+      </div>
+      <div className="modal-fg">
+        <label>Clé API (ou mot de passe SMTP)</label>
+        <input
+          type="password"
+          placeholder={provider === 'brevo' ? 'xkeysib-…' : provider === 'resend' ? 're_…' : 'mot de passe SMTP'}
+          value={apiKey}
+          onChange={(e) => setApiKey(e.target.value)}
+        />
+      </div>
+      <div className="modal-actions">
+        <button className="btn btn-ghost" onClick={onCancel}>Annuler</button>
+        <button
+          className="btn btn-primary"
+          disabled={!label.trim() && !PROVIDER_LABEL[provider]}
+          onClick={() => onCreate(provider, label.trim(), apiKey.trim())}
+        >
+          Créer la passerelle
+        </button>
+      </div>
+    </>
+  )
+}

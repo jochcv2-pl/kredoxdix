@@ -48,3 +48,6 @@ coverage/
 # Misc
 *.pem
 .DOV
+
+# Temp / scripts de test
+Temp/

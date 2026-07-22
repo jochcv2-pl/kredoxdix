@@ -1,4 +1,5 @@
-import type { SimulatorInput, SimulatorResult } from '@kredix/types';
+import type { SimulatorInput, SimulatorResult, ApplicableRate } from '@kredix/types';
+import { findBestRate } from '@kredix/types';
 import { getIndicativeRate } from './rates';
 
 /**
@@ -13,9 +14,18 @@ import { getIndicativeRate } from './rates';
  *
  * Cas particulier : si r = 0 (taux zéro), mensualité = C / n.
  *
+ * @param input    — montant, durée, type de prêt.
+ * @param rates    — paliers de taux issus de la DB (banques partenaires).
+ *                   Si fournis et qu'un palier matche, le MEILLEUR taux (le
+ *                   plus bas) est utilisé. Sinon, fallback sur les taux
+ *                   indicatifs hardcoded (compatibilité).
+ *
  * @throws Error si les entrées sont hors bornes (à valider en amont par Zod).
  */
-export function calculateLoan(input: SimulatorInput): SimulatorResult {
+export function calculateLoan(
+  input: SimulatorInput,
+  rates?: readonly ApplicableRate[],
+): SimulatorResult {
   const { amount, durationYears, loanType } = input;
 
   // Garde-fou : la validation stricte se fait côté API (Zod),
@@ -26,7 +36,9 @@ export function calculateLoan(input: SimulatorInput): SimulatorResult {
     );
   }
 
-  const annualRate = getIndicativeRate(amount, loanType);
+  // Taux applicable : priorité aux paliers DB, fallback sur l'indicatif hardcoded.
+  const best = rates ? findBestRate(amount, loanType, rates) : null;
+  const annualRate = best?.annualRate ?? getIndicativeRate(amount, loanType);
   const monthlyRate = annualRate / 100 / 12;
   const totalMonths = durationYears * 12;
 

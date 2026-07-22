@@ -1,43 +1,32 @@
-import type { Metadata } from "next";
-import { Montserrat } from "next/font/google";
 import "./globals.css";
+import { Montserrat } from "next/font/google";
+import { TrackingHead } from "@/components/Tracking";
 
-// DEC-K1 : le HTML de référence utilise Montserrat. On la charge via next/font
-// pour l'optimisation (subset, display swap, pas de layout shift).
+// next/font/google — self-hosted, pas de render-blocking, display:swap automatique.
+// Remplace les 3 <link> Google Fonts (preconnect + stylesheet) qui bloquaient le render.
+// Migration A1 (audit visuel session 23) : performance + LCP.
 const montserrat = Montserrat({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800", "900"],
-  variable: "--font-montserrat",
   display: "swap",
+  variable: "--font-montserrat",
 });
 
-export const metadata: Metadata = {
-  title: "Kredix - Courtier en financement",
-  description:
-    "Kredix compare 40 banques pour vous obtenir le meilleur taux. Simulez gratuitement votre crédit et recevez une réponse en 24 heures.",
-};
+// Note : generateMetadata est volontairement absent ici.
+// En Next.js App Router, le metadata du layout enfant ([locale]/layout.tsx)
+// override celui du parent. La lecture DB des SEO settings se fait donc
+// dans [locale]/layout.tsx (qui gagne réellement pour toutes les locales).
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="fr">
-      <head>
-        {/* Préchargement des polices Google — reproduction exacte du HTML */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap"
-          rel="stylesheet"
-        />
-      </head>
-      <body className={montserrat.variable}>{children}</body>
+    <html className={montserrat.variable}>
+      <body>
+        {children}
+        {/* Tracking (FB Pixel + GA) — injecté seulement si les IDs sont configurés */}
+        <TrackingHead />
+      </body>
     </html>
   );
 }

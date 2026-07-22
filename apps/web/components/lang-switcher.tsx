@@ -1,12 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useLocale } from "next-intl";
+import { useRouter, usePathname } from "@/i18n/navigation";
+import { LOCALES, type Locale } from "@kredix/types";
 
-// Langues supportées (rendu visuel uniquement — DEC-K1 pixel-perfect).
-const LANGS = ["fr", "en", "de", "es", "pt", "it"] as const;
-type Lang = (typeof LANGS)[number];
-
-const LANG_LABELS: Record<Lang, string> = {
+const LANG_DISPLAY: Record<Locale, string> = {
   fr: "FR",
   en: "EN",
   de: "DE",
@@ -16,40 +14,31 @@ const LANG_LABELS: Record<Lang, string> = {
 };
 
 /**
- * Sélecteur de langue — reproduction exacte du HTML de référence (.lang).
- * Pour l'instant uniquement visuel : la logique i18n vient dans une phase ultérieure.
+ * Sélecteur de langue — reproduction exacte du HTML (.lang / .lang button).
+ * Utilise les classes CSS originales définies dans globals.css.
+ * Change la locale via next-intl (navigation localisée).
  */
 export default function LangSwitcher() {
-  const [active, setActive] = useState<Lang>("fr");
+  const locale = useLocale() as Locale;
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const handleChange = (newLocale: Locale) => {
+    router.replace(pathname, { locale: newLocale });
+  };
 
   return (
-    <div className="flex gap-[3px]">
-      {LANGS.map((lang) => {
-        const isActive = lang === active;
-        return (
-          <button
-            key={lang}
-            type="button"
-            onClick={() => setActive(lang)}
-            className="font-sans text-[10px] font-semibold rounded-[20px] border px-[8px] py-[4px] transition-all duration-[150ms] cursor-pointer"
-            style={
-              isActive
-                ? {
-                    background: "var(--color-blue)",
-                    color: "#fff",
-                    borderColor: "var(--color-blue)",
-                  }
-                : {
-                    background: "#fff",
-                    color: "var(--color-slate)",
-                    borderColor: "var(--color-line)",
-                  }
-            }
-          >
-            {LANG_LABELS[lang]}
-          </button>
-        );
-      })}
+    <div className="lang">
+      {LOCALES.map((l) => (
+        <button
+          key={l}
+          type="button"
+          onClick={() => handleChange(l)}
+          className={locale === l ? "active" : ""}
+        >
+          {LANG_DISPLAY[l]}
+        </button>
+      ))}
     </div>
   );
 }

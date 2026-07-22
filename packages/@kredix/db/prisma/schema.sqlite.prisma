@@ -1,0 +1,155 @@
+// =============================================================================
+// Kredix — Schéma Prisma (SQLite temporaire)
+// =============================================================================
+// Basculé temporairement depuis PostgreSQL (Docker pull timeout).
+// Une fois PostgreSQL disponible, revenir à schema.prisma avec provider="postgresql"
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------------------------------------
+// ENUMS — remplacés par String pour SQLite
+// -----------------------------------------------------------------------------
+// SQLite ne supporte pas les enums natives, on utilise des String avec des
+// commentaires documentant les valeurs autorisées. Les validateurs Zod (app)
+// garantissent l'intégrité côté applicatif.
+
+/// Cycle de vie d'un lead dans le pipeline commercial.
+/// Valeurs autorisées : pending, contacted, qualified, financed, rejected
+model Lead {
+  id                String     @id @default(cuid())
+  firstName         String
+  lastName          String
+  email             String?    // optionnel : le téléphone reste le canal principal
+  phone             String
+  city              String
+  country           String     @default("FR") // code pays (FR, BE, CH, ...)
+
+  // loanType en string : la liste de produits peut s'étendre
+  // (véhicule, travaux, étudiant...) sans imposer une migration de schéma.
+  loanType          String
+
+  amount            Int        // montant demandé, en devise locale (entier = pas de flottants)
+  durationYears     Int
+
+  // Champs pré-calculés par le simulateur (instantané lead au moment de la demande).
+  monthlyPayment    Int?       // mensualité estimée en euros
+  annualRate        Float?     // taux indicatif en %
+  totalCost         Int?       // coût total du crédit en euros
+
+  // Même logique que loanType : situations professionnelles évolutives.
+  employmentStatus  String
+
+  /// Valeurs autorisées : pending, contacted, qualified, financed, rejected
+  status            String     @default("pending")
+
+  preferredLanguage String     @default("fr") // i18n des communications
+  whatsappConsent   Boolean    @default(false) // consentement RGPD explicite
+  notes             String?    // notes internes conseillers
+
+  // Relation optionnelle : un lead peut ne pas encore être assigné.
+  assignedToId      String?
+  assignedTo        AdminUser? @relation("AssignedLeads", fields: [assignedToId], references: [id])
+
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  // Accès rapide par statut pour les tableaux de bord / files de traitement.
+  @@index([status])
+  // Recherche par conseiller + statut = requête la plus fréquente du BO.
+  @@index([assignedToId, status])
+}
+
+// -----------------------------------------------------------------------------
+// BANKPARTNER — banques comparées sur le site
+// -----------------------------------------------------------------------------
+model BankPartner {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  slug         String   @unique // stable pour les URLs (pas l'id technique)
+  logoUrl      String?
+  apiEndpoint  String? // intégration future (webservices bancaires)
+  contactEmail String?
+  contactPhone String?
+  isActive     Boolean  @default(true)
+  displayOrder Int      @default(0) // tri CMS-manuel pour la page comparatif
+
+  rates        Rate[]
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// -----------------------------------------------------------------------------
+// RATE — taux indicatifs par banque / type de prêt / palier de montant
+// -----------------------------------------------------------------------------
+model Rate {
+  id         String      @id @default(cuid())
+  bankId     String
+  bank       BankPartner @relation(fields: [bankId], references: [id])
+
+  loanType   String
+
+  amountMin  Int // palier bas (inclusif)
+  amountMax  Int // palier haut (inclusif)
+
+  annualRate Float // taux annuel en % (ex: 4.95)
+  isActive   Boolean     @default(true)
+  validFrom  DateTime    @default(now()) // date d'entrée en vigueur (historique)
+
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  // Un même palier ne peut exister qu'une fois par banque/type : empêche les
+  // doublons qui rendraient le comparatif ambigu.
+  @@unique([bankId, loanType, amountMin, amountMax])
+  // Recherche des taux applicables pour un type donné (page comparatif).
+  @@index([loanType, isActive])
+}
+
+// -----------------------------------------------------------------------------
+// ADMINUSER — mapping local des utilisateurs Zitadel
+// -----------------------------------------------------------------------------
+// Zitadel (OIDC) reste source de vérité pour l'authentification ; on stocke
+// ici le mapping subjectId <-> rôle local pour l'autorisation applicative.
+model AdminUser {
+  id               String      @id @default(cuid())
+  zitadelSubjectId String      @unique // sub du token OIDC Zitadel
+  email            String      @unique
+  displayName      String
+  /// Valeurs autorisées : admin, advisor, viewer
+  role             String      @default("advisor")
+  isActive         Boolean     @default(true)
+  lastLoginAt      DateTime?
+
+  // Deux relations distinctes sur Lead : l'assignment nominatif
+  // ("AssignedLeads") et la collection générique back-referencée.
+  leads            Lead[]      @relation("AssignedLeads")
+  // (relation inverse Lead.assignedTo)
+
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  @@index([role, isActive])
+}
+
+// -----------------------------------------------------------------------------
+// SETTING — paramètres globaux éditables via CMS
+// -----------------------------------------------------------------------------
+// Stocké en string : les settings sont hétérogènes (numéro de téléphone,
+// booléen, JSON léger). Le parsing/validation est fait côté app selon la clé.
+model Setting {
+  id          String   @id @default(cuid())
+  key         String   @unique // ex: 'whatsapp_number', 'orias_number'
+  value       String
+  category    String   @default("general") // ex: 'contact', 'legal', 'simulator'
+  description String?
+  updatedAt   DateTime @updatedAt
+}

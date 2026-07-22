@@ -31,3 +31,16 @@ export interface LoanTypeOption {
   label: string;
   baseRate: number | null; // null pour 'autre'
 }
+
+/**
+ * Taux applicable provenant d'une banque partenaire (modèle Rate en DB).
+ * Format minimal nécessaire au simulateur pour choisir le meilleur taux.
+ */
+export interface ApplicableRate {
+  bankId: string;
+  bankName?: string;
+  loanType: LoanType;
+  amountMin: number; // palier bas (inclusif)
+  amountMax: number; // palier haut (inclusif)
+  annualRate: number; // taux annuel en % (ex: 3.45)
+}

@@ -6,16 +6,25 @@ import {
   formatFrenchNumber,
   roundToDurationStep,
 } from "@kredix/simulator";
+import { useTranslations } from "next-intl";
 import {
-  LOAN_TYPE_LABELS_FR,
   SIMULATOR_LIMITS,
   DURATION_OPTIONS,
   type LoanType,
+  type ApplicableRate,
 } from "@kredix/types";
 
 // Types de prêt disponibles dans le simulateur (exclut "autre").
 type SimLoanType = Exclude<LoanType, "autre">;
 const SIM_TYPES: SimLoanType[] = ["immo", "conso", "rachat", "pro"];
+
+// Clés de traduction associées à chaque type de prêt.
+const SIM_TYPE_LABEL_KEYS: Record<SimLoanType, "loanImmo" | "loanConso" | "loanRachat" | "loanPro"> = {
+  immo: "loanImmo",
+  conso: "loanConso",
+  rachat: "loanRachat",
+  pro: "loanPro",
+};
 
 // Valeurs initiales identiques au HTML de référence.
 const DEFAULT_AMOUNT = 150000;
@@ -23,57 +32,70 @@ const DEFAULT_YEARS = 20;
 const DEFAULT_TYPE: SimLoanType = "immo";
 
 /**
- * Simulateur — reproduction visuelle exacte (.sim-body / .sim-controls / .sim-result)
- * + interactivité : calcul en temps réel via calculateLoan, autofill via prop callback.
+ * Simulateur — reproduction exacte du HTML (.sim-body / .sim-controls / .sim-result).
+ * Utilise les classes CSS originales de globals.css (DEC-K1 pixel-perfect).
  *
- * Le résultat est calculé avec calculateLoan (package @kredix/simulator) pour rester
- * cohérent avec le backend (DEC-K1 : même logique que le HTML de référence).
+ * @param rates — paliers de taux issus de la DB (fetch SSR côté page).
+ *                Si fournis, le simulateur utilise les vrais taux des banques
+ *                partenaires (meilleur taux applicable). Sinon, fallback sur
+ *                les taux indicatifs hardcoded.
  */
 export default function Simulator({
+  rates,
   onApplyToForm,
 }: {
+  rates?: readonly ApplicableRate[];
   onApplyToForm?: (data: {
     amount: number;
     durationYears: number;
     loanType: SimLoanType;
+    monthlyPayment: number;
+    annualRate: number;
+    totalCost: number;
   }) => void;
 }) {
+  const t = useTranslations("Simulator");
+  const tRoot = useTranslations();
   const [amount, setAmount] = useState(DEFAULT_AMOUNT);
   const [years, setYears] = useState(DEFAULT_YEARS);
   const [loanType, setLoanType] = useState<SimLoanType>(DEFAULT_TYPE);
 
-  // Calcul en temps réel via le package partagé.
-  const result = calculateLoan({ amount, durationYears: years, loanType });
-
-  const yearsLabel = years > 1 ? "ans" : "an";
+  const result = calculateLoan({ amount, durationYears: years, loanType }, rates);
+  const yearsLabel = years > 1 ? tRoot("years") : tRoot("year");
 
   const handleApply = () => {
-    // Arrondit la durée au palier du select du formulaire (5,10,15,20,25,30).
     const rounded = roundToDurationStep(years, DURATION_OPTIONS);
-    onApplyToForm?.({ amount, durationYears: rounded, loanType });
+    // Recalcule avec la durée arrondie pour que les chiffres envoyés au
+    // formulaire correspondent exactement au palier sélectionné.
+    const roundedResult = calculateLoan(
+      { amount, durationYears: rounded, loanType },
+      rates,
+    );
+    onApplyToForm?.({
+      amount,
+      durationYears: rounded,
+      loanType,
+      monthlyPayment: roundedResult.monthlyPayment,
+      annualRate: roundedResult.annualRate,
+      totalCost: roundedResult.totalCost,
+    });
   };
 
   return (
-    <div
-      className="grid gap-8 max-w-[820px] mx-auto items-center"
-      style={{ gridTemplateColumns: "1.2fr 1fr" }}
-    >
+    <div className="sim-body">
       {/* ===== CONTRÔLES ===== */}
-      <div className="flex flex-col gap-6">
+      <div className="sim-controls">
         {/* Type de prêt */}
         <div>
-          <label className="block text-[10px] text-slate font-semibold uppercase tracking-[0.04em] mb-[6px]">
-            Type de prêt
-          </label>
+          <label className="field-label">{t("typeLabel")}</label>
           <select
+            className="sim-select"
             value={loanType}
             onChange={(e) => setLoanType(e.target.value as SimLoanType)}
-            className="sim-select w-full py-[11px] px-[12px] bg-white border border-line rounded-sm text-[13px] text-ink font-sans font-semibold appearance-none cursor-pointer"
-            style={{ paddingRight: "30px" }}
           >
-            {SIM_TYPES.map((t) => (
-              <option key={t} value={t}>
-                {LOAN_TYPE_LABELS_FR[t]}
+            {SIM_TYPES.map((type) => (
+              <option key={type} value={type}>
+                {t(SIM_TYPE_LABEL_KEYS[type])}
               </option>
             ))}
           </select>
@@ -81,11 +103,9 @@ export default function Simulator({
 
         {/* Slider montant */}
         <div>
-          <div className="flex justify-between items-baseline mb-[11px]">
-            <span className="text-[12px] font-semibold text-slate">Montant</span>
-            <span className="text-[21px] font-extrabold text-blue tracking-[-0.02em]">
-              {formatFrenchNumber(amount)} €
-            </span>
+          <div className="slider-top">
+            <span className="name">{t("amountLabel")}</span>
+            <span className="val">{formatFrenchNumber(amount)} €</span>
           </div>
           <input
             type="range"
@@ -94,9 +114,8 @@ export default function Simulator({
             step={SIMULATOR_LIMITS.AMOUNT_STEP}
             value={amount}
             onChange={(e) => setAmount(Number(e.target.value))}
-            className="sim-range w-full h-[6px] rounded-[6px] bg-[#DCE6F0] outline-none appearance-none"
           />
-          <div className="flex justify-between mt-[7px] text-[9px] text-[#B4C4D6] font-semibold">
+          <div className="slider-mm">
             <span>5 000 €</span>
             <span>500 000 €</span>
           </div>
@@ -104,13 +123,9 @@ export default function Simulator({
 
         {/* Slider durée */}
         <div>
-          <div className="flex justify-between items-baseline mb-[11px]">
-            <span className="text-[12px] font-semibold text-slate">
-              Durée de remboursement
-            </span>
-            <span className="text-[21px] font-extrabold text-blue tracking-[-0.02em]">
-              {years} {yearsLabel}
-            </span>
+          <div className="slider-top">
+            <span className="name">{t("durationLabel")}</span>
+            <span className="val">{years} {yearsLabel}</span>
           </div>
           <input
             type="range"
@@ -119,51 +134,31 @@ export default function Simulator({
             step={1}
             value={years}
             onChange={(e) => setYears(Number(e.target.value))}
-            className="sim-range w-full h-[6px] rounded-[6px] bg-[#DCE6F0] outline-none appearance-none"
           />
-          <div className="flex justify-between mt-[7px] text-[9px] text-[#B4C4D6] font-semibold">
-            <span>1 an</span>
-            <span>30 ans</span>
+          <div className="slider-mm">
+            <span>1 {tRoot("year")}</span>
+            <span>30 {tRoot("years")}</span>
           </div>
         </div>
       </div>
 
       {/* ===== RÉSULTAT ===== */}
-      <div
-        className="rounded-xl p-7 text-center text-white"
-        style={{
-          background: "linear-gradient(160deg, var(--color-blue), var(--color-blue-dark))",
-          boxShadow: "var(--shadow-blue)",
-          padding: "28px 26px",
-        }}
-      >
-        <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-white/70 mb-2">
-          Mensualité estimée
-        </p>
-        <div className="text-[42px] font-extrabold tracking-[-0.03em] leading-none mb-[5px]">
-          {formatFrenchNumber(result.monthlyPayment)} <small className="text-[16px] font-semibold">€</small>
+      <div className="sim-result">
+        <p className="rlabel">{t("resultLabel")}</p>
+        <div className="amount">
+          {formatFrenchNumber(result.monthlyPayment)} <small>€</small>
         </div>
-        <p className="text-[11px] text-white/60 mb-5">
-          par mois sur {years} {yearsLabel}
-        </p>
-        <div className="flex justify-between py-[9px] border-t border-white/15 text-[11px]">
-          <span className="text-white/60">Taux indicatif</span>
-          <span className="font-bold">
-            {result.annualRate.toFixed(1).replace(".", ",")} %
-          </span>
+        <p className="period">{tRoot("perMonth")} {years} {yearsLabel}</p>
+        <div className="sim-detail">
+          <span>{t("rateLabel")}</span>
+          <span>{result.annualRate.toFixed(1).replace(".", ",")} %</span>
         </div>
-        <div className="flex justify-between py-[9px] border-t border-white/15 text-[11px]">
-          <span className="text-white/60">Coût total du crédit</span>
-          <span className="font-bold">
-            {formatFrenchNumber(result.totalCost)} €
-          </span>
+        <div className="sim-detail">
+          <span>{t("totalLabel")}</span>
+          <span>{formatFrenchNumber(result.totalCost)} €</span>
         </div>
-        <button
-          type="button"
-          onClick={handleApply}
-          className="w-full mt-[18px] bg-orange text-white border-none rounded-[10px] py-[13px] text-[13px] font-bold cursor-pointer font-sans tracking-[0.01em]"
-        >
-          Obtenir cette offre maintenant
+        <button type="button" className="sim-cta" onClick={handleApply}>
+          {t("cta")}
         </button>
       </div>
     </div>
