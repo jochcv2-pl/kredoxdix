@@ -14,7 +14,7 @@ export {
   type EmailAttachment,
   type SendEmailParams,
   type SendEmailResult,
-} from './sender.js';
+} from './sender';
 
 export {
   interpolateTemplate,
@@ -22,11 +22,11 @@ export {
   textToHtml,
   formatEuro,
   type InterpolationContext,
-} from './template.js';
+} from './template';
 
 export {
   getSetting,
   getSettingNumber,
   getActiveGateway,
   getActiveTemplate,
-} from './settings.js';
+} from './settings';

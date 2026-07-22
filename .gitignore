@@ -51,3 +51,9 @@ coverage/
 
 # Temp / scripts de test
 Temp/
+
+# Playwright E2E
+test-results/
+playwright-report/
+tests/e2e-report/
+/playwright/.cache/

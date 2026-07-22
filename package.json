@@ -18,11 +18,16 @@
     "db:generate": "pnpm --filter @kredix/db db:generate",
     "db:migrate": "pnpm --filter @kredix/db db:migrate",
     "db:push": "pnpm --filter @kredix/db db:push",
-    "db:studio": "pnpm --filter @kredix/db db:studio"
+    "db:studio": "pnpm --filter @kredix/db db:studio",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:report": "playwright show-report tests/e2e-report"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "otplib": "^13.4.1",
+    "rimraf": "^6.0.0",
     "turbo": "^2.5.0",
-    "typescript": "^5.7.0",
-    "rimraf": "^6.0.0"
+    "typescript": "^5.7.0"
   }
 }

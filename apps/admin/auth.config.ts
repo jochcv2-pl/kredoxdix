@@ -38,6 +38,7 @@ export const authConfig: NextAuthConfig = {
       // Routes publiques — accessibles sans login.
       const isPublic =
         pathname.startsWith('/api/cron') || // Cron jobs — protégés par CRON_SECRET (header Bearer)
+        pathname === '/api/health' ||       // Health check public (Docker/Uptime Kuma)
         pathname.startsWith('/login') ||
         pathname === '/' ||
         pathname.startsWith('/_next') ||
