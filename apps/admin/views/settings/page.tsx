@@ -127,6 +127,7 @@ export default function Settings() {
         { key: CADENCE_KEYS.ipType, value: settings[CADENCE_KEYS.ipType] ?? 'shared', category: 'cadence' },
         { key: CADENCE_KEYS.dedicatedIp, value: settings[CADENCE_KEYS.dedicatedIp] ?? '', category: 'cadence' },
         { key: CADENCE_KEYS.sendingDomain, value: settings[CADENCE_KEYS.sendingDomain] ?? '', category: 'cadence' },
+        { key: 'from_email', value: settings['from_email'] ?? '', category: 'email' },
       ]
 
       for (const p of payload) {
@@ -499,6 +500,19 @@ export default function Settings() {
             <span className="link" onClick={() => setNewGatewayModalOpen(true)}>+ Ajouter</span>
           </div>
           <div className="panel-body" style={{ paddingTop: '14px' }}>
+            {/* Adresse d'expédition globale */}
+            <div className="fg" style={{ marginBottom: 16 }}>
+              <label>Adresse d&apos;expédition (from_email)</label>
+              <input
+                value={settings['from_email'] ?? ''}
+                onChange={(e) => setSettings((prev) => ({ ...prev, from_email: e.target.value }))}
+                placeholder="Marque <noreply@domaine.fr>"
+              />
+              <small className="field-hint">
+ Utilisé pour tous les emails transactionnels. Si vide, fallback sur la config du gateway actif ou l&apos;adresse par défaut.
+              </small>
+            </div>
+
             <p className="field-hint">
               Configurez plusieurs fournisseurs. L&apos;admin remplit la clé API de chacun ; seul le fournisseur <b>coché « Actif »</b> est utilisé pour l&apos;envoi.
             </p>

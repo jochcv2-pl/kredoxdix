@@ -354,10 +354,22 @@ body {
   font-weight: 800;
   padding: 0 22px 20px;
   letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .sb-logo span {
   color: var(--orange);
+}
+
+.sb-logo-img {
+  max-height: 36px;
+  width: auto;
+}
+
+.sb-logo-text {
+  color: inherit;
 }
 
 .sb-group {
@@ -2029,10 +2041,22 @@ body {
   font-weight: 800;
   letter-spacing: -0.03em;
   margin-bottom: 40px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .login-brand-logo span {
   color: var(--orange);
+}
+
+.login-brand-logo-img {
+  max-height: 48px;
+  width: auto;
+}
+
+.login-brand-logo-text {
+  color: inherit;
 }
 
 .login-brand h2 {
@@ -2109,10 +2133,23 @@ body {
   margin-bottom: 8px;
   letter-spacing: -0.02em;
   color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .login-card-logo span {
   color: var(--orange);
+}
+
+.login-card-logo-img {
+  max-height: 36px;
+  width: auto;
+}
+
+.login-card-logo-text {
+  color: inherit;
 }
 
 .login-subtitle {
