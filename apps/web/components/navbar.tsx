@@ -10,7 +10,7 @@ import LangSwitcher from "@/components/lang-switcher";
  * Le burger bascule la classe `.open` sur `.nav-menu`, comme le HTML original
  * (onclick="...classList.toggle('open')").
  */
-export default function Navbar() {
+export default function Navbar({ siteName = "Kredix", logoUrl }: { siteName?: string; logoUrl?: string }) {
   const t = useTranslations("Nav");
   const [open, setOpen] = useState(false);
 
@@ -35,7 +35,11 @@ export default function Navbar() {
     <header className="nav">
       <div className="nav-inner">
         <a href="#top" className="logo" onClick={() => setOpen(false)}>
-          Kredix
+          {logoUrl ? (
+            <img src={logoUrl} alt={siteName} style={{ maxHeight: 36 }} />
+          ) : (
+            siteName
+          )}
         </a>
         <nav className={`nav-menu${open ? " open" : ""}`} id="navMenu">
           <a href="#services" onClick={() => setOpen(false)}>

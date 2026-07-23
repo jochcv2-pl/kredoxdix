@@ -54,8 +54,17 @@ export default function AdminPage() {
   const router = useRouter()
   const [viewId, setViewId] = useState<string>('dashboard')
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [brand, setBrand] = useState<{ siteName: string; logoUrl: string; logoAlt: string }>({ siteName: 'Kredix', logoUrl: '', logoAlt: 'Kredix' })
 
   const [title, subtitle] = pageTitles[viewId] || ['', '']
+
+  // Fetch identité de marque (site_name, logo) au montage.
+  useEffect(() => {
+    fetch('/api/brand')
+      .then((r) => r.json())
+      .then((data) => setBrand(data))
+      .catch(() => {})
+  }, [])
 
   // Redirect vers /login si non authentifié.
   // useEffect évite un redirect pendant le SSR/initial render.
@@ -125,6 +134,9 @@ export default function AdminPage() {
         currentView={viewId}
         onViewChange={handleViewChange}
         open={sidebarOpen}
+        brandName={brand.siteName}
+        logoUrl={brand.logoUrl}
+        logoAlt={brand.logoAlt}
       />
       <div className="main">
         <Topbar

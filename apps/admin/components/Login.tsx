@@ -15,7 +15,7 @@ import { Icon } from './Icon'
 // Ce composant est rendu par /login/page.tsx (server component qui redirige
 // vers / si déjà authentifié).
 
-export function Login() {
+export function Login({ brandName = 'Kredix', logoUrl, logoAlt }: { brandName?: string; logoUrl?: string; logoAlt?: string }) {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -106,7 +106,8 @@ export function Login() {
       <div className="login-brand">
         <div className="login-brand-content">
           <div className="login-brand-logo">
-            Kredi<span>x</span>
+            {logoUrl && <img src={logoUrl} alt={logoAlt || brandName} className="login-brand-logo-img" />}
+            <span className="login-brand-logo-text">{brandName}</span>
           </div>
           <h2>Plateforme de gestion<br />pour courtiers en crédit</h2>
           <p>
@@ -128,7 +129,7 @@ export function Login() {
           </div>
         </div>
         <div className="login-brand-footer">
-          © 2026 Kredix — Tous droits réservés
+          © 2026 {brandName} — Tous droits réservés
         </div>
       </div>
 
@@ -136,7 +137,8 @@ export function Login() {
       <div className="login-form-side">
         <div className="login-card">
           <div className="login-card-logo">
-            Kredi<span>x</span>
+            {logoUrl && <img src={logoUrl} alt={logoAlt || brandName} className="login-card-logo-img" />}
+            <span className="login-card-logo-text">{brandName}</span>
           </div>
           <div className="login-subtitle">Connexion à votre espace administrateur</div>
 

@@ -1,4 +1,5 @@
 import { GatewayProvider, type EmailGateway } from '@kredix/db';
+import { getSetting } from './settings';
 
 // =============================================================================
 // @kredix/email/sender — Adapter d'envoi d'emails (Resend / Brevo / SMTP).
@@ -6,6 +7,7 @@ import { GatewayProvider, type EmailGateway } from '@kredix/db';
 // Extrait depuis apps/admin/app/api/_lib/email-sender.ts.
 // Dispatch vers le bon SDK selon gateway.provider.
 // La clé API est lue depuis EmailGateway.apiKey (DB).
+// L'adresse d'expédition est lue depuis Setting.from_email (CMS admin).
 
 export interface EmailAttachment {
   filename: string;
@@ -35,12 +37,35 @@ type EffectiveSendParams = Required<Pick<SendEmailParams, 'to' | 'subject' | 'ht
 
 const DEFAULT_FROM = 'Kredix <noreply@kredix.fr>';
 
+/**
+ * Résout l'adresse d'expédition dans l'ordre de priorité :
+ * 1. config.from (spécifique au gateway — JSON EmailGateway.config)
+ * 2. Setting from_email (global CMS admin — configurable depuis Paramètres)
+ * 3. params.from (override caller — ex: campagne avec expéditeur dédié)
+ * 4. DEFAULT_FROM (fallback hardcoded — dernier recours)
+ */
+async function resolveFrom(
+  config: Record<string, unknown>,
+  paramsFrom?: string,
+): Promise<string> {
+  // 1. Gateway-specific config
+  const configFrom = config.from as string | undefined;
+  if (configFrom) return configFrom;
+  // 2. Global CMS from_email Setting
+  const settingFrom = await getSetting('from_email', '');
+  if (settingFrom) return settingFrom;
+  // 3. Caller override
+  if (paramsFrom) return paramsFrom;
+  // 4. Hardcoded fallback
+  return DEFAULT_FROM;
+}
+
 export async function sendEmail(
   gateway: EmailGateway,
   params: SendEmailParams,
 ): Promise<SendEmailResult> {
   const config = (gateway.config ?? {}) as Record<string, unknown>;
-  const from = (config.from as string) || params.from || DEFAULT_FROM;
+  const from = await resolveFrom(config, params.from);
   const apiKey = gateway.apiKey;
 
   if (!apiKey && gateway.provider !== GatewayProvider.smtp) {

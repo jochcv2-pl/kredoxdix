@@ -253,6 +253,13 @@ async function main() {
       category: 'cms.branding',
       description: 'URL du favicon. Format: PNG ou ICO, 512×512px recommandé, max 50KB.',
     },
+    // ===== EMAIL (expédition) =====
+    {
+      key: 'from_email',
+      value: '',
+      category: 'email',
+      description: 'Adresse d\'expédition globale des emails transactionnels (ex: Kredix <noreply@kredix.fr>). Prioritaire sur le fallback hardcoded. Configurable depuis Paramètres → Email. Si vide, fallback sur config du gateway actif ou DEFAULT_FROM.',
+    },
     // ===== TRACKING (activation admin — vide = désactivé) =====
     {
       key: 'fb_pixel_id',

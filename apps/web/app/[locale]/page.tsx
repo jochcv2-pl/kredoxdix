@@ -54,7 +54,7 @@ export default async function HomePage() {
   return (
     <>
       {/* ===== NAV ===== */}
-      <Navbar />
+      <Navbar siteName={siteName} logoUrl={settings.cms_logo_url || undefined} />
 
       {/* ===== HERO ===== */}
       <section className="hero" id="top">

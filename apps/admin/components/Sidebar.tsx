@@ -118,15 +118,19 @@ interface SidebarProps {
   currentView: string;
   onViewChange: (viewId: string) => void;
   open?: boolean;
+  brandName?: string;
+  logoUrl?: string;
+  logoAlt?: string;
 }
 
-export function Sidebar({ currentView, onViewChange, open }: SidebarProps) {
+export function Sidebar({ currentView, onViewChange, open, brandName = 'Kredix', logoUrl, logoAlt }: SidebarProps) {
   const groups = Array.from(new Set(navigation.map((n) => n.group)));
 
   return (
     <aside className={`sidebar${open ? " open" : ""}`}>
       <div className="sb-logo">
-        Kredi<span>x</span>
+        {logoUrl && <img src={logoUrl} alt={logoAlt || brandName} className="sb-logo-img" />}
+        <span className="sb-logo-text">{brandName}</span>
       </div>
 
       {groups.map((group) => (

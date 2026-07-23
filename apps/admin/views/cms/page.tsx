@@ -40,6 +40,12 @@ interface Setting {
 }
 
 export default function CMS() {
+  // Identité de marque (nom + logo).
+  const [brandName, setBrandName] = useState('')
+  const [brandLogo, setBrandLogo] = useState('')
+  const [renaming, setRenaming] = useState(false)
+  const [renameResult, setRenameResult] = useState<string | null>(null)
+
   // Valeurs éditables localement (chargées depuis l'API au mount).
   const [hero, setHero] = useState({
     titre: '',
@@ -70,6 +76,8 @@ export default function CMS() {
         const byKey = new Map(settings.map((s) => [s.key, s.value]))
 
         if (cancelled) return
+        setBrandName(byKey.get('site_name') ?? 'Kredix')
+        setBrandLogo(byKey.get('cms_logo_url') ?? '')
         setHero({
           titre: byKey.get(KEYS.heroTitle) ?? '',
           sousTitre: byKey.get(KEYS.heroSubtitle) ?? '',
@@ -105,6 +113,40 @@ export default function CMS() {
 
   const toggleLangue = (l: string) => {
     setLanguesActives((prev) => ({ ...prev, [l]: !prev[l] }))
+  }
+
+  // Renomme la marque globalement (POST /api/cms/rename — transaction sur Settings + EmailTemplates).
+  const renameBrand = async () => {
+    const trimmed = brandName.trim()
+    if (!trimmed) return
+    setRenaming(true)
+    setRenameResult(null)
+    try {
+      const res = await fetch('/api/cms/rename', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newName: trimmed }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => null)
+        throw new Error(err?.error || 'Échec du renommage')
+      }
+      const data = await res.json()
+      const d = data.data ?? data
+      setRenameResult(`✓ Marque mise à jour — ${d.settingsUpdated} paramètre(s) et ${d.templatesUpdated} template(s) modifié(s).`)
+      // Sauvegarde aussi le logo si modifié.
+      if (brandLogo !== '') {
+        await fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: 'cms_logo_url', value: brandLogo, category: 'cms.branding', description: 'URL du logo.' }),
+        })
+      }
+    } catch (e) {
+      setRenameResult(`✗ ${e instanceof Error ? e.message : 'Erreur inconnue'}`)
+    } finally {
+      setRenaming(false)
+    }
   }
 
   // Publication : POST /api/settings (upsert par clé) pour toutes les valeurs éditées.
@@ -174,6 +216,51 @@ export default function CMS() {
           <div>{error}</div>
         </div>
       )}
+
+      {/* ===== IDENTITÉ DE MARQUE ===== */}
+      <div className="panel" style={{ marginBottom: 16 }}>
+        <div className="panel-head">
+          <h3>Identité de marque</h3>
+        </div>
+        <div className="panel-body" style={{ paddingTop: 16 }}>
+          <p className="field-hint" style={{ marginBottom: 12 }}>
+            Le nom de marque est utilisé partout (sidebar, login, site public, emails, footer).
+            Le renommer met à jour tous les templates d'emails et paramètres en une seule transaction.
+          </p>
+          <div className="frow" style={{ marginBottom: 12 }}>
+            <div className="fg">
+              <label>Nom de la marque</label>
+              <input
+                value={brandName}
+                onChange={(e) => { setBrandName(e.target.value); setRenameResult(null) }}
+                placeholder="Kredix"
+              />
+            </div>
+            <div className="fg">
+              <label>URL du logo (optionnel)</label>
+              <input
+                value={brandLogo}
+                onChange={(e) => setBrandLogo(e.target.value)}
+                placeholder="https://… (SVG/PNG transparent, 400×100px)"
+              />
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button
+              className="btn btn-primary"
+              onClick={renameBrand}
+              disabled={renaming || !brandName.trim()}
+            >
+              {renaming ? 'Renommage…' : 'Appliquer le renommage global'}
+            </button>
+            {renameResult && (
+              <span style={{ fontSize: 13, color: renameResult.startsWith('✓') ? '#16a34a' : '#dc2626' }}>
+                {renameResult}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
 
       <div className="grid-2">
         <div>
