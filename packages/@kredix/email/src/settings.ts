@@ -30,9 +30,23 @@ export async function getActiveGateway() {
   return prisma.emailGateway.findFirst({ where: { isActive: true } });
 }
 
-/** Récupère le template d'email actif pour un trigger donné. */
-export async function getActiveTemplate(trigger: EmailTemplate['trigger']) {
-  return prisma.emailTemplate.findFirst({
-    where: { trigger, status: 'active' },
+/** Récupère le template d'email actif pour un trigger + langue donnés.
+ *  Fallback sur "fr" si la langue demandée n'a pas de template actif. */
+export async function getActiveTemplate(
+  trigger: EmailTemplate['trigger'],
+  language = 'fr',
+) {
+  // 1. Cherche le template actif pour la langue demandée.
+  const template = await prisma.emailTemplate.findFirst({
+    where: { trigger, status: 'active', language },
   });
+  if (template) return template;
+
+  // 2. Fallback sur le français (langue par défaut).
+  if (language !== 'fr') {
+    return prisma.emailTemplate.findFirst({
+      where: { trigger, status: 'active', language: 'fr' },
+    });
+  }
+  return null;
 }

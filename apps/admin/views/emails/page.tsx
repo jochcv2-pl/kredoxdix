@@ -124,16 +124,25 @@ interface Template {
   id: string;
   name: string;
   trigger: string;
+  language: string;
   agentId: string | null;
   status: 'active' | 'draft';
   subject: string;
   bodyText: string;
   htmlContent: string | null;
-  languages: string[];
   bannerEnabled: boolean;
   createdAt: string;
   updatedAt: string;
 }
+
+const LANGUAGES: Array<{ value: string; label: string }> = [
+  { value: 'fr', label: '🇫🇷 Français' },
+  { value: 'de', label: '🇩🇪 Deutsch' },
+  { value: 'en', label: '🇬🇧 English' },
+  { value: 'es', label: '🇪🇸 Español' },
+  { value: 'pt', label: '🇵🇹 Português' },
+  { value: 'it', label: '🇮🇹 Italiano' },
+];
 
 // =============================================================================
 // Composant principal
@@ -147,6 +156,7 @@ export default function Emails() {
   // Champs du formulaire de création (mode visuel).
   const [nameInput, setNameInput] = useState('Confirmation de demande');
   const [triggerInput, setTriggerInput] = useState<string>('reception_ack');
+  const [languageInput, setLanguageInput] = useState<string>('fr');
   const [subjInput, setSubjInput] = useState('Votre dossier a bien été reçu, {{Prénom}}');
   const [bodyInput, setBodyInput] = useState(DEFAULT_BODY);
   const [bannerVisible, setBannerVisible] = useState(true);
@@ -155,6 +165,7 @@ export default function Emails() {
   const [htmlArea, setHtmlArea] = useState('');
   const [importName, setImportName] = useState('');
   const [importTrigger, setImportTrigger] = useState<string>('reception_ack');
+  const [importLanguage, setImportLanguage] = useState<string>('fr');
   const [dzFile, setDzFile] = useState('');
   const [dragging, setDragging] = useState(false);
 
@@ -259,11 +270,11 @@ export default function Emails() {
       const payload = {
         name: nameInput.trim() || 'Nouveau modèle',
         trigger: triggerInput,
+        language: languageInput,
         status: 'active' as const,
         subject: subjInput,
         bodyText: bodyInput,
         htmlContent: null,
-        languages: ['fr', 'en', 'de', 'es', 'pt', 'it'],
         bannerEnabled: bannerVisible,
       };
       const res = await fetch('/api/templates', {
@@ -298,11 +309,11 @@ export default function Emails() {
       const payload = {
         name: importName.trim() || 'Modèle importé',
         trigger: importTrigger,
+        language: importLanguage,
         status: 'draft' as const,
         subject: importName.trim() || 'Modèle importé',
         bodyText: extractBodyContent(htmlArea).replace(/<[^>]+>/g, ' ').trim().slice(0, 500),
         htmlContent: htmlArea,
-        languages: ['fr'],
         bannerEnabled: bannerVisible,
       };
       const res = await fetch('/api/templates', {
@@ -348,7 +359,7 @@ export default function Emails() {
           return prev.map((t) =>
             t.id === updated.id
               ? updated
-              : t.trigger === updated.trigger && t.status === 'active'
+              : t.trigger === updated.trigger && t.language === updated.language && t.status === 'active'
                 ? { ...t, status: 'draft' as const }
                 : t,
           );
@@ -429,6 +440,12 @@ export default function Emails() {
                       <label>Déclencheur</label>
                       <select value={triggerInput} onChange={(e) => setTriggerInput(e.target.value)}>
                         {TRIGGERS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                      </select>
+                    </div>
+                    <div className="fg">
+                      <label>Langue</label>
+                      <select value={languageInput} onChange={(e) => setLanguageInput(e.target.value)}>
+                        {LANGUAGES.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
                       </select>
                     </div>
                     <div className="fg full">
@@ -550,6 +567,12 @@ export default function Emails() {
                       {TRIGGERS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                     </select>
                   </div>
+                  <div className="fg">
+                    <label>Langue</label>
+                    <select value={importLanguage} onChange={(e) => setImportLanguage(e.target.value)}>
+                      {LANGUAGES.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
+                    </select>
+                  </div>
                 </div>
                 <button className="btn btn-primary" onClick={importTemplate} disabled={saving}>
                   {saving ? 'Import…' : 'Importer comme modèle'}
@@ -605,8 +628,7 @@ export default function Emails() {
                   </button>
                 </div>
                 <div className="tpl-lang-row">
-                  {(tpl.languages ?? []).map((l) => <span className="lang-tag" key={l}>{l.toUpperCase()}</span>)}
-                  {tpl.languages.length === 0 && <span style={{ fontSize: 11, color: 'var(--slate-light)' }}>—</span>}
+                  <span className="lang-tag">{(tpl.language || 'fr').toUpperCase()}</span>
                 </div>
                 <div className="tpl-excerpt">{tpl.bodyText?.slice(0, 160) ?? '—'}{(tpl.bodyText?.length ?? 0) > 160 ? '…' : ''}</div>
                 <div className="tpl-meta">

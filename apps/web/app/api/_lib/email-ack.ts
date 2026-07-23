@@ -51,7 +51,7 @@ export async function sendReceptionAck(lead: Lead): Promise<AckResult> {
 
   const [gateway, template] = await Promise.all([
     getActiveGateway(),
-    getActiveTemplate('reception_ack'),
+    getActiveTemplate('reception_ack', lead.preferredLanguage || 'fr'),
   ]);
 
   if (!gateway) {

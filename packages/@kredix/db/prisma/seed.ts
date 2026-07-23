@@ -634,7 +634,7 @@ L'équipe Kredix
 Vous recevez cet email car vous avez déposé une demande sur Kredix.
 Pour vous désinscrire : {{LienDesinscription}}`,
       htmlContent: null,
-      languages: ['fr'],
+      language: 'fr',
       bannerEnabled: true,
       status: TemplateStatus.active,
     },
@@ -657,7 +657,7 @@ L'équipe Kredix
 —
 Pour vous désinscrire : {{LienDesinscription}}`,
       htmlContent: null,
-      languages: ['fr'],
+      language: 'fr',
       bannerEnabled: true,
       status: TemplateStatus.active,
     },
@@ -677,7 +677,7 @@ L'équipe Kredix
 —
 Pour vous désinscrire : {{LienDesinscription}}`,
       htmlContent: null,
-      languages: ['fr'],
+      language: 'fr',
       bannerEnabled: true,
       status: TemplateStatus.active,
     },
@@ -704,7 +704,7 @@ L'équipe Kredix`,
 
   for (const t of templatesData) {
     const existing = await prisma.emailTemplate.findFirst({
-      where: { trigger: t.trigger, status: t.status },
+      where: { trigger: t.trigger, status: t.status, language: t.language || 'fr' },
     });
     const agentId =
       t.trigger === EmailTrigger.reception_ack
@@ -723,7 +723,7 @@ L'équipe Kredix`,
           subject: t.subject,
           bodyText: t.bodyText,
           htmlContent: t.htmlContent,
-          languages: t.languages,
+          language: t.language || 'fr',
           bannerEnabled: t.bannerEnabled,
           agentId: agentId ?? null,
         },
@@ -732,6 +732,7 @@ L'équipe Kredix`,
       await prisma.emailTemplate.create({
         data: {
           ...t,
+          language: t.language || 'fr',
           agentId: agentId ?? null,
         },
       });
@@ -748,7 +749,7 @@ L'équipe Kredix`,
       subject: '{{Prénom}}, bienvenue chez {{SiteName}}',
       bodyText: `Bonjour {{Prénom}},\n\nVotre demande de crédit a été validée. Bienvenue dans votre parcours d'accompagnement {{SiteName}}.\n\nVotre conseiller dédié vous contactera très prochainement pour démarrer les démarches.\n\nMontant du prêt : {{Montant}}\nDurée : {{Durée}}\n\nÀ très bientôt,\nL'équipe {{SiteName}}`,
       status: TemplateStatus.active,
-      languages: ['fr'],
+      language: 'fr',
       bannerEnabled: true,
     },
     {
@@ -757,7 +758,7 @@ L'équipe Kredix`,
       subject: '{{Prénom}}, les documents nécessaires à votre dossier',
       bodyText: `Bonjour {{Prénom}},\n\nPour finaliser votre dossier de crédit, nous avons besoin des documents suivants :\n- Pièce d'identité\n- 3 derniers bulletins de salaire\n- 3 derniers relevés de compte\n- Avis d'imposition\n\nMerci de nous les transmettre dans les meilleurs délais.\n\nL'équipe {{SiteName}}`,
       status: TemplateStatus.active,
-      languages: ['fr'],
+      language: 'fr',
       bannerEnabled: true,
     },
     {
@@ -766,7 +767,7 @@ L'équipe Kredix`,
       subject: '{{Prénom}}, votre offre de prêt personnalisée',
       bodyText: `Bonjour {{Prénom}},\n\nVeuillez trouver ci-joint votre offre de prêt personnalisée ainsi que le tableau d'amortissement détaillé.\n\nMontant : {{Montant}}\nTaux : {{Taux}}\nDurée : {{Durée}}\nMensualité : {{Mensualite}}\n\nNous restons à votre disposition pour toute question.\n\nL'équipe {{SiteName}}`,
       status: TemplateStatus.active,
-      languages: ['fr'],
+      language: 'fr',
       bannerEnabled: true,
     },
     {
@@ -775,7 +776,7 @@ L'équipe Kredix`,
       subject: '{{Prénom}}, votre dossier est en cours de vérification',
       bodyText: `Bonjour {{Prénom}},\n\nVotre dossier est désormais en cours de vérification auprès de nos partenaires bancaires.\n\nNous vous tiendrons informé(e) de l'avancement.\n\nL'équipe {{SiteName}}`,
       status: TemplateStatus.active,
-      languages: ['fr'],
+      language: 'fr',
       bannerEnabled: true,
     },
     {
@@ -784,7 +785,7 @@ L'équipe Kredix`,
       subject: '{{Prénom}}, excellent nouvelle — accord de principe obtenu !',
       bodyText: `Bonjour {{Prénom}},\n\nNous avons le plaisir de vous informer qu'un accord de principe a été obtenu pour votre demande de crédit.\n\nMontant : {{Montant}}\nTaux : {{Taux}}\nDurée : {{Durée}}\n\nNous procédons maintenant aux dernières formalités.\n\nL'équipe {{SiteName}}`,
       status: TemplateStatus.active,
-      languages: ['fr'],
+      language: 'fr',
       bannerEnabled: true,
     },
     {
@@ -793,7 +794,7 @@ L'équipe Kredix`,
       subject: '{{Prénom}}, finalisation — signature de votre offre',
       bodyText: `Bonjour {{Prénom}},\n\nVotre offre de prêt est prête pour signature. Merci de nous contacter pour planifier un rendez-vous de signature.\n\nL'équipe {{SiteName}}`,
       status: TemplateStatus.active,
-      languages: ['fr'],
+      language: 'fr',
       bannerEnabled: true,
     },
     {
@@ -802,21 +803,100 @@ L'équipe Kredix`,
       subject: '{{Prénom}}, vos fonds ont été débloqués 🎉',
       bodyText: `Bonjour {{Prénom}},\n\nNous avons le plaisir de vous annoncer que vos fonds ont été débloqués et versés sur votre compte.\n\nMerci de votre confiance et à bientôt chez {{SiteName}}.\n\nL'équipe {{SiteName}}`,
       status: TemplateStatus.active,
-      languages: ['fr'],
+      language: 'fr',
       bannerEnabled: true,
     },
   ];
 
   for (const t of levelTemplates) {
-    const existing = await prisma.emailTemplate.findFirst({ where: { trigger: t.trigger } });
+    const existing = await prisma.emailTemplate.findFirst({ where: { trigger: t.trigger, language: 'fr' } });
     if (existing) {
       await prisma.emailTemplate.update({
         where: { id: existing.id },
         data: { name: t.name, subject: t.subject, bodyText: t.bodyText, status: t.status },
       });
     } else {
-      await prisma.emailTemplate.create({ data: t });
+      await prisma.emailTemplate.create({ data: { ...t, language: 'fr' } });
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // TEMPLATES ALLEMANDS (DE) — multi-langue EmailTemplate
+  // ---------------------------------------------------------------------------
+  // Les 5 templates les plus critiques pour la prospection sortante.
+  // Sélection automatique basée sur lead.preferredLanguage (fallback FR).
+  const deTemplates = [
+    {
+      trigger: EmailTrigger.reception_ack,
+      name: 'Empfangsbestätigung (DE)',
+      subject: '{{Prénom}}, wir haben Ihre Anfrage erhalten',
+      bodyText: `Hallo {{Prénom}},\n\nwir haben Ihre Kreditanfrage erhalten und melden uns innerhalb von 48 Stunden bei Ihnen.\n\nIhr Wunschdarlehen:\n- Betrag: {{Montant}}\n- Laufzeit: {{Durée}} Jahre\n\nEin Berater wird sich in Kürze mit Ihnen in Verbindung setzen.\n\nMit freundlichen Grüßen\nDas {{SiteName}}-Team`,
+      status: TemplateStatus.active,
+      language: 'de',
+      bannerEnabled: true,
+    },
+    {
+      trigger: EmailTrigger.relance_1,
+      name: 'Erste Erinnerung (DE)',
+      subject: '{{Prénom}}, wie können wir Ihnen helfen?',
+      bodyText: `Hallo {{Prénom}},\n\nwir haben Ihnen kürzlich ein Kreditangebot für {{Montant}} gesendet. Wir möchten sicherstellen, dass Sie alle Informationen haben, die Sie benötigen.\n\nHaben Sie Fragen? Wir sind für Sie da.\n\nMit freundlichen Grüßen\nDas {{SiteName}}-Team`,
+      status: TemplateStatus.active,
+      language: 'de',
+      bannerEnabled: true,
+    },
+    {
+      trigger: EmailTrigger.relance_2,
+      name: 'Zweite Erinnerung (DE)',
+      subject: '{{Prénom}}, Ihre Kreditvorteile auf einen Blick',
+      bodyText: `Hallo {{Prénom}},\n\nwir möchten Sie an Ihr Kreditangebot erinnern. Hier sind die wichtigsten Vorteile:\n- Wettbewerbsfähiger Zinssatz\n- Schnelle Bearbeitung\n- Keine versteckten Gebühren\n\nSichern Sie sich noch heute die besten Konditionen.\n\nMit freundlichen Grüßen\nDas {{SiteName}}-Team`,
+      status: TemplateStatus.active,
+      language: 'de',
+      bannerEnabled: true,
+    },
+    {
+      trigger: EmailTrigger.relance_3,
+      name: 'Letzte Erinnerung (DE)',
+      subject: '{{Prénom}}, Ihr Kreditangebot läuft bald ab',
+      bodyText: `Hallo {{Prénom}},\n\ndies ist unsere letzte Erinnerung bezüglich Ihres Kreditangebots über {{Montant}}. Die Konditionen könnten sich bald ändern.\n\nKontaktieren Sie uns noch heute, um Ihr Angebot zu sichern.\n\nMit freundlichen Grüßen\nDas {{SiteName}}-Team`,
+      status: TemplateStatus.active,
+      language: 'de',
+      bannerEnabled: true,
+    },
+    {
+      trigger: EmailTrigger.offer,
+      name: 'Kreditangebot (DE)',
+      subject: '{{Prénom}}, Ihr persönliches Kreditangebot',
+      bodyText: `Hallo {{Prénom}},\n\nanbei finden Sie Ihr persönliches Kreditangebot mit detailliertem Tilgungsplan.\n\nDarlehensbetrag: {{Montant}}\nZinssatz: {{Taux}}\nLaufzeit: {{Durée}} Jahre\nMonatliche Rate: {{Mensualite}}\n\nBei Fragen stehen wir Ihnen gerne zur Verfügung.\n\nMit freundlichen Grüßen\nDas {{SiteName}}-Team`,
+      status: TemplateStatus.active,
+      language: 'de',
+      bannerEnabled: true,
+    },
+  ];
+
+  for (const t of deTemplates) {
+    const agentId =
+      t.trigger === EmailTrigger.reception_ack
+        ? agentAccueil?.id
+        : t.trigger === EmailTrigger.offer
+          ? agentOffre?.id
+          : t.trigger.startsWith('relance')
+            ? agentRelance?.id
+            : null;
+
+    const existing = await prisma.emailTemplate.findFirst({
+      where: { trigger: t.trigger, status: t.status, language: 'de' },
+    });
+    if (existing) {
+      await prisma.emailTemplate.update({
+        where: { id: existing.id },
+        data: { name: t.name, subject: t.subject, bodyText: t.bodyText, agentId: agentId ?? null },
+      });
+    } else {
+      await prisma.emailTemplate.create({
+        data: { ...t, agentId: agentId ?? null },
+      });
+    }
+  }
   }
 
   // ---------------------------------------------------------------------------

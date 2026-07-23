@@ -1,6 +1,6 @@
 // =============================================================================
 // /api/templates — Liste et création des modèles d'email.
-// Règle métier : un seul template actif par déclencheur (EmailTrigger).
+// Règle métier : un seul template actif par déclencheur (EmailTrigger) + langue.
 // =============================================================================
 
 import { NextRequest } from 'next/server';
@@ -13,12 +13,12 @@ import { requireAuth } from '../_lib/auth-server';
 const createTemplateSchema = z.object({
   name: z.string(),
   trigger: z.nativeEnum(EmailTrigger),
+  language: z.string().default('fr'),
   agentId: z.string().nullable().optional(),
   status: z.nativeEnum(TemplateStatus).default('draft'),
   subject: z.string(),
   bodyText: z.string(),
   htmlContent: z.string().nullable().optional(),
-  languages: z.array(z.string()).default([]),
   bannerEnabled: z.boolean().default(true),
 });
 
@@ -44,14 +44,14 @@ export async function POST(req: NextRequest) {
     const [data, error] = await parseBody(req, createTemplateSchema);
     if (error) return error;
 
-    // Règle métier : un seul template actif par déclencheur.
+    // Règle métier : un seul template actif par déclencheur + langue.
     if (data.status === 'active') {
       const conflict = await prisma.emailTemplate.findFirst({
-        where: { trigger: data.trigger, status: 'active' },
+        where: { trigger: data.trigger, status: 'active', language: data.language },
       });
       if (conflict) {
         return errorResponse(
-          'Un seul template actif par déclencheur',
+          `Un seul template actif par déclencheur + langue (${data.language})`,
           ERR.CONFLICT.code,
           undefined,
           409,
@@ -59,11 +59,11 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Création + désactivation des autres actifs pour ce trigger (transaction).
+    // Création + désactivation des autres actifs pour ce trigger + langue (transaction).
     const template = await prisma.$transaction(async (tx) => {
       if (data.status === 'active') {
         await tx.emailTemplate.updateMany({
-          where: { trigger: data.trigger, status: 'active' },
+          where: { trigger: data.trigger, status: 'active', language: data.language },
           data: { status: 'draft' },
         });
       }

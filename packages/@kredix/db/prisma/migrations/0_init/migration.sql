@@ -168,12 +168,12 @@ CREATE TABLE "EmailTemplate" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "trigger" "EmailTrigger" NOT NULL,
+    "language" TEXT NOT NULL DEFAULT 'fr',
     "agentId" TEXT,
     "status" "TemplateStatus" NOT NULL DEFAULT 'draft',
     "subject" TEXT NOT NULL,
     "bodyText" TEXT NOT NULL,
     "htmlContent" TEXT,
-    "languages" TEXT[] DEFAULT ARRAY[]::TEXT[],
     "bannerEnabled" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -362,7 +362,7 @@ CREATE UNIQUE INDEX "Agent_role_key" ON "Agent"("role");
 CREATE INDEX "AgentMemory_agentId_idx" ON "AgentMemory"("agentId");
 
 -- CreateIndex
-CREATE INDEX "EmailTemplate_trigger_status_idx" ON "EmailTemplate"("trigger", "status");
+CREATE INDEX "EmailTemplate_trigger_status_language_idx" ON "EmailTemplate"("trigger", "status", "language");
 
 -- CreateIndex
 CREATE INDEX "EmailGateway_provider_idx" ON "EmailGateway"("provider");

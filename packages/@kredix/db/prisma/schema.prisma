@@ -329,21 +329,21 @@ model AgentMemory {
 // Le job de relance trouve déterministiquement le template de chaque étape.
 model EmailTemplate {
   id            String         @id @default(cuid())
-  name          String                          // "Accusé de réception"
+  name          String                          // "Accusé de réception (DE)"
   trigger       EmailTrigger                    // slot fixe (pilote l'affectation auto)
+  language      String         @default("fr")   // langue du contenu (fr, de, en, es, pt, it)
   agentId       String?                         // agent émetteur (optionnel, info)
   status        TemplateStatus @default(draft)  // active / draft
   subject       String         @db.Text         // objet avec variables {{Prénom}}
   bodyText      String         @db.Text         // éditeur visuel (texte + variables)
   htmlContent   String?        @db.Text         // mode import HTML (optionnel)
-  languages     String[]       @default([])     // ["fr","en","de","es","pt","it"]
   bannerEnabled Boolean        @default(true)   // bannière Kredix en en-tête
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
   campaigns     Campaign[]
 
-  @@index([trigger, status])   // un seul actif par trigger (contrainte app)
+  @@index([trigger, status, language])   // un seul actif par trigger + langue
 }
 
 // -----------------------------------------------------------------------------

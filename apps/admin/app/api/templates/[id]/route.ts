@@ -13,12 +13,12 @@ import { requireAuth } from '../../_lib/auth-server';
 // Schéma de mise à jour — trigger volontairement absent (immutable après création).
 const updateTemplateSchema = z.object({
   name: z.string().optional(),
+  language: z.string().optional(),
   agentId: z.string().nullable().optional(),
   status: z.nativeEnum(TemplateStatus).optional(),
   subject: z.string().optional(),
   bodyText: z.string().optional(),
   htmlContent: z.string().nullable().optional(),
-  languages: z.array(z.string()).optional(),
   bannerEnabled: z.boolean().optional(),
 });
 
@@ -65,19 +65,20 @@ export async function PATCH(
       return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);
     }
 
-    // Règle métier : un seul template actif par déclencheur.
+    // Règle métier : un seul template actif par déclencheur + langue.
     const activating = data.status === 'active';
     if (activating) {
       const conflict = await prisma.emailTemplate.findFirst({
         where: {
           trigger: existing.trigger,
           status: 'active',
+          language: existing.language,
           NOT: { id },
         },
       });
       if (conflict) {
         return errorResponse(
-          'Un seul template actif par déclencheur',
+          `Un seul template actif par déclencheur + langue (${existing.language})`,
           ERR.CONFLICT.code,
           undefined,
           409,
@@ -85,13 +86,14 @@ export async function PATCH(
       }
     }
 
-    // Mise à jour + désactivation des autres actifs pour ce trigger (transaction).
+    // Mise à jour + désactivation des autres actifs pour ce trigger + langue (transaction).
     const template = await prisma.$transaction(async (tx) => {
       if (activating) {
         await tx.emailTemplate.updateMany({
           where: {
             trigger: existing.trigger,
             status: 'active',
+            language: existing.language,
             NOT: { id },
           },
           data: { status: 'draft' },

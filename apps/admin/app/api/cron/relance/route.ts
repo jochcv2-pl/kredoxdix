@@ -140,9 +140,16 @@ export async function POST(req: NextRequest) {
         // b) Détermine le template imposé (relance_1, relance_2, relance_3)
         const nextRelanceNum = lead.relanceCount + 1; // 1, 2, ou 3
         const triggerKey = `relance_${nextRelanceNum}` as EmailTrigger;
-        const template = await prisma.emailTemplate.findFirst({
-          where: { trigger: triggerKey, status: 'active' },
+        // Template dans la langue du prospect (fallback français si absent).
+        const leadLang = lead.preferredLanguage || 'fr';
+        let template = await prisma.emailTemplate.findFirst({
+          where: { trigger: triggerKey, status: 'active', language: leadLang },
         });
+        if (!template && leadLang !== 'fr') {
+          template = await prisma.emailTemplate.findFirst({
+            where: { trigger: triggerKey, status: 'active', language: 'fr' },
+          });
+        }
 
         if (!template) {
           // Pas de template actif pour cette étape — on log et on skippe
