@@ -193,12 +193,44 @@ services:
     networks:
       - kredix-network
 
+  # ---------------------------------------------------------------------------
+  # backup — Sidecar pg_dump avec rotation 3-2-1 (DEC-005).
+  # Tourne en boucle (sleep), exécute pg_dump toutes les 6h par défaut.
+  # Stocke les backups dans le volume kredix_backups (daily + weekly).
+  # Offsite optionnel : configurer RCLONE_REMOTE pour pousser vers S3/B2.
+  # ---------------------------------------------------------------------------
+  backup:
+    image: postgres:17-alpine
+    container_name: kredix-backup
+    restart: unless-stopped
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: ${POSTGRES_USER:-kredix}
+      POSTGRES_DB: ${POSTGRES_DB:-kredix}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-21600}
+      BACKUP_RETENTION_DAILY: ${BACKUP_RETENTION_DAILY:-7}
+      BACKUP_RETENTION_WEEKLY: ${BACKUP_RETENTION_WEEKLY:-4}
+      # Offsite (optionnel) : RCLONE_REMOTE=mon-s3:kredix-backups
+      RCLONE_REMOTE: ${RCLONE_REMOTE:-}
+    volumes:
+      - ./scripts/backup-db.sh:/backup-db.sh:ro
+      - kredix_backups:/backups
+    entrypoint: ["/bin/sh", "/backup-db.sh"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - kredix-network
+
 # =============================================================================
 # Volumes persistants
 # =============================================================================
 volumes:
   kredix_pgdata:
     name: kredix_pgdata
+  kredix_backups:
+    name: kredix_backups
   caddy_data:
     name: kredix_caddy_data
   caddy_config:
