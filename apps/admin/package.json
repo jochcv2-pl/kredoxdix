@@ -12,6 +12,7 @@
     "clean": "rimraf .next .turbo"
   },
   "dependencies": {
+    "@kredix/ai": "workspace:*",
     "@kredix/db": "workspace:*",
     "@kredix/email": "workspace:*",
     "@types/qrcode": "^1.5.6",

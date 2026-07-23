@@ -471,7 +471,8 @@ model EmailLog {
   email        String                           // snapshot email au moment de l'envoi
   trigger      String                           // "accueil_ack" | "offer" | "relance_1" | "relance_2" | "relance_3" | "campaign" | "manual"
   templateName String                           // "Accusé de réception" (snapshot du nom au moment de l'envoi)
-  subject      String         @db.Text          // objet envoyé (après interpolation)
+  subject      String         @db.Text          // objet envoyé (après interpolation ou génération IA)
+  bodyText     String?        @db.Text          // corps envoyé (snapshot — pour historique communication et contexte IA)
   campaignId   String?                          // si lié à une campagne
   status       String         @default("sent")  // "sent" | "failed" | "skipped"
   error        String?

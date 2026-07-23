@@ -67,6 +67,8 @@ export default function Settings() {
 
   const [saveModalOpen, setSaveModalOpen] = useState(false)
   const [testModalOpen, setTestModalOpen] = useState(false)
+  const [testLoading, setTestLoading] = useState(false)
+  const [testResult, setTestResult] = useState<{ success: boolean; model?: string; engine?: string; endpoint?: string; latencyMs?: number; error?: string } | null>(null)
   const [newGatewayModalOpen, setNewGatewayModalOpen] = useState(false)
   const [deleteGatewayTarget, setDeleteGatewayTarget] = useState<Gateway | null>(null)
 
@@ -143,6 +145,26 @@ export default function Settings() {
       setError(e instanceof Error ? e.message : 'Erreur inconnue')
     } finally {
       setSaving(false)
+    }
+  }
+
+  // Test de connexion au LLM (POST /api/ai/test — ping réel au modèle configuré).
+  const runTest = async () => {
+    setTestLoading(true)
+    setTestResult(null)
+    try {
+      const res = await fetch('/api/ai/test', { method: 'POST' })
+      const json = await res.json()
+      const data = json.data ?? json
+      if (res.ok && data.connected) {
+        setTestResult({ success: true, model: data.model, engine: data.engine, endpoint: data.endpoint, latencyMs: data.latencyMs })
+      } else {
+        setTestResult({ success: false, error: data.error || data.message || 'Connexion échouée' })
+      }
+    } catch (e) {
+      setTestResult({ success: false, error: e instanceof Error ? e.message : 'Erreur réseau' })
+    } finally {
+      setTestLoading(false)
     }
   }
 
@@ -653,28 +675,59 @@ export default function Settings() {
       </Modal>
 
       {/* =========================================================================
-          MODAL TEST CONNECTION (placeholder)
+          MODAL TEST CONNECTION (réel — POST /api/ai/test)
           ========================================================================= */}
       <Modal
         isOpen={testModalOpen}
-        onClose={() => setTestModalOpen(false)}
-        title="Tester la connexion au modèle"
+        onClose={() => { setTestModalOpen(false); setTestResult(null) }}
+        title="Tester la connexion au modèle IA"
       >
-        <p className="field-hint">
-          Test de connexion au serveur IA en cours...
-        </p>
-        <p style={{ fontSize: 13, color: 'var(--green)', lineHeight: 1.8 }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <Icon name="check-circle" size={16} /> Endpoint accessible : {settings[AI_KEYS.endpoint] || '(non configuré)'}
-          </span>
-          <br />
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <Icon name="check-circle" size={16} /> Modèle {settings[AI_KEYS.modelName] || '—'} disponible
-          </span>
-        </p>
+        {testLoading && (
+          <p className="field-hint">Test de connexion en cours…</p>
+        )}
+
+        {testResult?.success && (
+          <div style={{ fontSize: 13, lineHeight: 1.8 }}>
+            <p style={{ color: 'var(--green)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+              <Icon name="check-circle" size={18} />
+              Connexion réussie — modèle opérationnel
+            </p>
+            <div className="contact-row"><span>Moteur</span><span>{testResult.engine || '—'}</span></div>
+            <div className="contact-row"><span>Modèle</span><span>{testResult.model || '—'}</span></div>
+            <div className="contact-row"><span>Endpoint</span><span>{testResult.endpoint || '—'}</span></div>
+            {testResult.latencyMs != null && (
+              <div className="contact-row"><span>Latence</span><span>{testResult.latencyMs} ms</span></div>
+            )}
+          </div>
+        )}
+
+        {testResult && !testResult.success && (
+          <div style={{ fontSize: 13, color: 'var(--red, #dc2626)', lineHeight: 1.8 }}>
+            <p style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+              <Icon name="alert-circle" size={18} />
+              Connexion échouée
+            </p>
+            <p style={{ fontFamily: 'monospace', background: '#fef2f2', padding: 12, borderRadius: 8 }}>
+              {testResult.error}
+            </p>
+            <p className="field-hint" style={{ marginTop: 12 }}>
+              Vérifiez : AI_API_KEY dans le .env, l'endpoint du serveur, et que le modèle est disponible.
+            </p>
+          </div>
+        )}
+
+        {!testLoading && !testResult && (
+          <p className="field-hint">
+            Cliquez sur « Lancer le test » pour vérifier la connexion au modèle IA configuré.
+          </p>
+        )}
+
         <div className="modal-actions">
-          <button className="btn btn-primary" onClick={() => setTestModalOpen(false)}>
+          <button className="btn btn-ghost" onClick={() => { setTestModalOpen(false); setTestResult(null) }}>
             Fermer
+          </button>
+          <button className="btn btn-primary" onClick={runTest} disabled={testLoading}>
+            {testLoading ? 'Test en cours…' : testResult ? 'Retester' : 'Lancer le test'}
           </button>
         </div>
       </Modal>

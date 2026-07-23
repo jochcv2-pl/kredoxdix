@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { prisma, EmailTrigger, SequenceExitReason } from '@kredix/db';
+import { generateEmail } from '@kredix/ai';
 import { successResponse, errorResponse, ERR } from '../../_lib/responses';
 import { getSetting, getSettingNumber, getActiveGateway } from '../../_lib/settings';
 import { sendEmail } from '../../_lib/email-sender';
@@ -17,12 +18,10 @@ import { verifyBearerSecret } from '../../_lib/security';
 //   1. Traite les TIMEOUTS (leads en séquence > N jours sans validation).
 //   2. Sélectionne les relances dues (sequenceActive + nextRelanceAt dépassé).
 //   3. Pour chaque lead : vérifie SuppressionList, récupère le template imposé,
+//      génère l'email via l'IA (Agent Relance) avec fallback template,
 //      envoie via le gateway actif, incrémente le compteur, programme la prochaine.
 //   4. Si relanceCount atteint 3 → sortie max_relances.
 //   5. Respecte le cap journalier (cadence_daily_cap).
-//
-// L'IA ne lit jamais rien — ce job est purement système.
-// L'envoi réel via Resend/SMTP sera branché quand les clés API seront en place.
 // =============================================================================
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -158,14 +157,46 @@ export async function POST(req: NextRequest) {
           continue;
         }
 
-        // d) Interpole les variables du template avec les données du lead
+        // d) Interpole les variables du template (fallback de base)
         const siteUrl = await getSetting('site_url', 'http://localhost:3100');
         const ctx = { lead, siteUrl };
-        const subject = interpolateTemplate(template.subject, ctx);
-        const bodyText = interpolateTemplate(template.bodyText, ctx);
-        const htmlContent = template.htmlContent
+        const fallbackSubject = interpolateTemplate(template.subject, ctx);
+        const fallbackBody = interpolateTemplate(template.bodyText, ctx);
+
+        // d-bis) Génération IA — l'Agent Relance personnalise l'email.
+        // Si l'IA est disponible (clé API + endpoint configurés), génère un email
+        // personnalisé. Sinon, fallback sur le template interpolé.
+        const aiResult = await generateEmail({
+          agentRole: 'relance',
+          trigger: `relance_${nextRelanceNum}`,
+          leadContext: {
+            firstName: lead.firstName,
+            lastName: lead.lastName,
+            email: lead.email ?? undefined,
+            phone: lead.phone,
+            loanType: lead.loanType,
+            amount: lead.amount ?? undefined,
+            durationYears: lead.durationYears ?? undefined,
+            monthlyPayment: lead.monthlyPayment ?? undefined,
+            annualRate: lead.annualRate ?? undefined,
+            relanceCount: lead.relanceCount,
+            preferredLanguage: lead.preferredLanguage,
+          },
+          fallbackSubject,
+          fallbackBody,
+        });
+
+        const subject = aiResult.subject;
+        const bodyText = aiResult.bodyText;
+        const htmlContent = template.htmlContent && !aiResult.generated
           ? interpolateTemplate(template.htmlContent, ctx)
           : textToHtml(bodyText);
+
+        if (aiResult.generated) {
+          console.log(`[CRON RELANCE] Email généré par IA (lead ${lead.id}, relance ${nextRelanceNum})`);
+        } else if (aiResult.warning) {
+          console.log(`[CRON RELANCE] Fallback template — ${aiResult.warning}`);
+        }
 
         // e) Envoi réel via le gateway actif
         //    Cas défensif : si le template imposé est une offre (rare pour la
@@ -191,8 +222,9 @@ export async function POST(req: NextRequest) {
             leadId: lead.id,
             email: lead.email,
             trigger: triggerKey,
-            templateName: template.name,
+            templateName: aiResult.generated ? `${template.name} (IA)` : template.name,
             subject,
+            bodyText,
             status: sendResult.success ? 'sent' : 'failed',
             error: sendResult.success ? null : (sendResult.error || 'Unknown error'),
           },
