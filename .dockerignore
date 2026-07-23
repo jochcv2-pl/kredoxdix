@@ -4,11 +4,22 @@ out
 dist
 build
 .git
+# Tous les fichiers .env (racine + apps + packages) — sauf .env.example
 .env
 .env.local
 .env.*.local
+**/.env
+**/.env.*
+!**/.env.example
 *.log
 .turbo
 coverage
 README.md
 docs
+# SQLite résiduel de dev (ne doit pas entrer dans l'image prod)
+*.db
+*.db-journal
+# Rapports de tests
+test-results/
+playwright-report/
+tests/e2e-report/

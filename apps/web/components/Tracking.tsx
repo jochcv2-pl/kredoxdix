@@ -13,10 +13,17 @@
 import { getPublicSetting } from '@/lib/settings';
 
 export async function TrackingHead() {
-  const [fbPixelId, gaId] = await Promise.all([
-    getPublicSetting('fb_pixel_id', ''),
-    getPublicSetting('ga_tracking_id', ''),
-  ]);
+  // try/catch : si la DB est indispo (build Docker, panne), aucun tracking injecté.
+  let fbPixelId = '';
+  let gaId = '';
+  try {
+    [fbPixelId, gaId] = await Promise.all([
+      getPublicSetting('fb_pixel_id', ''),
+      getPublicSetting('ga_tracking_id', ''),
+    ]);
+  } catch {
+    // DB indispo → zéro tracking (safe default)
+  }
 
   return (
     <>

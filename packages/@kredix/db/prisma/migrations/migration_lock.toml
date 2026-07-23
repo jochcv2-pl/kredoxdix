@@ -1,0 +1,3 @@
+# Prisma migration lock — provider PostgreSQL (Kredix)
+# Ne pas modifier manuellement. Prisma gère ce fichier via `migrate dev`.
+provider = "postgresql"

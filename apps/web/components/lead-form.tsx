@@ -248,7 +248,7 @@ export default function LeadForm({ prefill }: { prefill?: LeadFormPrefill }) {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
-          <span className="fhint">Pour recevoir votre offre et le tableau d'amortissement par email</span>
+          <span className="fhint">Pour recevoir votre offre et le tableau d&apos;amortissement par email</span>
         </div>
         <div className="fg">
           <label className="field-label">{t("city")}</label>
@@ -403,7 +403,7 @@ export default function LeadForm({ prefill }: { prefill?: LeadFormPrefill }) {
           required
         />
         <span>
-          J'accepte d'être contacté(e) par WhatsApp et email concernant ma demande de crédit.{" "}
+          J&apos;accepte d&apos;être contacté(e) par WhatsApp et email concernant ma demande de crédit.{" "}
           <a href={`/${locale}/legal/politique-confidentialite`}>(voir notre politique de confidentialité)</a>
         </span>
       </label>

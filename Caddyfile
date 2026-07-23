@@ -10,56 +10,49 @@
 
 # -----------------------------------------------------------------------------
 # Site principal — application Next.js (apps/web)
+# Remplacer {$DOMAIN} par le domaine réel en production (ex: kredix.fr).
+# En dev local : kredix.local (Caddy génère un certificat interne).
 # -----------------------------------------------------------------------------
-kredix.local {
+{$DOMAIN:kredix.local} {
 	# Compression des réponses : gzip (compatibilité) + zstd (modernes).
 	encode gzip zstd
 
 	# Headers de sécurité appliqués à TOUTES les réponses.
-	# Voir la doc de chaque header dans le README infra.
 	header {
-		# HSTS : force HTTPS pendant 1 an (avec sous-domaines + preload list).
 		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-		# Anti-MIME-sniffing : le navigateur respecte strictement le Content-Type.
 		X-Content-Type-Options "nosniff"
-		# Anti clickjacking : interdit l'encadrement (iframe) du site.
 		X-Frame-Options "DENY"
-		# Limite la fuite du Referer à la même origine en HTTPS.
 		Referrer-Policy "strict-origin-when-cross-origin"
-		# Désactive les API navigateur sensibles non utilisées par Kredix.
 		Permissions-Policy "geolocation=(), microphone=(), camera=()"
-		# CSP : autorise self + inline (Next.js) + Google Fonts.
-		# À resserrer en production une fois les assets connus (nonces/hash).
 		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self';"
-		# Masque la version de Caddy (ne pas indiquer la techno serveur).
 		-Server
 	}
 
-	# Reverse proxy vers le conteneur "web" (apps/web) sur le réseau interne.
 	reverse_proxy web:3000 {
-		# Transmet l'IP réelle du client à Next.js (logs, rate-limit, analytics).
 		header_up X-Real-IP {remote_host}
 		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
 	}
 }
 
 # -----------------------------------------------------------------------------
-# Admin — sous-domaine dédié (apps/admin)
-# Activer en Phase 3 (derrière Zitadel). Commenté pour l'instant.
+# Admin — sous-domaine dédié (apps/admin, le CRM).
+# Remplacer {$ADMIN_DOMAIN} par le sous-domaine réel (ex: crm.kredix.fr).
 # -----------------------------------------------------------------------------
-# admin.kredix.local {
-# 	encode gzip zstd
-# 	header {
-# 		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-# 		X-Content-Type-Options "nosniff"
-# 		X-Frame-Options "DENY"
-# 		Referrer-Policy "strict-origin-when-cross-origin"
-# 		Permissions-Policy "geolocation=(), microphone=(), camera=()"
-# 		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self';"
-# 		-Server
-# 	}
-# 	reverse_proxy admin:3001 {
-# 		header_up X-Real-IP {remote_host}
-# 		header_up X-Forwarded-For {remote_host}
-# 	}
-# }
+{$ADMIN_DOMAIN:admin.kredix.local} {
+	encode gzip zstd
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "geolocation=(), microphone=(), camera=()"
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self';"
+		-Server
+	}
+	reverse_proxy admin:3001 {
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+	}
+}

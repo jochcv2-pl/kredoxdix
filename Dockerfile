@@ -12,8 +12,9 @@
 # Stage 1 — base
 # Image commune Node 20 + pnpm. Réutilisée comme base par les stages suivants.
 # -----------------------------------------------------------------------------
-FROM node:20-alpine AS base
-# curl est utile pour les healthchecks; on garde l'image légère alpine.
+FROM node:22-alpine AS base
+# Node 22 requis : pnpm 11.9 utilise des builtin modules (ERR_UNKNOWN_BUILTIN_MODULE sur Node 20).
+# libc6-compat pour les binaires natifs Prisma/sharp sous Alpine.
 RUN apk add --no-cache libc6-compat \
     && corepack enable \
     && corepack prepare pnpm@11.9.0 --activate
@@ -36,6 +37,8 @@ COPY packages ./packages
 # On retire le code source copié accidentellement (on ne garde que package.json).
 # NOTE : le .dockerignore exclut déjà node_modules, .next, etc.
 RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
+    PNPM_CONFIG_FETCH_TIMEOUT=600000 \
+    PNPM_CONFIG_FETCH_RETRIES=8 \
     pnpm install --frozen-lockfile
 
 # -----------------------------------------------------------------------------
@@ -54,15 +57,57 @@ ARG NEXT_PUBLIC_APP_URL=http://localhost:3000
 ENV NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
+# DATABASE_URL placeholder au build : PrismaClient valide le format à l'instanciation
+# mais ne se connecte pas. Les pages force-dynamic ne touchent pas la DB au build.
+# Les vraies requêtes DB échouent gracieusement (try/catch) et sont reportées au runtime.
+ENV DATABASE_URL="postgresql://build:build@localhost:5432/build?schema=public"
+# Génération du client Prisma AVANT le build Next.js (sinon @prisma/client absent).
+RUN pnpm --filter @kredix/db db:generate
 RUN pnpm build
 
 # -----------------------------------------------------------------------------
-# Stage 4 — runner
+# Stage 4 — migrator
+# Image one-shot qui applique les migrations Prisma au démarrage de la stack.
+# Lancée avant web et admin (depends_on: service_completed_successfully).
+# -----------------------------------------------------------------------------
+FROM base AS migrator
+WORKDIR /app
+# node_modules depuis deps (contient prisma CLI + @prisma/client générés).
+COPY --from=deps /app/node_modules ./node_modules
+# Manifestes workspace racine (requis pour pnpm --filter).
+COPY package.json pnpm-workspace.yaml ./
+# Package @kredix/db (package.json + client.ts + prisma/).
+COPY --from=deps /app/packages/@kredix/db ./packages/@kredix/db
+# Le schema + les migrations doivent être présents pour migrate deploy.
+COPY packages/@kredix/db/prisma ./packages/@kredix/db/prisma
+ENV NODE_ENV=production
+# DATABASE_URL est injectée au runtime via docker-compose (environment:).
+CMD ["pnpm", "--filter", "@kredix/db", "exec", "prisma", "migrate", "deploy", "--schema=prisma/schema.prisma"]
+
+# -----------------------------------------------------------------------------
+# Stage 5 — tools
+# Image d'opérations (seed, scripts runtime comme migrate-encryption-key.ts).
+# Utilisée via `docker compose run --rm tools pnpm db:seed` par exemple.
+# -----------------------------------------------------------------------------
+FROM base AS tools
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps ./apps
+COPY --from=deps /app/packages ./packages
+COPY package.json pnpm-workspace.yaml turbo.json tsconfig.base.json ./
+COPY scripts ./scripts
+RUN pnpm --filter @kredix/db db:generate
+ENV NODE_ENV=production
+# Shell interactif par défaut — l'opérateur lance les commandes explicitement.
+CMD ["bash"]
+
+# -----------------------------------------------------------------------------
+# Stage 6 — runner
 # Image finale, minimale. On ne copie QUE le strict nécessaire pour exécuter
 # apps/web en mode standalone : .next/standalone + .next/static + public.
 # Exécution en non-root (user nextjs fourni par l'image node).
 # -----------------------------------------------------------------------------
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1

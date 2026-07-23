@@ -3,19 +3,10 @@ packages:
   - "packages/*"
   - "packages/@kredix/*"
 
-allowBuilds:
-  '@prisma/client': set this to true or false
-  '@prisma/engines': set this to true or false
-  esbuild: set this to true or false
-  prisma: set this to true or false
-  sharp: set this to true or false
-  unrs-resolver: set this to true or false
-
-onlyBuiltDependencies:
-  - "@prisma/client"
-  - "@tailwindcss/oxide"
-  - esbuild
-  - sharp
+# pnpm 11.x : les build scripts sont bloqués par défaut (ERR_PNPM_IGNORED_BUILDS).
+# En Docker/CI, on autorise tous (les versions sont locked dans pnpm-lock.yaml).
+# En local dev, pnpm approve-builds gère l'approbation interactive.
+dangerouslyAllowAllBuilds: true
 
 # A-001 (Noveo) : pnpm 11 ne lit plus pnpm.* dans package.json — tout va ici.
 # Overrides pour forcer une version unique de @types/react en monorepo (A-005).

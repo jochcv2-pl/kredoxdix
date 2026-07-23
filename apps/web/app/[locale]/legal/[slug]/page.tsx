@@ -11,14 +11,9 @@ import type { Metadata } from 'next';
 // {{SiteName}} est interpolé avec le vrai nom du site.
 // =============================================================================
 
-// Génère les routes statiques pour toutes les pages légales actives
-export async function generateStaticParams() {
-  const pages = await prisma.legalPage.findMany({
-    where: { isActive: true },
-    select: { slug: true },
-  });
-  return pages.map((p) => ({ slug: p.slug }));
-}
+// force-dynamic : aucun pré-render au build (la DB n'est pas disponible au build Docker).
+// La page est rendue à chaque requête (SSR).
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({
   params,
@@ -26,13 +21,17 @@ export async function generateMetadata({
   params: Promise<{ locale: string; slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const page = await prisma.legalPage.findUnique({
-    where: { slug },
-    select: { title: true },
-  });
-  if (!page) return { title: 'Page introuvable' };
-  const siteName = await getPublicSetting('site_name', 'Kredix');
-  return { title: `${page.title} — ${siteName}` };
+  try {
+    const page = await prisma.legalPage.findUnique({
+      where: { slug },
+      select: { title: true },
+    });
+    if (!page) return { title: 'Page introuvable' };
+    const siteName = await getPublicSetting('site_name', 'Kredix');
+    return { title: `${page.title} — ${siteName}` };
+  } catch {
+    return { title: 'Kredix' };
+  }
 }
 
 export default async function LegalPage({
@@ -42,9 +41,15 @@ export default async function LegalPage({
 }) {
   const { slug } = await params;
 
-  const page = await prisma.legalPage.findUnique({
-    where: { slug, isActive: true },
-  });
+  let page;
+  try {
+    page = await prisma.legalPage.findUnique({
+      where: { slug, isActive: true },
+    });
+  } catch {
+    // DB indispo → 404 (la page ne peut pas être rendue)
+    notFound();
+  }
 
   if (!page) {
     notFound();

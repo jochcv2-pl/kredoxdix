@@ -9,8 +9,10 @@ const nextConfig: NextConfig = withSecurityHeaders({
   experimental: {
     optimizePackageImports: ["@kredix/ui"],
   },
-  // output: "standalone" activé uniquement pour le build Docker de production
-  ...(process.env.NODE_ENV === "production" && process.env.DOCKER_BUILD === "true"
+  // output: "standalone" requis pour le build Docker de production.
+  // Activé en NODE_ENV=production (le build local active aussi standalone,
+  // ce qui est sans incidence — juste un dossier .next/standalone supplémentaire).
+  ...(process.env.NODE_ENV === "production"
     ? { output: "standalone" as const }
     : {}),
 });

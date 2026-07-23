@@ -13,8 +13,28 @@
 
 services:
   # ---------------------------------------------------------------------------
+  # migrator — One-shot : applique les migrations Prisma au démarrage.
+  # Doit terminer (exit 0) AVANT que web démarre (depends_on service_completed_successfully).
+  # ---------------------------------------------------------------------------
+  migrator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: migrator
+    container_name: kredix-migrator
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    networks:
+      - kredix-network
+
+  # ---------------------------------------------------------------------------
   # web — Application Next.js (apps/web) buildée depuis le Dockerfile racine.
   # Le build standalone (output: 'standalone') tourne via `node server.js`.
+  # Démarre APRÈS le migrator (migrations appliquées).
   # ---------------------------------------------------------------------------
   web:
     build:
@@ -30,15 +50,84 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
       AUTH_SECRET: ${AUTH_SECRET}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      CRON_SECRET: ${CRON_SECRET}
+      WEBHOOK_EMAIL_SECRET: ${WEBHOOK_EMAIL_SECRET}
+      TRUST_PROXY: ${TRUST_PROXY:-true}
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-${NEXT_PUBLIC_APP_URL}}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
     depends_on:
       postgres:
         condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 20s
+    networks:
+      - kredix-network
+
+  # ---------------------------------------------------------------------------
+  # admin — CRM (apps/admin) buildée depuis Dockerfile.admin.
+  # Contient : routes /api/cron/*, /api/webhooks/*, /api/admin/*, /api/clients/*, etc.
+  # Port interne 3001, exposé uniquement via Caddy (admin.kredix.fr).
+  # ---------------------------------------------------------------------------
+  admin:
+    build:
+      context: .
+      dockerfile: Dockerfile.admin
+      target: runner
+      args:
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_ADMIN_URL:-https://crm.kredix.fr}
+    container_name: kredix-admin
+    restart: unless-stopped
+    expose:
+      - "3001"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_ADMIN_URL:-https://crm.kredix.fr}
+      AUTH_SECRET: ${AUTH_SECRET}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      CRON_SECRET: ${CRON_SECRET}
+      WEBHOOK_EMAIL_SECRET: ${WEBHOOK_EMAIL_SECRET}
+      TRUST_PROXY: ${TRUST_PROXY:-true}
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-${NEXT_PUBLIC_APP_URL}}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3001/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks:
+      - kredix-network
+
+  # ---------------------------------------------------------------------------
+  # tools — Image d'opérations (seed, scripts runtime, migrate-encryption-key).
+  # Ne démarre pas automatiquement. Utilisation :
+  #   docker compose -f docker-compose.prod.yml run --rm tools pnpm db:seed
+  #   docker compose -f docker-compose.prod.yml run --rm tools tsx scripts/migrate-encryption-key.ts
+  # ---------------------------------------------------------------------------
+  tools:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: tools
+    container_name: kredix-tools
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      AUTH_SECRET: ${AUTH_SECRET}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+    profiles: ["tools"]
     networks:
       - kredix-network
 
@@ -85,8 +174,11 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     environment:
-      # Permet de passer le domaine en variable d'env (ACME email optionnelle).
-      ACME_EMAIL: ${ACME_EMAIL:-admin@kredix.local}
+      # Domaines passés au Caddyfile via {$DOMAIN} et {$ADMIN_DOMAIN}.
+      # En prod : DOMAIN=kredix.fr, ADMIN_DOMAIN=crm.kredix.fr
+      DOMAIN: ${DOMAIN:-kredix.local}
+      ADMIN_DOMAIN: ${ADMIN_DOMAIN:-admin.kredix.local}
+      ACME_EMAIL: ${ACME_EMAIL}
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80"]
       interval: 30s
@@ -95,6 +187,8 @@ services:
       start_period: 10s
     depends_on:
       web:
+        condition: service_healthy
+      admin:
         condition: service_healthy
     networks:
       - kredix-network

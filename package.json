@@ -19,6 +19,8 @@
     "db:migrate": "pnpm --filter @kredix/db db:migrate",
     "db:push": "pnpm --filter @kredix/db db:push",
     "db:studio": "pnpm --filter @kredix/db db:studio",
+    "db:deploy": "pnpm --filter @kredix/db db:deploy",
+    "db:seed": "pnpm --filter @kredix/db db:seed",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report tests/e2e-report"
