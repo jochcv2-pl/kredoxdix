@@ -1,5 +1,5 @@
 import { prisma } from '@kredix/db';
-import { getLLMClient } from './client.js';
+import { getLLMClient } from './client';
 
 // =============================================================================
 // generate.ts — Génération d'email par l'agent IA.

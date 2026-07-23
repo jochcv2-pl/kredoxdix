@@ -1,4 +1,4 @@
-import { getLLMClient } from './client.js';
+import { getLLMClient } from './client';
 
 // =============================================================================
 // test.ts — Test de connexion au LLM (pour le bouton "Tester la connexion").
