@@ -95,11 +95,17 @@ export async function sendClientLevelEmail(
     return { success: false, error: 'Niveau déjà envoyé' };
   }
 
-  // 4 — Template email actif pour ce trigger (level_1 ... level_7).
+  // 4 — Template email actif pour ce trigger + langue du prospect (fallback FR).
   const triggerKey = `level_${level}` as EmailTrigger;
-  const template = (await prisma.emailTemplate.findFirst({
-    where: { trigger: triggerKey, status: 'active' },
+  const leadLang = lead.preferredLanguage || 'fr';
+  let template = (await prisma.emailTemplate.findFirst({
+    where: { trigger: triggerKey, status: 'active', language: leadLang },
   })) as EmailTemplate | null;
+  if (!template && leadLang !== 'fr') {
+    template = (await prisma.emailTemplate.findFirst({
+      where: { trigger: triggerKey, status: 'active', language: 'fr' },
+    })) as EmailTemplate | null;
+  }
 
   if (!template) {
     return { success: false, error: 'Aucun modèle actif pour ce niveau' };
