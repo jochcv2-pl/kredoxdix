@@ -76,8 +76,9 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 # Manifestes workspace racine (requis pour pnpm --filter).
 COPY package.json pnpm-workspace.yaml ./
-# Package @kredix/db (package.json + client.ts + prisma/).
-COPY --from=deps /app/packages/@kredix/db ./packages/@kredix/db
+# Tous les packages — pnpm vérifie le workspace au runtime (depsStatusCheck).
+# Ne copier que @kredix/db casse la résolution (ERR_PNPM_WORKSPACE_PKG_NOT_FOUND).
+COPY --from=deps /app/packages ./packages
 # Le schema + les migrations doivent être présents pour migrate deploy.
 COPY packages/@kredix/db/prisma ./packages/@kredix/db/prisma
 ENV NODE_ENV=production
