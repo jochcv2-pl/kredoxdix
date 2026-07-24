@@ -35,6 +35,7 @@ services:
   # web — Application Next.js (apps/web) buildée depuis le Dockerfile racine.
   # Le build standalone (output: 'standalone') tourne via `node server.js`.
   # Démarre APRÈS le migrator (migrations appliquées).
+  # Port 3100 exposé sur le host pour le reverse proxy Nginx.
   # ---------------------------------------------------------------------------
   web:
     build:
@@ -43,8 +44,8 @@ services:
       target: runner
     container_name: kredix-web
     restart: unless-stopped
-    expose:
-      - "3000"
+    ports:
+      - "127.0.0.1:3100:3000"
     environment:
       NODE_ENV: production
       DATABASE_URL: ${DATABASE_URL}
@@ -73,7 +74,7 @@ services:
   # ---------------------------------------------------------------------------
   # admin — CRM (apps/admin) buildée depuis Dockerfile.admin.
   # Contient : routes /api/cron/*, /api/webhooks/*, /api/admin/*, /api/clients/*, etc.
-  # Port interne 3001, exposé uniquement via Caddy (admin.kredix.fr).
+  # Port 3101 exposé sur le host pour le reverse proxy Nginx.
   # ---------------------------------------------------------------------------
   admin:
     build:
@@ -84,8 +85,8 @@ services:
         NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_ADMIN_URL:-https://crm.kredix.fr}
     container_name: kredix-admin
     restart: unless-stopped
-    expose:
-      - "3001"
+    ports:
+      - "127.0.0.1:3101:3001"
     environment:
       NODE_ENV: production
       DATABASE_URL: ${DATABASE_URL}
@@ -159,40 +160,9 @@ services:
       - kredix-network
 
   # ---------------------------------------------------------------------------
-  # caddy — Reverse proxy + HTTPS automatique (Let's Encrypt).
-  # Sert le Caddyfile et stocke les certificats dans le volume caddy_data.
+  # NOTE : Caddy retiré — Nginx (déjà présent sur le VPS) fait le reverse proxy.
+  # Config Nginx fournie dans nginx-kredix.conf (server blocks + SSL certbot).
   # ---------------------------------------------------------------------------
-  caddy:
-    # En production, pinner l'image par digest (@sha256:...) pour la reproductibilité.
-    image: caddy:2-alpine
-    container_name: kredix-caddy
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    environment:
-      # Domaines passés au Caddyfile via {$DOMAIN} et {$ADMIN_DOMAIN}.
-      # En prod : DOMAIN=kredix.fr, ADMIN_DOMAIN=crm.kredix.fr
-      DOMAIN: ${DOMAIN:-kredix.local}
-      ADMIN_DOMAIN: ${ADMIN_DOMAIN:-admin.kredix.local}
-      ACME_EMAIL: ${ACME_EMAIL}
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-    depends_on:
-      web:
-        condition: service_healthy
-      admin:
-        condition: service_healthy
-    networks:
-      - kredix-network
 
   # ---------------------------------------------------------------------------
   # backup — Sidecar pg_dump avec rotation 3-2-1 (DEC-005).
@@ -232,10 +202,6 @@ volumes:
     name: kredix_pgdata
   kredix_backups:
     name: kredix_backups
-  caddy_data:
-    name: kredix_caddy_data
-  caddy_config:
-    name: kredix_caddy_config
 
 # =============================================================================
 # Réseau bridge partagé entre les services
