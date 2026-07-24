@@ -62,8 +62,7 @@ export async function GET(
     });
 
     // On retire le tableau brut des recipients (déjà agrégé dans statusCounts).
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { recipients, ...campaignData } = campaign;
+    const campaignData = { ...campaign, recipients: undefined };
 
     return successResponse({
       ...campaignData,
