@@ -16,7 +16,7 @@
     "@kredix/email": "workspace:*",
     "@kredix/simulator": "workspace:*",
     "@kredix/types": "workspace:*",
-    "next": "15.1.6",
+    "next": "15.5.7",
     "next-intl": "^3.26.0",
     "nodemailer": "^9.0.3",
     "react": "19.1.0",
