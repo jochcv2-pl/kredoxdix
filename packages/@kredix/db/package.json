@@ -16,7 +16,7 @@
     "db:studio": "prisma studio --schema=prisma/schema.prisma",
     "db:seed": "tsx prisma/seed.ts",
     "db:deploy": "prisma migrate deploy --schema=prisma/schema.prisma",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "prisma generate --schema=prisma/schema.prisma && tsc --noEmit",
     "clean": "rimraf dist .turbo"
   },
   "dependencies": {
@@ -25,6 +25,7 @@
     "bcryptjs": "^3.0.3"
   },
   "devDependencies": {
+    "@types/node": "^22.0.0",
     "prisma": "^6.0.0",
     "tsx": "^4.0.0",
     "typescript": "^5.7.0"
