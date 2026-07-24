@@ -54,6 +54,11 @@ const PROVIDER_LABEL: Record<Gateway['provider'], string> = {
   smtp: 'SMTP Hostinger',
 }
 
+const TRACKING_KEYS = {
+  fbPixel: 'fb_pixel_id',
+  gaTracking: 'ga_tracking_id',
+} as const
+
 // =============================================================================
 // Composant principal
 // =============================================================================
@@ -130,6 +135,8 @@ export default function Settings() {
         { key: CADENCE_KEYS.dedicatedIp, value: settings[CADENCE_KEYS.dedicatedIp] ?? '', category: 'cadence' },
         { key: CADENCE_KEYS.sendingDomain, value: settings[CADENCE_KEYS.sendingDomain] ?? '', category: 'cadence' },
         { key: 'from_email', value: settings['from_email'] ?? '', category: 'email' },
+        { key: TRACKING_KEYS.fbPixel, value: settings[TRACKING_KEYS.fbPixel] ?? '', category: 'tracking' },
+        { key: TRACKING_KEYS.gaTracking, value: settings[TRACKING_KEYS.gaTracking] ?? '', category: 'tracking' },
       ]
 
       for (const p of payload) {
@@ -515,7 +522,46 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* 5. Passerelles d'envoi */}
+        {/* 5. Tracking & Analytics */}
+        <div className="panel">
+          <div className="panel-head">
+            <h3>Tracking &amp; Analytics</h3>
+          </div>
+          <div className="panel-body" style={{ paddingTop: '14px' }}>
+            <p className="field-hint" style={{ marginBottom: 16 }}>
+              Renseignez vos IDs pour activer le tracking sur le site public. Laissez vide pour désactiver.
+              Les modifications sont appliquées immédiatement après sauvegarde.
+            </p>
+            <div className="set-row">
+              <div className="set-label">
+                <b>Facebook Pixel ID</b>
+                <small>Ex: 123456789012345 — trouvé dans Meta Events Manager</small>
+              </div>
+              <input
+                type="text"
+                className="set-input"
+                placeholder="123456789012345"
+                value={settings[TRACKING_KEYS.fbPixel] ?? ''}
+                onChange={(e) => setSetting(TRACKING_KEYS.fbPixel, e.target.value)}
+              />
+            </div>
+            <div className="set-row">
+              <div className="set-label">
+                <b>Google Analytics 4</b>
+                <small>Measurement ID — Ex: G-XXXXXXXXXX</small>
+              </div>
+              <input
+                type="text"
+                className="set-input"
+                placeholder="G-XXXXXXXXXX"
+                value={settings[TRACKING_KEYS.gaTracking] ?? ''}
+                onChange={(e) => setSetting(TRACKING_KEYS.gaTracking, e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* 6. Passerelles d'envoi */}
         <div className="panel">
           <div className="panel-head">
             <h3>Passerelles d&apos;envoi</h3>
