@@ -15,7 +15,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { prisma, LeadStatus, SequenceExitReason } from '@kredix/db';
+import { prisma, LeadStatus, SequenceExitReason, createNotification } from '@kredix/db';
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses';
 import { requireAuth } from '../../_lib/auth-server';
 import { isValidId } from '@/app/api/_lib/id-validation';
@@ -106,6 +106,19 @@ export async function PATCH(
       where: { id },
       data: updateData,
     });
+
+    // ----- Notification : conversion client -----
+    if (newStatus === LeadStatus.client && existing.status !== LeadStatus.client) {
+      await createNotification({
+        type: 'client_converted',
+        title: 'Dossier validé',
+        message: `Le dossier de ${updated.firstName} ${updated.lastName} a été validé comme client.`,
+        icon: 'check-circle',
+        severity: 'success',
+        linkUrl: `/leads?id=${updated.id}`,
+        relatedEntityId: updated.id,
+      });
+    }
 
     return successResponse(updated);
   } catch (err) {

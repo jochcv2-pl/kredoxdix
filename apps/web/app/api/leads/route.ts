@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { prisma } from "@kredix/db";
+import { prisma, createNotification } from "@kredix/db";
 import { createLeadSchema, errorResponse, successResponse } from "../validators";
 import { sendReceptionAck, computeSequenceInitDates } from "../_lib/email-ack";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limiter";
@@ -82,6 +82,17 @@ export async function POST(request: NextRequest) {
       console.error("[API /leads POST] sendReceptionAck threw:", err);
       ack = { sent: false, error: (err as Error).message };
     }
+
+    // ----- Notification admin : nouveau prospect -----
+    await createNotification({
+      type: 'new_prospect',
+      title: 'Nouveau prospect',
+      message: `${lead.firstName} ${lead.lastName} a soumis une demande de ${lead.loanType} de ${lead.amount.toLocaleString('fr-FR')}€.`,
+      icon: 'user-plus',
+      severity: 'info',
+      linkUrl: `/leads?id=${lead.id}`,
+      relatedEntityId: lead.id,
+    });
 
     return successResponse(
       {

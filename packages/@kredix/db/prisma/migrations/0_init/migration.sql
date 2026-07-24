@@ -430,3 +430,26 @@ ALTER TABLE "Campaign" ADD CONSTRAINT "Campaign_templateId_fkey" FOREIGN KEY ("t
 -- AddForeignKey
 ALTER TABLE "CampaignRecipient" ADD CONSTRAINT "CampaignRecipient_campaignId_fkey" FOREIGN KEY ("campaignId") REFERENCES "Campaign"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
+-- CreateTable: Notification
+CREATE TABLE "Notification" (
+    "id" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+    "severity" TEXT NOT NULL DEFAULT 'info',
+    "icon" TEXT NOT NULL DEFAULT 'info',
+    "title" TEXT NOT NULL,
+    "message" TEXT NOT NULL,
+    "linkUrl" TEXT,
+    "relatedEntityId" TEXT,
+    "recipientId" TEXT,
+    "readAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Notification_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateIndex
+CREATE INDEX "Notification_recipientId_readAt_idx" ON "Notification"("recipientId", "readAt");
+
+-- CreateIndex
+CREATE INDEX "Notification_createdAt_idx" ON "Notification"("createdAt");
+

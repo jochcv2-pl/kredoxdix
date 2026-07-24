@@ -548,3 +548,30 @@ model DocumentTemplate {
 
   @@index([level, isActive])
 }
+
+// -----------------------------------------------------------------------------
+// NOTIFICATION — notifications temps réel du back-office (cloche Topbar)
+// -----------------------------------------------------------------------------
+// Alimentée par les événements métier (nouveau lead, bounce, conversion client,
+// échec email, séquence terminée...). Le helper createNotification() filtre
+// selon les préférences notif_* de l'admin avant d'insérer.
+//
+// Broadcast : recipientId = null → visible par tous les admins.
+// readAt globale (null = non lue). Chaque admin voit l'état partagé — suffisant
+// pour un CRM avec peu d'utilisateurs back-office.
+model Notification {
+  id              String    @id @default(cuid())
+  type            String                        // 'new_prospect' | 'client_converted' | 'bounce' | 'email_failed' | 'sequence_timeout' | 'sequence_max_relances' | 'agent_activity'
+  severity        String    @default("info")    // 'info' | 'success' | 'warning' | 'danger'
+  icon            String    @default("info")    // clé Icon.tsx : user-plus, check-circle, alert-triangle, bot, mail, etc.
+  title           String                        // "Nouveau prospect"
+  message         String    @db.Text            // "Marie Dupont a soumis une demande de 210 000€"
+  linkUrl         String?                       // "/leads/clxxx..." pour navigation au clic
+  relatedEntityId String?                       // leadId / campaignId (traçabilité)
+  recipientId     String?                       // null = broadcast (tous les admins voient)
+  readAt          DateTime?                     // null = non lue
+  createdAt       DateTime  @default(now())
+
+  @@index([recipientId, readAt])
+  @@index([createdAt])
+}

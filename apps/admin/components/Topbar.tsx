@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { Modal } from './Modal'
 import { Icon } from './Icon'
 
@@ -10,36 +11,88 @@ interface TopbarProps {
   onProfileClick?: () => void
   onLogout?: () => void
   onMenuToggle?: () => void
-  soundEnabled?: boolean
 }
+
+// -----------------------------------------------------------------------------
+// Types notification (alignés sur le modèle Prisma Notification)
+// -----------------------------------------------------------------------------
 
 interface NotifItem {
-  id: number
-  type: 'new' | 'success' | 'info'
+  id: string
+  type: string
+  severity: 'info' | 'success' | 'warning' | 'danger'
   icon: string
   title: string
-  text: string
-  time: string
-  read: boolean
+  message: string
+  linkUrl: string | null
+  readAt: string | null
+  createdAt: string
 }
 
-export function Topbar({ title, subtitle, onProfileClick, onLogout, onMenuToggle, soundEnabled = true }: TopbarProps) {
+// Mapping severity → classe CSS notif-ico (compat avec l'existant)
+function severityToClass(severity: string): string {
+  switch (severity) {
+    case 'success': return 'success'
+    case 'warning':
+    case 'danger': return 'new'
+    default: return 'info'
+  }
+}
+
+// Formatage relatif du temps
+function formatTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime()
+  const sec = Math.floor(diff / 1000)
+  if (sec < 60) return 'À l\'instant'
+  const min = Math.floor(sec / 60)
+  if (min < 60) return `Il y a ${min} min`
+  const hr = Math.floor(min / 60)
+  if (hr < 24) return `Il y a ${hr}h`
+  const day = Math.floor(hr / 24)
+  if (day === 1) return 'Hier'
+  return `Il y a ${day} jours`
+}
+
+export function Topbar({ title, subtitle, onProfileClick, onLogout, onMenuToggle }: TopbarProps) {
+  const router = useRouter()
   const [exportModalOpen, setExportModalOpen] = useState(false)
   const [newDossierModalOpen, setNewDossierModalOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const [avatarOpen, setAvatarOpen] = useState(false)
+  const [notifs, setNotifs] = useState<NotifItem[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [soundEnabled, setSoundEnabled] = useState(true)
+  const [adminName, setAdminName] = useState('')
+  const [adminEmail, setAdminEmail] = useState('')
+  const [adminInitials, setAdminInitials] = useState('')
   const audioRef = useRef<AudioContext | null>(null)
+  const lastNotifIdRef = useRef<string | null>(null)
 
-  const [notifs, setNotifs] = useState<NotifItem[]>([
-    { id: 1, type: 'new', icon: 'user-plus', title: 'Nouveau prospect', text: 'Marie Dupont a soumis une demande de crédit immobilier de 210 000€.', time: 'Il y a 5 min', read: false },
-    { id: 2, type: 'success', icon: 'check-circle', title: 'Dossier validé', text: 'Le dossier de Jean Martin a été accepté par la banque Crédit Mutuel.', time: 'Il y a 1h', read: false },
-    { id: 3, type: 'info', icon: 'bot', title: 'Agent IA terminé', text: 'L\'agent Emailing a envoyé 47 emails de relance automatiquement.', time: 'Il y a 3h', read: false },
-    { id: 4, type: 'info', icon: 'bar-chart', title: 'Audit SEO disponible', text: 'Le rapport SEO hebdomadaire est prêt à être consulté.', time: 'Hier', read: true },
-  ])
+  // -------------------------------------------------------------------------
+  // Fetch profil (pour le nom/email/avatar + préférence son)
+  // -------------------------------------------------------------------------
 
-  const unreadCount = notifs.filter((n) => !n.read).length
+  useEffect(() => {
+    fetch('/api/profile')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((res) => {
+        if (!res?.data) return
+        const d = res.data
+        setAdminName(d.displayName || 'Admin')
+        setAdminEmail(d.email || '')
+        const parts = (d.displayName || 'A').split(' ')
+        const initials = parts.map((p: string) => p[0]).join('').slice(0, 2).toUpperCase()
+        setAdminInitials(initials)
+        setSoundEnabled(d.notifications?.notif_sound !== false)
+      })
+      .catch(() => {})
+  }, [])
 
-  const playNotifSound = () => {
+  // -------------------------------------------------------------------------
+  // Son de notification (WebAudio)
+  // -------------------------------------------------------------------------
+
+  const playNotifSound = useCallback(() => {
     if (!soundEnabled) return
     try {
       if (!audioRef.current) {
@@ -62,41 +115,93 @@ export function Topbar({ title, subtitle, onProfileClick, onLogout, onMenuToggle
 
       osc.start(ctx.currentTime)
       osc.stop(ctx.currentTime + 0.4)
-    } catch (e) {
+    } catch {
       // AudioContext non supporté
+    }
+  }, [soundEnabled])
+
+  // -------------------------------------------------------------------------
+  // Polling : récupère le compteur non lues toutes les 30s
+  // -------------------------------------------------------------------------
+
+  useEffect(() => {
+    const fetchUnreadCount = () => {
+      fetch('/api/notifications/unread-count')
+        .then((r) => (r.ok ? r.json() : null))
+        .then((res) => {
+          if (res?.data?.count !== undefined) {
+            setUnreadCount(res.data.count)
+          }
+        })
+        .catch(() => {})
+    }
+
+    fetchUnreadCount()
+    const interval = setInterval(fetchUnreadCount, 30_000)
+    return () => clearInterval(interval)
+  }, [])
+
+  // -------------------------------------------------------------------------
+  // Fetch liste quand on ouvre le dropdown
+  // -------------------------------------------------------------------------
+
+  const loadNotifs = useCallback(() => {
+    fetch('/api/notifications?limit=30')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((res) => {
+        if (!res?.data) return
+        const items: NotifItem[] = res.data
+        // Détection de nouvelle notif pour le son
+        if (items.length > 0) {
+          const newestId = items[0].id
+          if (lastNotifIdRef.current && newestId !== lastNotifIdRef.current) {
+            // Son seulement si la plus récente est non lue
+            if (!items[0].readAt) playNotifSound()
+          }
+          lastNotifIdRef.current = newestId
+        }
+        setNotifs(items)
+      })
+      .catch(() => {})
+  }, [playNotifSound])
+
+  useEffect(() => {
+    if (notifOpen) loadNotifs()
+  }, [notifOpen, loadNotifs])
+
+  // -------------------------------------------------------------------------
+  // Actions : mark as read
+  // -------------------------------------------------------------------------
+
+  const markAllRead = async () => {
+    // Optimistic UI
+    setNotifs((prev) => prev.map((n) => ({ ...n, readAt: n.readAt ?? new Date().toISOString() })))
+    setUnreadCount(0)
+    try {
+      await fetch('/api/notifications/read-all', { method: 'POST' })
+    } catch {
+      // Silencieux — l'UI optimiste reste
     }
   }
 
-  // Simule une nouvelle notification après 15s
-  // Effet one-shot au montage : deps vides intentionnels (playNotifSound est stable).
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const newNotif: NotifItem = {
-        id: Date.now(),
-        type: 'new',
-        icon: 'alert-triangle',
-        title: 'Dossier urgent',
-        text: 'Le dossier de Sophie Leroy est en attente depuis plus de 48h.',
-        time: 'À l\'instant',
-        read: false,
-      }
-      setNotifs((prev) => [newNotif, ...prev])
-      playNotifSound()
-    }, 15000)
-
-    return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  const markAllRead = () => {
-    setNotifs((prev) => prev.map((n) => ({ ...n, read: true })))
+  const handleNotifClick = async (notif: NotifItem) => {
+    // Marque comme lu (optimistic)
+    if (!notif.readAt) {
+      setNotifs((prev) => prev.map((n) => (n.id === notif.id ? { ...n, readAt: new Date().toISOString() } : n)))
+      setUnreadCount((c) => Math.max(0, c - 1))
+      fetch(`/api/notifications/${notif.id}`, { method: 'PATCH' }).catch(() => {})
+    }
+    // Navigation si linkUrl
+    if (notif.linkUrl) {
+      setNotifOpen(false)
+      router.push(notif.linkUrl)
+    }
   }
 
-  const handleNotifClick = (id: number) => {
-    setNotifs((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)))
-  }
-
+  // -------------------------------------------------------------------------
   // Ferme les dropdowns au clic extérieur
+  // -------------------------------------------------------------------------
+
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       const target = e.target as HTMLElement
@@ -106,6 +211,8 @@ export function Topbar({ title, subtitle, onProfileClick, onLogout, onMenuToggle
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
+
+  // -------------------------------------------------------------------------
 
   return (
     <>
@@ -133,14 +240,14 @@ export function Topbar({ title, subtitle, onProfileClick, onLogout, onMenuToggle
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
                 <path d="M13.73 21a2 2 0 0 1-3.46 0" />
               </svg>
-              {unreadCount > 0 && <span className="notif-badge">{unreadCount}</span>}
+              {unreadCount > 0 && <span className="notif-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>}
             </button>
 
             {notifOpen && (
               <div className="notif-dropdown" onClick={(e) => e.stopPropagation()}>
                 <div className="notif-dropdown-head">
                   <b>Notifications</b>
-                  <span onClick={markAllRead}>Tout marquer lu</span>
+                  {unreadCount > 0 && <span onClick={markAllRead}>Tout marquer lu</span>}
                 </div>
                 <div className="notif-list">
                   {notifs.length === 0 ? (
@@ -149,14 +256,15 @@ export function Topbar({ title, subtitle, onProfileClick, onLogout, onMenuToggle
                     notifs.map((n) => (
                       <div
                         key={n.id}
-                        className={`notif-item${n.read ? '' : ' unread'}`}
-                        onClick={() => handleNotifClick(n.id)}
+                        className={`notif-item${n.readAt ? '' : ' unread'}`}
+                        onClick={() => handleNotifClick(n)}
+                        style={{ cursor: n.linkUrl ? 'pointer' : 'default' }}
                       >
-                        <div className={`notif-ico ${n.type}`}><Icon name={n.icon} size={18} /></div>
+                        <div className={`notif-ico ${severityToClass(n.severity)}`}><Icon name={n.icon} size={18} /></div>
                         <div className="notif-content">
                           <b>{n.title}</b>
-                          <p>{n.text}</p>
-                          <small>{n.time}</small>
+                          <p>{n.message}</p>
+                          <small>{formatTime(n.createdAt)}</small>
                         </div>
                       </div>
                     ))
@@ -168,13 +276,13 @@ export function Topbar({ title, subtitle, onProfileClick, onLogout, onMenuToggle
 
           {/* Avatar avec menu déroulant */}
           <div className="avatar-wrap">
-            <div className="avatar" style={{ cursor: 'pointer' }} onClick={() => { setAvatarOpen(!avatarOpen); setNotifOpen(false) }}>TB</div>
+            <div className="avatar" style={{ cursor: 'pointer' }} onClick={() => { setAvatarOpen(!avatarOpen); setNotifOpen(false) }}>{adminInitials || 'A'}</div>
 
             {avatarOpen && (
               <div className="avatar-menu" onClick={(e) => e.stopPropagation()}>
                 <div className="avatar-menu-header">
-                  <b>Thomas Bernard</b>
-                  <small>admin@kredix.local</small>
+                  <b>{adminName || 'Administrateur'}</b>
+                  <small>{adminEmail || ''}</small>
                 </div>
                 <button className="avatar-menu-item" onClick={() => { onProfileClick?.(); setAvatarOpen(false) }}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

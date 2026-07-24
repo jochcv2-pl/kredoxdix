@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { prisma, SequenceExitReason, SuppressionReason } from "@kredix/db";
+import { prisma, SequenceExitReason, SuppressionReason, createNotification } from "@kredix/db";
 import { successResponse, errorResponse } from "../../validators";
 import { verifyBearerSecret } from "../../_lib/security";
 
@@ -96,6 +96,18 @@ export async function POST(request: NextRequest) {
         sequenceEndedAt: now,
         exitReason,
       },
+    });
+
+    // ----- Notification admin : bounce ou plainte -----
+    const isBounce = reason === SuppressionReason.bounce;
+    await createNotification({
+      type: 'bounce',
+      title: isBounce ? 'Email rejeté (bounce)' : 'Plainte spam reçue',
+      message: isBounce
+        ? `L'email ${email} a été rejeté (boîte invalide). ${result.count} séquence(s) fermée(s).`
+        : `Plainte spam signalée pour ${email}. ${result.count} séquence(s) fermée(s).`,
+      icon: 'alert-triangle',
+      severity: isBounce ? 'warning' : 'danger',
     });
 
     return successResponse(

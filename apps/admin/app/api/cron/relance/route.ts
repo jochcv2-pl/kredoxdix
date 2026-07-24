@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { prisma, EmailTrigger, SequenceExitReason } from '@kredix/db';
+import { prisma, EmailTrigger, SequenceExitReason, createNotification } from '@kredix/db';
 import { generateEmail } from '@kredix/ai';
 import { successResponse, errorResponse, ERR } from '../../_lib/responses';
 import { getSetting, getSettingNumber, getActiveGateway } from '../../_lib/settings';
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
         sequenceActive: true,
         sequenceStartedAt: { lt: timeoutThreshold },
       },
-      select: { id: true },
+      select: { id: true, firstName: true, lastName: true },
     });
 
     for (const lead of timeoutLeads) {
@@ -72,6 +72,17 @@ export async function POST(req: NextRequest) {
         },
       });
       stats.timeouts++;
+
+      // Notification admin : séquence expirée (timeout)
+      await createNotification({
+        type: 'sequence_timeout',
+        title: 'Dossier expiré',
+        message: `Le dossier de ${lead.firstName} ${lead.lastName} a expiré (${timeoutDays} jours sans validation).`,
+        icon: 'alert-triangle',
+        severity: 'warning',
+        linkUrl: `/leads?id=${lead.id}`,
+        relatedEntityId: lead.id,
+      });
     }
 
     // -----------------------------------------------------------------
@@ -243,6 +254,18 @@ export async function POST(req: NextRequest) {
             sendResult.error,
           );
           stats.errors++;
+
+          // Notification admin : échec d'envoi email
+          await createNotification({
+            type: 'email_failed',
+            title: 'Échec d\'envoi email',
+            message: `Relance ${nextRelanceNum}/3 échouée pour ${lead.firstName} ${lead.lastName} (${lead.email}). Erreur: ${sendResult.error ?? 'inconnue'}`,
+            icon: 'alert-triangle',
+            severity: 'danger',
+            linkUrl: `/leads?id=${lead.id}`,
+            relatedEntityId: lead.id,
+          });
+
           continue; // N'incrémente pas — le cron réessayera au prochain passage
         }
 
@@ -269,6 +292,17 @@ export async function POST(req: NextRequest) {
 
         if (isLast) {
           stats.maxRelances++;
+
+          // Notification admin : séquence terminée (3 relances épuisées)
+          await createNotification({
+            type: 'sequence_max_relances',
+            title: 'Séquence de relance terminée',
+            message: `3 relances envoyées sans réponse pour ${lead.firstName} ${lead.lastName}. Dossier clos.`,
+            icon: 'alert-triangle',
+            severity: 'warning',
+            linkUrl: `/leads?id=${lead.id}`,
+            relatedEntityId: lead.id,
+          });
         } else {
           stats.sent++;
         }
