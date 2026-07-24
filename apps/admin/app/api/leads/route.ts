@@ -12,8 +12,9 @@
 // =============================================================================
 
 import { NextRequest } from 'next/server';
-import { prisma, LeadStatus } from '@kredix/db';
-import { successResponse, errorResponse, ERR } from '@/app/api/_lib/responses';
+import { z } from 'zod';
+import { prisma, LeadStatus, createNotification } from '@kredix/db';
+import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses';
 import { requireAuth } from '../_lib/auth-server';
 
 const VALID_STATUSES: ReadonlySet<string> = new Set([
@@ -131,6 +132,74 @@ export async function GET(req: NextRequest) {
     });
   } catch (err) {
     console.error('[GET /api/leads] Erreur:', err);
+    return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500);
+  }
+}
+
+// =============================================================================
+// POST /api/leads — Création manuelle d'un lead depuis le CRM admin.
+// =============================================================================
+// L'admin saisit les informations du prospect. Le lead est créé en statut "new"
+// sans séquence de relance automatique (l'admin décide quand l'activer).
+// =============================================================================
+
+const createLeadAdminSchema = z.object({
+  firstName: z.string().min(1).max(80),
+  lastName: z.string().min(1).max(80),
+  email: z.string().email().optional().or(z.literal('')),
+  phone: z.string().min(1).max(40),
+  city: z.string().min(1).max(120),
+  country: z.string().max(10).default('FR'),
+  loanType: z.string().min(1).max(60),
+  amount: z.number().int().min(1),
+  durationYears: z.number().int().min(1).max(40),
+  employmentStatus: z.string().max(120).default('Non précisé'),
+  preferredLanguage: z.string().max(10).default('fr'),
+  notes: z.string().optional(),
+});
+
+export async function POST(req: NextRequest) {
+  const [admin, deny] = await requireAuth();
+  if (deny) return deny;
+
+  const [data, error] = await parseBody(req, createLeadAdminSchema);
+  if (error) return error;
+
+  try {
+    const lead = await prisma.lead.create({
+      data: {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email || null,
+        phone: data.phone,
+        city: data.city,
+        country: data.country,
+        loanType: data.loanType,
+        amount: data.amount,
+        durationYears: data.durationYears,
+        employmentStatus: data.employmentStatus,
+        preferredLanguage: data.preferredLanguage,
+        notes: data.notes || null,
+        status: LeadStatus.new,
+        // Pas de séquence de relance auto — l'admin décide
+        assignedToId: admin!.id,
+      },
+    });
+
+    // Notification : nouveau dossier créé manuellement
+    await createNotification({
+      type: 'new_prospect',
+      title: 'Nouveau dossier (création manuelle)',
+      message: `${lead.firstName} ${lead.lastName} — ${lead.loanType} de ${lead.amount.toLocaleString('fr-FR')}€.`,
+      icon: 'user-plus',
+      severity: 'info',
+      linkUrl: `/leads?id=${lead.id}`,
+      relatedEntityId: lead.id,
+    });
+
+    return successResponse(lead, 201);
+  } catch (err) {
+    console.error('[POST /api/leads] Erreur:', err);
     return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500);
   }
 }

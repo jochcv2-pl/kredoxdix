@@ -119,7 +119,11 @@ export default function Contacts() {
 
   const [fileName, setFileName] = useState<string>('')
   const [filterModalOpen, setFilterModalOpen] = useState(false)
-  const [triAiModalOpen, setTriAiModalOpen] = useState(false)
+  const [triInstructions, setTriInstructions] = useState(
+    "Priorise les prospects avec un montant supérieur à 150 000 € et une situation Salarié CDI. Classe en second les indépendants. Écarte les demandes sans email valide. Marque en priorité haute les prêts immobiliers."
+  )
+  const [triResult, setTriResult] = useState<{ leads: Array<{ id: string; firstName: string; lastName: string; amount: number; score: number; scoreReason: string; email: string | null }> } | null>(null)
+  const [triLoading, setTriLoading] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [validateTarget, setValidateTarget] = useState<{ id: string; name: string } | null>(null)
 
@@ -287,17 +291,79 @@ export default function Contacts() {
             <textarea
               className="body-editor"
               style={{ minHeight: 120 }}
-              defaultValue={
-                "Priorise les prospects avec un montant supérieur à 150 000 € et une situation Salarié CDI. Classe en second les indépendants. Écarte les demandes sans email valide. Marque en priorité haute les prêts immobiliers."
-              }
+              value={triInstructions}
+              onChange={(e) => setTriInstructions(e.target.value)}
             />
             <button
               className="btn btn-primary"
               style={{ marginTop: 12 }}
-              onClick={() => alert("Tri simulé — l'IA classe les prospects importés selon vos instructions.")}
+              disabled={triLoading}
+              onClick={async () => {
+                setTriLoading(true)
+                setTriResult(null)
+                try {
+                  const res = await fetch('/api/leads/sort', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ instructions: triInstructions }),
+                  })
+                  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+                  const json = await res.json()
+                  setTriResult({ leads: json.data.leads })
+                } catch {
+                  setError('Erreur lors du tri IA')
+                } finally {
+                  setTriLoading(false)
+                }
+              }}
             >
-              Trier avec l&apos;IA
+              {triLoading ? 'Tri en cours…' : 'Trier avec l\'IA'}
             </button>
+            {triResult && triResult.leads.length > 0 && (
+              <div style={{ marginTop: 16 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: 'var(--slate)' }}>
+                  {triResult.leads.length} prospects classés par priorité
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {triResult.leads.slice(0, 10).map((lead, i) => (
+                    <div
+                      key={lead.id}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        padding: '8px 12px', borderRadius: 8,
+                        background: 'var(--bg-soft, rgba(0,0,0,0.02))',
+                        border: '1px solid var(--line-soft)',
+                      }}
+                    >
+                      <span style={{
+                        width: 28, height: 28, borderRadius: '50%',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 12, fontWeight: 700, flexShrink: 0,
+                        background: lead.score >= 70 ? 'rgba(46,204,113,0.15)' : lead.score >= 40 ? 'rgba(241,196,15,0.15)' : 'rgba(149,165,166,0.15)',
+                        color: lead.score >= 70 ? '#27ae60' : lead.score >= 40 ? '#f39c12' : '#7f8c8d',
+                      }}>
+                        {i + 1}
+                      </span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <b style={{ fontSize: 13 }}>{lead.firstName} {lead.lastName}</b>
+                        <span style={{ fontSize: 12, color: 'var(--slate-light)', marginLeft: 8 }}>
+                          {lead.amount.toLocaleString('fr-FR')}€ {!lead.email && '· Sans email'}
+                        </span>
+                        {lead.scoreReason && (
+                          <div style={{ fontSize: 11, color: 'var(--slate-light)' }}>{lead.scoreReason}</div>
+                        )}
+                      </div>
+                      <span style={{
+                        fontSize: 13, fontWeight: 700,
+                        color: lead.score >= 70 ? '#27ae60' : lead.score >= 40 ? '#f39c12' : '#7f8c8d',
+                      }}>
+                        {lead.score}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -476,34 +542,6 @@ export default function Contacts() {
             onClick={() => setFilterModalOpen(false)}
           >
             Appliquer les filtres
-          </button>
-        </div>
-      </Modal>
-
-      <Modal
-        isOpen={triAiModalOpen}
-        onClose={() => setTriAiModalOpen(false)}
-        title="Trier avec l'IA"
-      >
-        <p className="field-hint">
-          L&apos;agent IA va trier et prioriser les prospects importés selon vos instructions. Les contacts sont classés par score de pertinence.
-        </p>
-        <div className="modal-fg">
-          <label>Prospects à trier</label>
-          <input type="number" defaultValue={6} />
-        </div>
-        <div className="modal-actions">
-          <button className="btn btn-ghost" onClick={() => setTriAiModalOpen(false)}>
-            Annuler
-          </button>
-          <button
-            className="btn btn-primary"
-            onClick={() => {
-              alert('Tri IA simulé — 6 prospects classés par score')
-              setTriAiModalOpen(false)
-            }}
-          >
-            Lancer le tri
           </button>
         </div>
       </Modal>

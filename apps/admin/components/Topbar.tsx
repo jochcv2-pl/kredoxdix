@@ -65,6 +65,15 @@ export function Topbar({ title, subtitle, onProfileClick, onLogout, onMenuToggle
   const [adminName, setAdminName] = useState('')
   const [adminEmail, setAdminEmail] = useState('')
   const [adminInitials, setAdminInitials] = useState('')
+  const [exportType, setExportType] = useState('all')
+  const [exporting, setExporting] = useState(false)
+  const [dossierForm, setDossierForm] = useState({
+    fullName: '', email: '', phone: '', city: '',
+    loanType: 'immo', amount: '', durationYears: '20',
+    employmentStatus: 'CDI',
+  })
+  const [dossierError, setDossierError] = useState<string | null>(null)
+  const [dossierSaving, setDossierSaving] = useState(false)
   const audioRef = useRef<AudioContext | null>(null)
   const lastNotifIdRef = useRef<string | null>(null)
 
@@ -315,59 +324,206 @@ export function Topbar({ title, subtitle, onProfileClick, onLogout, onMenuToggle
 
       <Modal isOpen={exportModalOpen} onClose={() => setExportModalOpen(false)} title="Exporter les données">
         <p className="field-hint">
-          Sélectionnez les données à exporter au format Excel. L&apos;export inclut tous les filtres appliqués.
+          Sélectionnez les données à exporter. Le fichier CSV est téléchargé immédiatement
+          et s&apos;ouvre directement dans Excel.
         </p>
         <div className="modal-fg">
           <label>Type d&apos;export</label>
-          <select defaultValue="full">
-            <option>Toutes les données</option>
-            <option>Dossiers uniquement</option>
-            <option>Prospects uniquement</option>
-            <option>Clients uniquement</option>
+          <select value={exportType} onChange={(e) => setExportType(e.target.value)}>
+            <option value="all">Toutes les données</option>
+            <option value="leads">Prospects uniquement</option>
+            <option value="clients">Clients uniquement</option>
           </select>
         </div>
         <div className="modal-fg">
           <label>Format</label>
-          <select defaultValue="xlsx">
-            <option>Excel (.xlsx)</option>
-            <option>CSV (.csv)</option>
-            <option>PDF (.pdf)</option>
+          <select defaultValue="csv">
+            <option>CSV (compatible Excel)</option>
           </select>
         </div>
         <div className="modal-actions">
           <button className="btn btn-ghost" onClick={() => setExportModalOpen(false)}>Annuler</button>
-          <button className="btn btn-primary" onClick={() => { alert('Export simulé — fichier généré avec les filtres actuels'); setExportModalOpen(false) }}>Exporter</button>
+          <button
+            className="btn btn-primary"
+            disabled={exporting}
+            onClick={async () => {
+              setExporting(true)
+              try {
+                const res = await fetch(`/api/leads/export?type=${exportType}`)
+                if (!res.ok) throw new Error('Export échec')
+                const blob = await res.blob()
+                const url = URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = url
+                const disposition = res.headers.get('Content-Disposition') ?? ''
+                const match = disposition.match(/filename="(.+)"/)
+                a.download = match?.[1] ?? `export-${exportType}.csv`
+                document.body.appendChild(a)
+                a.click()
+                document.body.removeChild(a)
+                URL.revokeObjectURL(url)
+                setExportModalOpen(false)
+              } catch {
+                alert('Erreur lors de l\'export. Réessayez.')
+              } finally {
+                setExporting(false)
+              }
+            }}
+          >
+            {exporting ? 'Export en cours…' : 'Exporter'}
+          </button>
         </div>
       </Modal>
 
-      <Modal isOpen={newDossierModalOpen} onClose={() => setNewDossierModalOpen(false)} title="Nouveau dossier">
+      <Modal isOpen={newDossierModalOpen} onClose={() => { setNewDossierModalOpen(false); setDossierError(null) }} title="Nouveau dossier">
         <p className="field-hint">
-          Créez un nouveau dossier de financement. Les informations seront saisies dans le formulaire du simulateur.
+          Créez un nouveau dossier de prospect. Le lead sera créé en statut « Nouveau »
+          et assigné à votre compte.
         </p>
+        {dossierError && (
+          <div style={{ background: 'rgba(192,57,43,0.08)', color: '#c0392b', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
+            {dossierError}
+          </div>
+        )}
         <div className="modal-fg">
-          <label>Nom du prospect</label>
-          <input type="text" placeholder="Ex : Marie Dupont" />
+          <label>Nom complet *</label>
+          <input
+            type="text"
+            placeholder="Ex : Marie Dupont"
+            value={dossierForm.fullName}
+            onChange={(e) => setDossierForm((f) => ({ ...f, fullName: e.target.value }))}
+          />
         </div>
         <div className="modal-fg">
           <label>Email</label>
-          <input type="email" placeholder="marie.dupont@email.com" />
+          <input
+            type="email"
+            placeholder="marie.dupont@email.com"
+            value={dossierForm.email}
+            onChange={(e) => setDossierForm((f) => ({ ...f, email: e.target.value }))}
+          />
         </div>
         <div className="modal-fg">
-          <label>Type de crédit</label>
-          <select>
-            <option>Prêt immobilier</option>
-            <option>Prêt à la consommation</option>
-            <option>Rachat de crédits</option>
-            <option>Prêt professionnel</option>
-          </select>
+          <label>Téléphone *</label>
+          <input
+            type="tel"
+            placeholder="06 12 34 56 78"
+            value={dossierForm.phone}
+            onChange={(e) => setDossierForm((f) => ({ ...f, phone: e.target.value }))}
+          />
         </div>
         <div className="modal-fg">
-          <label>Montant souhaité (€)</label>
-          <input type="number" placeholder="Ex : 210000" />
+          <label>Ville *</label>
+          <input
+            type="text"
+            placeholder="Paris"
+            value={dossierForm.city}
+            onChange={(e) => setDossierForm((f) => ({ ...f, city: e.target.value }))}
+          />
+        </div>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <div className="modal-fg" style={{ flex: 1 }}>
+            <label>Type de crédit *</label>
+            <select
+              value={dossierForm.loanType}
+              onChange={(e) => setDossierForm((f) => ({ ...f, loanType: e.target.value }))}
+            >
+              <option value="immo">Immobilier</option>
+              <option value="conso">Consommation</option>
+              <option value="rachat">Rachat de crédits</option>
+              <option value="pro">Professionnel</option>
+              <option value="autre">Autre</option>
+            </select>
+          </div>
+          <div className="modal-fg" style={{ flex: 1 }}>
+            <label>Montant (€) *</label>
+            <input
+              type="number"
+              placeholder="210000"
+              value={dossierForm.amount}
+              onChange={(e) => setDossierForm((f) => ({ ...f, amount: e.target.value }))}
+            />
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <div className="modal-fg" style={{ flex: 1 }}>
+            <label>Durée (années)</label>
+            <input
+              type="number"
+              placeholder="20"
+              value={dossierForm.durationYears}
+              onChange={(e) => setDossierForm((f) => ({ ...f, durationYears: e.target.value }))}
+            />
+          </div>
+          <div className="modal-fg" style={{ flex: 1 }}>
+            <label>Situation professionnelle</label>
+            <select
+              value={dossierForm.employmentStatus}
+              onChange={(e) => setDossierForm((f) => ({ ...f, employmentStatus: e.target.value }))}
+            >
+              <option>CDI</option>
+              <option>CDD</option>
+              <option>Indépendant</option>
+              <option>Fonctionnaire</option>
+              <option>Auto-entrepreneur</option>
+              <option>Retraité</option>
+              <option>Autre</option>
+            </select>
+          </div>
         </div>
         <div className="modal-actions">
-          <button className="btn btn-ghost" onClick={() => setNewDossierModalOpen(false)}>Annuler</button>
-          <button className="btn btn-primary" onClick={() => { alert('Dossier créé — redirigé vers le formulaire simulateur'); setNewDossierModalOpen(false) }}>Créer le dossier</button>
+          <button className="btn btn-ghost" onClick={() => { setNewDossierModalOpen(false); setDossierError(null) }}>Annuler</button>
+          <button
+            className="btn btn-primary"
+            disabled={dossierSaving}
+            onClick={async () => {
+              // Validation client
+              if (!dossierForm.fullName.trim()) { setDossierError('Le nom est obligatoire'); return }
+              if (!dossierForm.phone.trim()) { setDossierError('Le téléphone est obligatoire'); return }
+              if (!dossierForm.city.trim()) { setDossierError('La ville est obligatoire'); return }
+              if (!dossierForm.amount || parseInt(dossierForm.amount) < 1) { setDossierError('Le montant est invalide'); return }
+
+              // Parse nom → firstName / lastName
+              const parts = dossierForm.fullName.trim().split(/\s+/)
+              const firstName = parts[0] || ''
+              const lastName = parts.slice(1).join(' ') || ''
+
+              setDossierSaving(true)
+              setDossierError(null)
+              try {
+                const res = await fetch('/api/leads', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    firstName,
+                    lastName,
+                    email: dossierForm.email || undefined,
+                    phone: dossierForm.phone,
+                    city: dossierForm.city,
+                    loanType: dossierForm.loanType,
+                    amount: parseInt(dossierForm.amount, 10),
+                    durationYears: parseInt(dossierForm.durationYears, 10) || 20,
+                    employmentStatus: dossierForm.employmentStatus,
+                  }),
+                })
+                if (!res.ok) {
+                  const err = await res.json().catch(() => null)
+                  throw new Error(err?.error || `HTTP ${res.status}`)
+                }
+                // Reset form + close
+                setDossierForm({ fullName: '', email: '', phone: '', city: '', loanType: 'immo', amount: '', durationYears: '20', employmentStatus: 'CDI' })
+                setNewDossierModalOpen(false)
+                // Navigate to contacts to see the new lead
+                router.push('/contacts')
+              } catch (e) {
+                setDossierError(e instanceof Error ? e.message : 'Erreur de création')
+              } finally {
+                setDossierSaving(false)
+              }
+            }}
+          >
+            {dossierSaving ? 'Création…' : 'Créer le dossier'}
+          </button>
         </div>
       </Modal>
     </>
