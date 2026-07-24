@@ -76,5 +76,8 @@ export function roundToDurationStep(
  * Ex: 150000 -> "150 000"
  */
 export function formatFrenchNumber(n: number): string {
-  return n.toLocaleString('fr-FR').replace(/,/g, ' ');
+  return n
+    .toLocaleString('fr-FR')
+    .replace(/[\u202f\u00a0]/g, ' ') // narrow no-break space / no-break space → space
+    .replace(/,/g, ' ');             // decimal comma → space
 }
