@@ -575,3 +575,49 @@ model Notification {
   @@index([recipientId, readAt])
   @@index([createdAt])
 }
+
+// -----------------------------------------------------------------------------
+// TESTIMONIAL — avis & témoignages clients affichés sur la landing page.
+// -----------------------------------------------------------------------------
+// L'admin crée/modifie/supprime des témoignages depuis le CRM.
+// Chaque témoignage est associé à une locale (DE par défaut, FR, EN...).
+// `isVisible` contrôle l'affichage public, `order` l'ordre d'affichage.
+model Testimonial {
+  id             String   @id @default(cuid())
+  authorName     String                     // "Marie Dupont"
+  authorRole     String?                    // "Salariée CDI"
+  authorLocation String?                    // "Lyon"
+  rating         Int      @default(5)       // 1-5 étoiles
+  content        String   @db.Text          // texte du témoignage
+  locale         String   @default("de")    // langue du témoignage
+  isVisible      Boolean  @default(true)    // affiché sur la landing ?
+  order          Int      @default(0)       // ordre d'affichage
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([locale, isVisible, order])
+}
+
+// -----------------------------------------------------------------------------
+// CONTENTBLOCK — sections de contenu éditables depuis le CMS (générique).
+// -----------------------------------------------------------------------------
+// Une seule table pour toutes les sections éditables de la landing :
+//   - section = "engagements"  → "Nos engagements" (cartes pledge)
+//   - section = "services"     → "Nos services" (cartes services)
+//   - futures sections éditables (avantages, process, FAQ...)
+// `items` est un JSON : [{icon, title, description}] — flexible et typé côté app.
+// Une entrée par (section, locale) : l'admin édite indépendamment DE/FR/EN...
+model ContentBlock {
+  id        String   @id @default(cuid())
+  section   String                     // "engagements" | "services" | ...
+  locale    String   @default("de")    // langue du contenu
+  eyebrow   String?                    // sur-titre optionnel (override i18n)
+  title     String?                    // titre optionnel (override i18n)
+  lead      String?                    // sous-titre optionnel (override i18n)
+  items     Json                       // [{icon, title, description}]
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@unique([section, locale])           // 1 block par section/locale
+  @@index([section, locale])
+}

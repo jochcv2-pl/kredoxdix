@@ -64,13 +64,6 @@ ENV DATABASE_URL="postgresql://build:build@localhost:5432/build?schema=public"
 # Génération du client Prisma AVANT le build Next.js (sinon @prisma/client absent).
 RUN pnpm --filter @kredix/db db:generate
 RUN pnpm build
-# DEBUG: vérifier la structure du standalone généré
-RUN echo "=== STANDALONE STRUCTURE ===" \
-    && find /app/apps/web/.next/standalone -name "server.js" -type f \
-    && echo "=== STANDALONE ROOT ===" \
-    && ls -la /app/apps/web/.next/standalone/ \
-    && echo "=== STANDALONE/apps/web ===" \
-    && ls -la /app/apps/web/.next/standalone/apps/web/ 2>/dev/null || true
 
 # -----------------------------------------------------------------------------
 # Stage 4 — migrator

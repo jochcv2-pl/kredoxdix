@@ -6,7 +6,7 @@ export const SUPPORTED_LOCALES: readonly Locale[] = ['fr', 'en', 'de', 'es', 'pt
 // Alias court utilisé par la couche i18n (next-intl).
 export const LOCALES = SUPPORTED_LOCALES;
 
-export const DEFAULT_LOCALE: Locale = 'fr';
+export const DEFAULT_LOCALE: Locale = 'de';
 
 export const LOCALE_LABELS: Record<Locale, string> = {
   fr: 'Français',

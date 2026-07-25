@@ -234,20 +234,6 @@ export function Login({ brandName = 'Kredix', logoUrl, logoAlt }: { brandName?: 
             </button>
           </form>
 
-          <div className="login-credentials">
-            <div className="login-credentials-title">
-              <Icon name="key" size={14} /> Identifiants de démonstration
-            </div>
-            <div className="login-credentials-row">
-              <b>Email</b>
-              <code onClick={() => setEmail('admin@kredix.local')}>admin@kredix.local</code>
-            </div>
-            <div className="login-credentials-row">
-              <b>Mot de passe</b>
-              <code onClick={() => setPassword('admin123')}>admin123</code>
-            </div>
-          </div>
-
           <div className="login-back">
             <a>← Retour au site Kredix.fr</a>
           </div>

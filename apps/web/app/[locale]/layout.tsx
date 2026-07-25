@@ -23,11 +23,37 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params;
 
-  // Lecture des SEO settings en DB (override admin via vue SEO).
-  // Fallback multilingue préservé si la clé n'existe pas encore en DB
-  // OU si la DB est indisponible (build Docker sans DB, panne runtime).
-  let title = 'Kredix - Courtier en financement';
-  let description = 'Kredix compare 40 banques pour vous obtenir le meilleur taux.';
+  // Fallbacks SEO multilingues (la DB reste la source primaire via settings).
+  // Ces valeurs ne s'affichent que si la DB est indispo OU la clé absente.
+  const SEO_FALLBACKS: Record<string, { title: string; description: string }> = {
+    fr: {
+      title: 'Kredix - Courtier en financement',
+      description: 'Kredix compare 40 banques pour vous obtenir le meilleur taux.',
+    },
+    de: {
+      title: 'Kredix – Finanzierungsvermittler',
+      description: 'Kredix vergleicht 40 Banken, um Ihnen den besten Zins zu sichern.',
+    },
+    en: {
+      title: 'Kredix – Loan Broker',
+      description: 'Kredix compares 40 banks to get you the best rate.',
+    },
+    es: {
+      title: 'Kredix – Broker de crédito',
+      description: 'Kredix compara 40 bancos para conseguirte la mejor tasa.',
+    },
+    pt: {
+      title: 'Kredix – Broker de crédito',
+      description: 'Kredix compara 40 bancos para obter a melhor taxa.',
+    },
+    it: {
+      title: 'Kredix – Broker di credito',
+      description: 'Kredix confronta 40 banche per offrirti il miglior tasso.',
+    },
+  };
+  const fb = SEO_FALLBACKS[locale] ?? SEO_FALLBACKS.de;
+  let title = fb.title;
+  let description = fb.description;
   let favicon = '/favicon.ico';
   try {
     [title, description, favicon] = await Promise.all([
@@ -45,8 +71,8 @@ export async function generateMetadata({
   for (const l of LOCALES) {
     alternates[l] = `${SITE_URL}/${l}`;
   }
-  // x-default → version par défaut (français)
-  alternates["x-default"] = `${SITE_URL}/fr`;
+  // x-default → locale par défaut (depuis @kredix/types DEFAULT_LOCALE = 'de')
+  alternates["x-default"] = `${SITE_URL}/de`;
 
   return {
     title,

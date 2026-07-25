@@ -897,7 +897,6 @@ L'équipe Kredix`,
       });
     }
   }
-  }
 
   // ---------------------------------------------------------------------------
   // EMAIL GATEWAYS — 3 fournisseurs configurés (1 actif)
@@ -1076,7 +1075,9 @@ L'équipe Kredix`,
     data: camp1Leads.map((l) => ({
       campaignId: camp1.id,
       leadId: l.id,
-      email: l.email,
+      // CampaignRecipient.email est obligatoire (String), Lead.email est optionnel (String?).
+      // On dérive un email de démo quand le lead n'en a pas.
+      email: l.email ?? `${l.firstName.toLowerCase()}.${l.lastName.toLowerCase()}@example.com`,
       firstName: l.firstName,
       lastName: l.lastName,
       status: CampaignRecipientStatus.pending,
@@ -1102,7 +1103,7 @@ L'équipe Kredix`,
     data: camp2Leads.map((l, i) => ({
       campaignId: camp2.id,
       leadId: l.id,
-      email: l.email,
+      email: l.email ?? `${l.firstName.toLowerCase()}.${l.lastName.toLowerCase()}@example.com`,
       firstName: l.firstName,
       lastName: l.lastName,
       status: i === 5 ? CampaignRecipientStatus.failed : CampaignRecipientStatus.sent,
@@ -1130,7 +1131,7 @@ L'équipe Kredix`,
     data: camp3Leads.map((l, i) => ({
       campaignId: camp3.id,
       leadId: l.id,
-      email: l.email,
+      email: l.email ?? `${l.firstName.toLowerCase()}.${l.lastName.toLowerCase()}@example.com`,
       firstName: l.firstName,
       lastName: l.lastName,
       status: CampaignRecipientStatus.sent,

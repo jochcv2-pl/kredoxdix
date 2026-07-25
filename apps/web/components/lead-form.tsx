@@ -127,25 +127,25 @@ export default function LeadForm({ prefill }: { prefill?: LeadFormPrefill }) {
   const handleSubmit = async () => {
     setFormError("");
 
-    // Validation côté client (Fix 2)
+    // Validation côté client (clés i18n — SKILLS_CORE : jamais de texte hardcoded)
     if (!employment) {
-      setFormError("Veuillez sélectionner votre situation professionnelle");
+      setFormError(t("validationEmployment"));
       return;
     }
     if (!loanType) {
-      setFormError("Veuillez sélectionner le type de crédit");
+      setFormError(t("validationLoanType"));
       return;
     }
     if (amount === "" || Number(amount) < 5000) {
-      setFormError("Le montant minimum est de 5 000 €");
+      setFormError(t("validationAmount"));
       return;
     }
     if (duration === "" || Number(duration) < 1) {
-      setFormError("Veuillez indiquer la durée souhaitée");
+      setFormError(t("validationDuration"));
       return;
     }
     if (!consent) {
-      setFormError("Veuillez accepter d'être contacté(e) pour soumettre votre demande");
+      setFormError(t("validationConsent"));
       return;
     }
 
@@ -178,7 +178,7 @@ export default function LeadForm({ prefill }: { prefill?: LeadFormPrefill }) {
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
         throw new Error(
-          errorData?.error || "Une erreur est survenue. Veuillez réessayer."
+          errorData?.error || t("errorGeneric")
         );
       }
 
@@ -195,7 +195,7 @@ export default function LeadForm({ prefill }: { prefill?: LeadFormPrefill }) {
       setSubmitError(
         err instanceof Error
           ? err.message
-          : "Une erreur inconnue est survenue."
+          : t("errorUnknown")
       );
     }
   };
@@ -241,14 +241,14 @@ export default function LeadForm({ prefill }: { prefill?: LeadFormPrefill }) {
           />
         </div>
         <div className="fg full">
-          <label className="field-label">Email (optionnel)</label>
+          <label className="field-label">{t("emailOptional")}</label>
           <input
             type="email"
             placeholder="marie.dupont@email.fr"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
-          <span className="fhint">Pour recevoir votre offre et le tableau d&apos;amortissement par email</span>
+          <span className="fhint">{t("emailHint")}</span>
         </div>
         <div className="fg">
           <label className="field-label">{t("city")}</label>
@@ -394,7 +394,7 @@ export default function LeadForm({ prefill }: { prefill?: LeadFormPrefill }) {
         </div>
       )}
 
-      {/* Consentement RGPD (Fix 1) */}
+      {/* Consentement RGPD (clé i18n —jamais de texte hardcoded) */}
       <label className="lf-consent">
         <input
           type="checkbox"
@@ -403,8 +403,8 @@ export default function LeadForm({ prefill }: { prefill?: LeadFormPrefill }) {
           required
         />
         <span>
-          J&apos;accepte d&apos;être contacté(e) par WhatsApp et email concernant ma demande de crédit.{" "}
-          <a href={`/${locale}/legal/politique-confidentialite`}>(voir notre politique de confidentialité)</a>
+          {t("consentText")}{" "}
+          <a href={`/${locale}/legal/politique-confidentialite`}>{t("consentLink")}</a>
         </span>
       </label>
 

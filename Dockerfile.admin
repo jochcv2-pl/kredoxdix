@@ -40,13 +40,6 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 RUN pnpm --filter @kredix/db db:generate
 RUN pnpm build
-# DEBUG: vérifier la structure du standalone généré
-RUN echo "=== STANDALONE STRUCTURE ===" \
-    && find /app/apps/admin/.next/standalone -name "server.js" -type f \
-    && echo "=== STANDALONE ROOT ===" \
-    && ls -la /app/apps/admin/.next/standalone/ \
-    && echo "=== STANDALONE/apps/admin ===" \
-    && ls -la /app/apps/admin/.next/standalone/apps/admin/ 2>/dev/null || true
 
 # -----------------------------------------------------------------------------
 # Stage 4 — runner (apps/admin, port 3001)
