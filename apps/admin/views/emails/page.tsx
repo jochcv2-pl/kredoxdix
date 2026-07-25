@@ -502,7 +502,7 @@ export default function Emails() {
               <div className="preview">
                 <div className="pv-head">
                   <div className="pv-head-info">
-                    <div className="pv-from">De : conseiller@kredix.fr</div>
+                    <div className="pv-from">De : expediteur@votredomaine.com</div>
                     <div className="pv-subj">{renderFilled(subjInput, previewMode)}</div>
                   </div>
                   <button className="pv-expand-btn" title="Aperçu plein écran" onClick={() => setFullPreviewOpen(true)}>
@@ -666,7 +666,7 @@ export default function Emails() {
       {/* ===== FULLSCREEN PREVIEW (éditeur visuel) ===== */}
       <Modal isOpen={fullPreviewOpen} onClose={() => setFullPreviewOpen(false)} title="Aperçu plein écran — Modèle d'email">
         <div className="fs-preview-head">
-          <div className="pv-from">De : conseiller@kredix.fr</div>
+          <div className="pv-from">De : expediteur@votredomaine.com</div>
           <div className="pv-subj">{renderFilled(subjInput, previewMode)}</div>
         </div>
         <div className="fs-preview-body">

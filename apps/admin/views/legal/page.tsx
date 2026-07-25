@@ -245,7 +245,7 @@ export default function Legal() {
                 placeholder="impressum"
                 className="form-input"
               />
-              <small style={{ color: '#9ca3af', fontSize: 12 }}>Apparaît comme : kredix.fr/<b>{form.slug || 'slug'}</b></small>
+              <small style={{ color: '#9ca3af', fontSize: 12 }}>Apparaît comme : /legal/<b>{form.slug || 'slug'}</b></small>
             </label>
             <label className="form-field" style={{ flex: 1 }}>
               <span className="form-label">Langue</span>

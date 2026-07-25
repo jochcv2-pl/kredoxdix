@@ -224,7 +224,7 @@ async function main() {
     },
     {
       key: 'cadence_sending_domain',
-      value: 'kredix.fr',
+      value: '',
       category: 'cadence',
       description: 'Domaine d\'envoi des emails (doit être configuré chez le fournisseur : SPF, DKIM, DMARC).',
     },
@@ -258,7 +258,7 @@ async function main() {
       key: 'from_email',
       value: '',
       category: 'email',
-      description: 'Adresse d\'expédition globale des emails transactionnels (ex: Kredix <noreply@kredix.fr>). Prioritaire sur le fallback hardcoded. Configurable depuis Paramètres → Email. Si vide, fallback sur config du gateway actif ou DEFAULT_FROM.',
+      description: 'Adresse d\'expédition globale des emails (ex: Marque <contact@votredomaine.com>). Si vide, utilise le nom d\'utilisateur SMTP du gateway actif. Configurable depuis Paramètres → Emails.',
     },
     // ===== TRACKING (activation admin — vide = désactivé) =====
     {
@@ -922,19 +922,19 @@ L'équipe Kredix`,
     {
       provider: GatewayProvider.resend,
       label: 'Resend',
-      config: { domain: 'kredix.fr', mode: 'api', region: 'eu-west' },
+      config: { mode: 'api', region: 'eu-west' },
       isActive: true,
     },
     {
       provider: GatewayProvider.brevo,
       label: 'Brevo',
-      config: { domain: 'kredix.fr', mode: 'api' },
+      config: { mode: 'api' },
       isActive: false,
     },
     {
       provider: GatewayProvider.smtp,
-      label: 'SMTP Hostinger',
-      config: { host: 'smtp.hostinger.com', port: 465, mode: 'smtp', username: 'noreply@kredix.fr' },
+      label: 'SMTP personnalisé',
+      config: {},
       isActive: false,
     },
   ];
@@ -1154,10 +1154,9 @@ L'équipe Kredix`,
   // Domains — 3 sous-domaines + 1 marque blanche
   // ---------------------------------------------------------------------------
   const domainsData = [
-    { domain: 'kredix.fr',         type: DomainType.site,  brandName: 'Kredix', isPrimary: true, sslStatus: 'active' },
-    { domain: 'crm.kredix.fr',     type: DomainType.admin, brandName: 'Kredix', isPrimary: true, sslStatus: 'active' },
-    { domain: 'mail.kredix.fr',    type: DomainType.mail,  brandName: null,     isPrimary: true, sslStatus: 'active' },
-    { domain: 'moncredit.fr',      type: DomainType.brand, brandName: 'MonCrédit', isPrimary: false, sslStatus: 'pending', primaryColor: '#7c3aed' },
+    { domain: 'votredomaine.com',    type: DomainType.site,  brandName: 'Kredix', isPrimary: true, sslStatus: 'active' },
+    { domain: 'crm.votredomaine.com', type: DomainType.admin, brandName: 'Kredix', isPrimary: true, sslStatus: 'active' },
+    { domain: 'mail.votredomaine.com', type: DomainType.mail,  brandName: null,     isPrimary: true, sslStatus: 'active' },
   ];
   for (const d of domainsData) {
     await prisma.domain.upsert({ where: { domain: d.domain }, update: d, create: d });

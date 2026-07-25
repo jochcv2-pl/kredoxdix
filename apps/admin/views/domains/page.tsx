@@ -28,9 +28,9 @@ interface Domain {
 }
 
 const TYPE_CONFIG: Record<DomainType, { label: string; cls: string; desc: string; ex: string }> = {
-  site:  { label: 'Site public',    cls: 'b-client',  desc: 'Site public principal',          ex: 'kredix.fr' },
-  admin: { label: 'Admin CRM',      cls: 'b-offer',   desc: 'Interface admin CRM',            ex: 'crm.kredix.fr' },
-  mail:  { label: 'Envoi emails',   cls: 'b-contact', desc: "Domaine d'envoi d'emails",       ex: 'mail.kredix.fr' },
+  site:  { label: 'Site public',    cls: 'b-client',  desc: 'Site public principal',          ex: 'votredomaine.com' },
+  admin: { label: 'Admin CRM',      cls: 'b-offer',   desc: 'Interface admin CRM',            ex: 'crm.votredomaine.com' },
+  mail:  { label: 'Envoi emails',   cls: 'b-contact', desc: "Domaine d'envoi d'emails",       ex: 'mail.votredomaine.com' },
   brand: { label: 'Marque blanche', cls: 'b-new',     desc: 'Marque blanche / domaine secondaire', ex: 'moncredit.fr' },
 }
 

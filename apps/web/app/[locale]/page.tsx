@@ -69,7 +69,7 @@ export default async function HomePage({
 
   // Coordonnées dynamiques (section contact).
   const whatsapp = settings.whatsapp_number || "";
-  const contactEmail = settings.contact_email || "contact@kredix.fr";
+  const contactEmail = settings.contact_email || "contact@votredomaine.com";
   const contactPhone = settings.contact_phone || "";
 
   // WhatsApp link : nettoie tout sauf les chiffres pour wa.me.

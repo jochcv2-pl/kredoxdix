@@ -16,7 +16,7 @@ export const DEFAULT_FOOTER: EmailFooterData = {
   brand: 'Kredix',
   brandAccent: 'x',
   phone: '+33 1 00 00 00 00',
-  email: 'conseiller@kredix.fr',
+  email: '',
   orias: 'ORIAS 00000000',
   legal: "Kredix — Courtier en financement, intermédiaire en opération de banque et en services de paiement. Inscription ORIAS n°00000000 (www.orias.fr). Garantie et responsabilité professionnelle souscrites auprès d'une compagnie accréditée. Capital social : 100 000 €.",
   link1: 'Désinscription',

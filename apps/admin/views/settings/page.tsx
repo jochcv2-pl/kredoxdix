@@ -51,7 +51,7 @@ const CADENCE_KEYS = {
 const PROVIDER_LABEL: Record<Gateway['provider'], string> = {
   resend: 'Resend',
   brevo: 'Brevo',
-  smtp: 'SMTP Hostinger',
+  smtp: 'SMTP personnalisé',
 }
 
 const TRACKING_KEYS = {
@@ -566,7 +566,7 @@ export default function Settings() {
               <input
                 type="text"
                 className="set-input"
-                placeholder="kredix.fr"
+                placeholder="votredomaine.com"
                 value={settings[CADENCE_KEYS.sendingDomain] ?? ''}
                 onChange={(e) => setSetting(CADENCE_KEYS.sendingDomain, e.target.value)}
               />
@@ -762,7 +762,7 @@ export default function Settings() {
                       <label>Hôte SMTP</label>
                       <input
                         type="text"
-                        placeholder="smtp.hostinger.com"
+                        placeholder="smtp.votrefournisseur.com"
                         defaultValue={(g.config?.host as string) || ''}
                         onBlur={(e) => {
                           const val = e.target.value
@@ -809,7 +809,7 @@ export default function Settings() {
                       <label>Nom d'utilisateur (email)</label>
                       <input
                         type="text"
-                        placeholder="noreply@kredix.fr"
+                        placeholder="contact@votredomaine.com"
                         defaultValue={(g.config?.username as string) || ''}
                         onBlur={(e) => {
                           const val = e.target.value
@@ -991,7 +991,7 @@ function NewGatewayForm({
   const [provider, setProvider] = useState<Gateway['provider']>('resend')
   const [label, setLabel] = useState('')
   const [apiKey, setApiKey] = useState('')
-  const [smtpHost, setSmtpHost] = useState('smtp.hostinger.com')
+  const [smtpHost, setSmtpHost] = useState('')
   const [smtpPort, setSmtpPort] = useState('465')
   const [smtpEncryption, setSmtpEncryption] = useState('ssl')
   const [smtpUsername, setSmtpUsername] = useState('')
@@ -1013,7 +1013,7 @@ function NewGatewayForm({
         >
           <option value="resend">Resend</option>
           <option value="brevo">Brevo</option>
-          <option value="smtp">SMTP Hostinger</option>
+          <option value="smtp">SMTP personnalisé</option>
         </select>
       </div>
       <div className="modal-fg">
@@ -1042,7 +1042,7 @@ function NewGatewayForm({
               <label>Hôte SMTP</label>
               <input
                 type="text"
-                placeholder="smtp.hostinger.com"
+                placeholder="smtp.votrefournisseur.com"
                 value={smtpHost}
                 onChange={(e) => setSmtpHost(e.target.value)}
               />
@@ -1074,7 +1074,7 @@ function NewGatewayForm({
             <label>Nom d'utilisateur (email)</label>
             <input
               type="text"
-              placeholder="noreply@kredix.fr"
+              placeholder="contact@votredomaine.com"
               value={smtpUsername}
               onChange={(e) => setSmtpUsername(e.target.value)}
             />

@@ -35,14 +35,13 @@ type EffectiveSendParams = Required<Pick<SendEmailParams, 'to' | 'subject' | 'ht
   attachments?: EmailAttachment[];
 };
 
-const DEFAULT_FROM = 'Kredix <noreply@kredix.fr>';
-
 /**
  * Résout l'adresse d'expédition dans l'ordre de priorité :
  * 1. config.from (spécifique au gateway — JSON EmailGateway.config)
  * 2. Setting from_email (global CMS admin — configurable depuis Paramètres)
  * 3. params.from (override caller — ex: campagne avec expéditeur dédié)
- * 4. DEFAULT_FROM (fallback hardcoded — dernier recours)
+ * 4. config.username (SMTP — l'utilisateur SMTP est l'adresse d'envoi)
+ * 5. Erreur (pas de fallback hardcoded — l'admin doit configurer son adresse)
  */
 async function resolveFrom(
   config: Record<string, unknown>,
@@ -56,8 +55,12 @@ async function resolveFrom(
   if (settingFrom) return settingFrom;
   // 3. Caller override
   if (paramsFrom) return paramsFrom;
-  // 4. Hardcoded fallback
-  return DEFAULT_FROM;
+  // 4. SMTP username (pour les gateways SMTP, le username = adresse d'envoi)
+  const smtpUser = config.username as string | undefined;
+  if (smtpUser) return smtpUser;
+  // 5. Aucune adresse configurée — on retourne une chaîne vide.
+  //    Le caller doit vérifier et retourner une erreur explicite.
+  return '';
 }
 
 export async function sendEmail(
@@ -66,6 +69,14 @@ export async function sendEmail(
 ): Promise<SendEmailResult> {
   const config = (gateway.config ?? {}) as Record<string, unknown>;
   const from = await resolveFrom(config, params.from);
+
+  if (!from) {
+    return {
+      success: false,
+      error: "Aucune adresse d'expédition configurée. Allez dans Paramètres → Emails pour définir le from_email, ou renseignez le nom d'utilisateur SMTP du gateway.",
+    };
+  }
+
   const apiKey = gateway.apiKey;
 
   if (!apiKey && gateway.provider !== GatewayProvider.smtp) {
