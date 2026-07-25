@@ -221,7 +221,7 @@ export default async function HomePage({
                       />
                     ))}
                   </div>
-                  <p className="tst-content">"{tst.content}"</p>
+                  <p className="tst-content">&ldquo;{tst.content}&rdquo;</p>
                   <div className="tst-author">
                     <div className="tst-avatar">
                       {tst.authorName.charAt(0).toUpperCase()}
