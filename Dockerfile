@@ -125,11 +125,12 @@ RUN addgroup --system --gid 1001 nodejs \
     && adduser --system --uid 1001 nextjs
 
 # Copie du build standalone (server.js + node_modules minimaux).
-# Next.js standalone génère server.js à la racine de standalone/ (pas dans apps/web/).
+# Avec outputFileTracingRoot, standalone préserve la structure monorepo :
+# standalone/apps/web/server.js + standalone/node_modules/
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
-# Assets statiques et publics (non inclus dans standalone, à copuer à la racine).
-COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./public
+# Assets statiques et publics (non inclus dans standalone).
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
 
 USER nextjs
 EXPOSE 3000
@@ -142,4 +143,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD node -e "fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 # server.js est généré par Next.js standalone à la racine de apps/web.
-CMD ["node", "server.js"]
+CMD ["node", "apps/web/server.js"]
