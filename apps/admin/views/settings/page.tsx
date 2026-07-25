@@ -67,13 +67,14 @@ export default function Settings() {
   const [settings, setSettings] = useState<Record<string, string>>({})
   const [gateways, setGateways] = useState<Gateway[]>([])
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  const [saveModalOpen, setSaveModalOpen] = useState(false)
+  const [sectionSaving, setSectionSaving] = useState<string | null>(null)
+  const [sectionSaved, setSectionSaved] = useState<string | null>(null)
+  const [trackingTest, setTrackingTest] = useState<{ key: string; loading: boolean; result?: { success: boolean; message: string } } | null>(null)
   const [testModalOpen, setTestModalOpen] = useState(false)
   const [testLoading, setTestLoading] = useState(false)
   const [testResult, setTestResult] = useState<{ success: boolean; model?: string; engine?: string; endpoint?: string; latencyMs?: number; error?: string } | null>(null)
+
   const [newGatewayModalOpen, setNewGatewayModalOpen] = useState(false)
   const [deleteGatewayTarget, setDeleteGatewayTarget] = useState<Gateway | null>(null)
 
@@ -116,30 +117,15 @@ export default function Settings() {
     setSettings((prev) => ({ ...prev, [key]: value }))
   }
 
-  // Sauvegarde Modèle IA + Cadence (POST /api/settings — upsert).
-  const saveConfig = async () => {
-    setSaving(true)
+  // Sauvegarde une section (clés multiples) — POST /api/settings par clé.
+  const saveSection = async (
+    section: string,
+    keys: Array<{ key: string; value: string; category: string }>,
+  ) => {
+    setSectionSaving(section)
     setError(null)
     try {
-      const payload: Array<{ key: string; value: string; category: string }> = [
-        { key: AI_KEYS.modelName, value: settings[AI_KEYS.modelName] ?? '', category: 'ai.model' },
-        { key: AI_KEYS.engine, value: settings[AI_KEYS.engine] ?? '', category: 'ai.model' },
-        { key: AI_KEYS.endpoint, value: settings[AI_KEYS.endpoint] ?? '', category: 'ai.model' },
-        { key: AI_KEYS.temperature, value: settings[AI_KEYS.temperature] ?? '', category: 'ai.model' },
-        { key: AI_KEYS.maxTokens, value: settings[AI_KEYS.maxTokens] ?? '', category: 'ai.model' },
-        { key: CADENCE_KEYS.dailyCap, value: settings[CADENCE_KEYS.dailyCap] ?? '', category: 'cadence' },
-        { key: CADENCE_KEYS.intervalMin, value: settings[CADENCE_KEYS.intervalMin] ?? '', category: 'cadence' },
-        { key: CADENCE_KEYS.intervalMax, value: settings[CADENCE_KEYS.intervalMax] ?? '', category: 'cadence' },
-        { key: CADENCE_KEYS.warmupWeeks, value: settings[CADENCE_KEYS.warmupWeeks] ?? '', category: 'cadence' },
-        { key: CADENCE_KEYS.ipType, value: settings[CADENCE_KEYS.ipType] ?? 'shared', category: 'cadence' },
-        { key: CADENCE_KEYS.dedicatedIp, value: settings[CADENCE_KEYS.dedicatedIp] ?? '', category: 'cadence' },
-        { key: CADENCE_KEYS.sendingDomain, value: settings[CADENCE_KEYS.sendingDomain] ?? '', category: 'cadence' },
-        { key: 'from_email', value: settings['from_email'] ?? '', category: 'email' },
-        { key: TRACKING_KEYS.fbPixel, value: settings[TRACKING_KEYS.fbPixel] ?? '', category: 'tracking' },
-        { key: TRACKING_KEYS.gaTracking, value: settings[TRACKING_KEYS.gaTracking] ?? '', category: 'tracking' },
-      ]
-
-      for (const p of payload) {
+      for (const p of keys) {
         const res = await fetch('/api/settings', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -147,11 +133,73 @@ export default function Settings() {
         })
         if (!res.ok) throw new Error(`Échec enregistrement ${p.key}`)
       }
-      setSaveModalOpen(false)
+      setSectionSaved(section)
+      setTimeout(() => setSectionSaved(null), 2500)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erreur inconnue')
     } finally {
-      setSaving(false)
+      setSectionSaving(null)
+    }
+  }
+
+  // Sauvegarde section IA
+  const saveAI = () => saveSection('ai', [
+    { key: AI_KEYS.modelName, value: settings[AI_KEYS.modelName] ?? '', category: 'ai.model' },
+    { key: AI_KEYS.engine, value: settings[AI_KEYS.engine] ?? '', category: 'ai.model' },
+    { key: AI_KEYS.endpoint, value: settings[AI_KEYS.endpoint] ?? '', category: 'ai.model' },
+    { key: AI_KEYS.temperature, value: settings[AI_KEYS.temperature] ?? '', category: 'ai.model' },
+    { key: AI_KEYS.maxTokens, value: settings[AI_KEYS.maxTokens] ?? '', category: 'ai.model' },
+  ])
+
+  // Sauvegarde section Cadence
+  const saveCadence = () => saveSection('cadence', [
+    { key: CADENCE_KEYS.dailyCap, value: settings[CADENCE_KEYS.dailyCap] ?? '', category: 'cadence' },
+    { key: CADENCE_KEYS.intervalMin, value: settings[CADENCE_KEYS.intervalMin] ?? '', category: 'cadence' },
+    { key: CADENCE_KEYS.intervalMax, value: settings[CADENCE_KEYS.intervalMax] ?? '', category: 'cadence' },
+    { key: CADENCE_KEYS.warmupWeeks, value: settings[CADENCE_KEYS.warmupWeeks] ?? '', category: 'cadence' },
+    { key: CADENCE_KEYS.ipType, value: settings[CADENCE_KEYS.ipType] ?? 'shared', category: 'cadence' },
+    { key: CADENCE_KEYS.dedicatedIp, value: settings[CADENCE_KEYS.dedicatedIp] ?? '', category: 'cadence' },
+    { key: CADENCE_KEYS.sendingDomain, value: settings[CADENCE_KEYS.sendingDomain] ?? '', category: 'cadence' },
+  ])
+
+  // Sauvegarde section Tracking
+  const saveTracking = () => saveSection('tracking', [
+    { key: TRACKING_KEYS.fbPixel, value: settings[TRACKING_KEYS.fbPixel] ?? '', category: 'tracking' },
+    { key: TRACKING_KEYS.gaTracking, value: settings[TRACKING_KEYS.gaTracking] ?? '', category: 'tracking' },
+  ])
+
+  // Sauvegarde section Email (from_email)
+  const saveEmail = () => saveSection('email', [
+    { key: 'from_email', value: settings['from_email'] ?? '', category: 'email' },
+  ])
+
+  // Test de tracking (FB Pixel / GA4) — valide le format de l'ID.
+  const testTracking = async (type: 'fb_pixel' | 'ga4') => {
+    const key = type === 'fb_pixel' ? TRACKING_KEYS.fbPixel : TRACKING_KEYS.gaTracking
+    const value = settings[key] ?? ''
+    setTrackingTest({ key: type, loading: true })
+    try {
+      const res = await fetch('/api/tracking/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, id: value }),
+      })
+      const json = await res.json()
+      const data = json.data ?? json
+      setTrackingTest({
+        key: type,
+        loading: false,
+        result: {
+          success: data.valid,
+          message: data.message || (data.valid ? 'ID valide' : 'ID invalide'),
+        },
+      })
+    } catch {
+      setTrackingTest({
+        key: type,
+        loading: false,
+        result: { success: false, message: 'Erreur réseau' },
+      })
     }
   }
 
@@ -220,6 +268,7 @@ export default function Settings() {
     provider: Gateway['provider'],
     label: string,
     apiKey: string,
+    config?: Record<string, unknown>,
   ) => {
     setError(null)
     try {
@@ -230,6 +279,7 @@ export default function Settings() {
           provider,
           label: label || PROVIDER_LABEL[provider],
           apiKey: apiKey || null,
+          config: config || {},
           isActive: false,
         }),
       })
@@ -266,8 +316,6 @@ export default function Settings() {
     )
   }
 
-  const activeGateway = gateways.find((g) => g.isActive)
-
   return (
     <section className="view" id="settings">
       {error && (
@@ -285,7 +333,6 @@ export default function Settings() {
         <div className="panel">
           <div className="panel-head">
             <h3>Modèle d&apos;IA</h3>
-            <span className="link" onClick={() => setTestModalOpen(true)}>Tester la connexion</span>
           </div>
           <div className="panel-body" style={{ paddingTop: '16px' }}>
             <p className="field-hint">
@@ -340,9 +387,14 @@ export default function Settings() {
               </div>
               <span className="pill-on">Configuré</span>
             </div>
-            <button className="btn btn-primary" style={{ marginTop: '12px' }} onClick={() => setSaveModalOpen(true)}>
-              Enregistrer la configuration
-            </button>
+            <div style={{ display: 'flex', gap: '8px', marginTop: '12px', alignItems: 'center' }}>
+              <button className="btn btn-primary" onClick={saveAI} disabled={sectionSaving === 'ai'}>
+                {sectionSaving === 'ai' ? 'Enregistrement…' : sectionSaved === 'ai' ? '✓ Enregistré' : 'Enregistrer'}
+              </button>
+              <button className="btn btn-ghost" onClick={() => { setTestModalOpen(true); setTestResult(null) }}>
+                Tester la connexion
+              </button>
+            </div>
           </div>
         </div>
 
@@ -519,6 +571,11 @@ export default function Settings() {
                 onChange={(e) => setSetting(CADENCE_KEYS.sendingDomain, e.target.value)}
               />
             </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
+              <button className="btn btn-primary" onClick={saveCadence} disabled={sectionSaving === 'cadence'}>
+                {sectionSaving === 'cadence' ? 'Enregistrement…' : sectionSaved === 'cadence' ? '✓ Enregistré' : 'Enregistrer'}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -545,6 +602,11 @@ export default function Settings() {
                 onChange={(e) => setSetting(TRACKING_KEYS.fbPixel, e.target.value)}
               />
             </div>
+            {trackingTest?.key === 'fb_pixel' && trackingTest.result && (
+              <div style={{ fontSize: 12, marginTop: '-8px', marginBottom: '8px', color: trackingTest.result.success ? 'var(--green)' : 'var(--red, #dc2626)' }}>
+                {trackingTest.result.success ? '✓' : '✗'} {trackingTest.result.message}
+              </div>
+            )}
             <div className="set-row">
               <div className="set-label">
                 <b>Google Analytics 4</b>
@@ -558,6 +620,32 @@ export default function Settings() {
                 onChange={(e) => setSetting(TRACKING_KEYS.gaTracking, e.target.value)}
               />
             </div>
+            {trackingTest?.key === 'ga4' && trackingTest.result && (
+              <div style={{ fontSize: 12, marginTop: '-8px', marginBottom: '8px', color: trackingTest.result.success ? 'var(--green)' : 'var(--red, #dc2626)' }}>
+                {trackingTest.result.success ? '✓' : '✗'} {trackingTest.result.message}
+              </div>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '12px' }}>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => testTracking('fb_pixel')}
+                  disabled={trackingTest?.key === 'fb_pixel' && trackingTest.loading}
+                >
+                  {trackingTest?.key === 'fb_pixel' && trackingTest.loading ? 'Test…' : 'Tester Pixel'}
+                </button>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => testTracking('ga4')}
+                  disabled={trackingTest?.key === 'ga4' && trackingTest.loading}
+                >
+                  {trackingTest?.key === 'ga4' && trackingTest.loading ? 'Test…' : 'Tester GA4'}
+                </button>
+              </div>
+              <button className="btn btn-primary" onClick={saveTracking} disabled={sectionSaving === 'tracking'}>
+                {sectionSaving === 'tracking' ? 'Enregistrement…' : sectionSaved === 'tracking' ? '✓ Enregistré' : 'Enregistrer'}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -570,14 +658,24 @@ export default function Settings() {
           <div className="panel-body" style={{ paddingTop: '14px' }}>
             {/* Adresse d'expédition globale */}
             <div className="fg" style={{ marginBottom: 16 }}>
-              <label>Adresse d&apos;expédition (from_email)</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                <label>Adresse d&apos;expédition (from_email)</label>
+                <button
+                  className="btn btn-primary btn-sm"
+                  style={{ fontSize: 12, padding: '4px 12px' }}
+                  onClick={saveEmail}
+                  disabled={sectionSaving === 'email'}
+                >
+                  {sectionSaving === 'email' ? 'Enregistrement…' : sectionSaved === 'email' ? '✓ Enregistré' : 'Enregistrer'}
+                </button>
+              </div>
               <input
                 value={settings['from_email'] ?? ''}
                 onChange={(e) => setSettings((prev) => ({ ...prev, from_email: e.target.value }))}
                 placeholder="Marque <noreply@domaine.fr>"
               />
               <small className="field-hint">
- Utilisé pour tous les emails transactionnels. Si vide, fallback sur la config du gateway actif ou l&apos;adresse par défaut.
+                Utilisé pour tous les emails transactionnels. Si vide, fallback sur la config du gateway actif ou l&apos;adresse par défaut.
               </small>
             </div>
 
@@ -603,18 +701,40 @@ export default function Settings() {
                     />
                     <b>{g.label}</b>
                   </label>
-                  {g.isActive ? (
-                    <span className="prov-badge">Actif</span>
-                  ) : (
-                    <span className="prov-badge-off">Inactif</span>
-                  )}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      style={{ fontSize: 12, padding: '4px 10px' }}
+                      onClick={async () => {
+                        setError(null)
+                        try {
+                          const res = await fetch(`/api/gateways/${g.id}/test`, { method: 'POST' })
+                          const body = await res.json()
+                          if (body.success || body.data?.success) {
+                            alert(`✅ Email de test envoyé avec succès via ${g.label}`)
+                          } else {
+                            alert(`❌ Échec : ${body.data?.error || body.error || 'Erreur inconnue'}`)
+                          }
+                        } catch {
+                          alert('❌ Impossible de tester la passerelle')
+                        }
+                      }}
+                    >
+                      Tester
+                    </button>
+                    {g.isActive ? (
+                      <span className="prov-badge">Actif</span>
+                    ) : (
+                      <span className="prov-badge-off">Inactif</span>
+                    )}
+                  </div>
                 </div>
                 <div className="frow" style={{ marginBottom: '0', marginTop: '12px' }}>
                   <div className="fg">
-                    <label>Clé API</label>
+                    <label>{g.provider === 'smtp' ? 'Mot de passe SMTP' : 'Clé API'}</label>
                     <input
                       type="password"
-                      placeholder={g.provider === 'brevo' ? 'xkeysib-…' : 're_… / smtp pass'}
+                      placeholder={g.provider === 'brevo' ? 'xkeysib-…' : g.provider === 'resend' ? 're_…' : 'Mot de passe SMTP'}
                       defaultValue={g.apiKey ?? ''}
                       onBlur={(e) => {
                         if (e.target.value !== (g.apiKey ?? '')) {
@@ -635,6 +755,72 @@ export default function Settings() {
                     />
                   </div>
                 </div>
+                {/* Champs SMTP supplémentaires */}
+                {g.provider === 'smtp' && (
+                  <div className="frow" style={{ marginBottom: '0', marginTop: '8px' }}>
+                    <div className="fg" style={{ flex: 2 }}>
+                      <label>Hôte SMTP</label>
+                      <input
+                        type="text"
+                        placeholder="smtp.hostinger.com"
+                        defaultValue={(g.config?.host as string) || ''}
+                        onBlur={(e) => {
+                          const val = e.target.value
+                          if (val !== (g.config?.host as string)) {
+                            updateGateway(g.id, { config: { ...g.config, host: val } })
+                          }
+                        }}
+                      />
+                    </div>
+                    <div className="fg" style={{ flex: 1 }}>
+                      <label>Port</label>
+                      <input
+                        type="number"
+                        placeholder="465"
+                        defaultValue={(g.config?.port as number) || ''}
+                        onBlur={(e) => {
+                          const val = Number(e.target.value)
+                          if (val !== (g.config?.port as number)) {
+                            updateGateway(g.id, { config: { ...g.config, port: val } })
+                          }
+                        }}
+                      />
+                    </div>
+                    <div className="fg" style={{ flex: 1 }}>
+                      <label>Chiffrement</label>
+                      <select
+                        defaultValue={(g.config?.encryption as string) || (Number(g.config?.port) === 465 ? 'ssl' : 'starttls')}
+                        onChange={(e) => {
+                          const enc = e.target.value
+                          const newPort = enc === 'ssl' ? 465 : 587
+                          updateGateway(g.id, { config: { ...g.config, encryption: enc, port: newPort } })
+                        }}
+                      >
+                        <option value="ssl">SSL/TLS (465)</option>
+                        <option value="starttls">STARTTLS (587)</option>
+                        <option value="none">Aucun</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+                {g.provider === 'smtp' && (
+                  <div className="frow" style={{ marginBottom: '0', marginTop: '8px' }}>
+                    <div className="fg">
+                      <label>Nom d'utilisateur (email)</label>
+                      <input
+                        type="text"
+                        placeholder="noreply@kredix.fr"
+                        defaultValue={(g.config?.username as string) || ''}
+                        onBlur={(e) => {
+                          const val = e.target.value
+                          if (val !== (g.config?.username as string)) {
+                            updateGateway(g.id, { config: { ...g.config, username: val } })
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
                   <button
                     className="btn btn-ghost"
@@ -693,32 +879,6 @@ export default function Settings() {
           </div>
         </div>
       </div>
-
-      {/* =========================================================================
-          MODAL SAVE — Modèle IA + Cadence
-          ========================================================================= */}
-      <Modal
-        isOpen={saveModalOpen}
-        onClose={() => setSaveModalOpen(false)}
-        title="Enregistrer la configuration"
-      >
-        <p className="field-hint">
-          La configuration sera sauvegardée. Le redémarrage des agents IA sera automatique.
-        </p>
-        <p style={{ fontSize: 13, color: 'var(--ink)', lineHeight: 1.6 }}>
-          <b>Modèle :</b> {settings[AI_KEYS.modelName] || '—'} ({settings[AI_KEYS.engine] || '—'})<br />
-          <b>Passerelle active :</b> {activeGateway ? activeGateway.label : 'Aucune'}<br />
-          <b>Cadence :</b> {settings[CADENCE_KEYS.dailyCap] || '—'} emails/jour max
-        </p>
-        <div className="modal-actions">
-          <button className="btn btn-ghost" onClick={() => setSaveModalOpen(false)} disabled={saving}>
-            Annuler
-          </button>
-          <button className="btn btn-primary" onClick={saveConfig} disabled={saving}>
-            {saving ? 'Enregistrement…' : 'Confirmer'}
-          </button>
-        </div>
-      </Modal>
 
       {/* =========================================================================
           MODAL TEST CONNECTION (réel — POST /api/ai/test)
@@ -826,11 +986,15 @@ function NewGatewayForm({
   onCreate,
 }: {
   onCancel: () => void
-  onCreate: (provider: Gateway['provider'], label: string, apiKey: string) => void
+  onCreate: (provider: Gateway['provider'], label: string, apiKey: string, config?: Record<string, unknown>) => void
 }) {
   const [provider, setProvider] = useState<Gateway['provider']>('resend')
   const [label, setLabel] = useState('')
   const [apiKey, setApiKey] = useState('')
+  const [smtpHost, setSmtpHost] = useState('smtp.hostinger.com')
+  const [smtpPort, setSmtpPort] = useState('465')
+  const [smtpEncryption, setSmtpEncryption] = useState('ssl')
+  const [smtpUsername, setSmtpUsername] = useState('')
 
   return (
     <>
@@ -863,20 +1027,71 @@ function NewGatewayForm({
         />
       </div>
       <div className="modal-fg">
-        <label>Clé API (ou mot de passe SMTP)</label>
+        <label>{provider === 'smtp' ? 'Mot de passe SMTP' : 'Clé API'}</label>
         <input
           type="password"
-          placeholder={provider === 'brevo' ? 'xkeysib-…' : provider === 'resend' ? 're_…' : 'mot de passe SMTP'}
+          placeholder={provider === 'brevo' ? 'xkeysib-…' : provider === 'resend' ? 're_…' : 'Mot de passe SMTP'}
           value={apiKey}
           onChange={(e) => setApiKey(e.target.value)}
         />
       </div>
+      {provider === 'smtp' && (
+        <>
+          <div className="frow" style={{ gap: 12 }}>
+            <div className="modal-fg" style={{ flex: 2 }}>
+              <label>Hôte SMTP</label>
+              <input
+                type="text"
+                placeholder="smtp.hostinger.com"
+                value={smtpHost}
+                onChange={(e) => setSmtpHost(e.target.value)}
+              />
+            </div>
+            <div className="modal-fg" style={{ flex: 1 }}>
+              <label>Port</label>
+              <input
+                type="number"
+                value={smtpPort}
+                onChange={(e) => setSmtpPort(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="modal-fg">
+            <label>Chiffrement</label>
+            <select
+              value={smtpEncryption}
+              onChange={(e) => {
+                setSmtpEncryption(e.target.value)
+                setSmtpPort(e.target.value === 'ssl' ? '465' : '587')
+              }}
+            >
+              <option value="ssl">SSL/TLS (465)</option>
+              <option value="starttls">STARTTLS (587)</option>
+              <option value="none">Aucun</option>
+            </select>
+          </div>
+          <div className="modal-fg">
+            <label>Nom d'utilisateur (email)</label>
+            <input
+              type="text"
+              placeholder="noreply@kredix.fr"
+              value={smtpUsername}
+              onChange={(e) => setSmtpUsername(e.target.value)}
+            />
+          </div>
+        </>
+      )}
       <div className="modal-actions">
         <button className="btn btn-ghost" onClick={onCancel}>Annuler</button>
         <button
           className="btn btn-primary"
           disabled={!label.trim() && !PROVIDER_LABEL[provider]}
-          onClick={() => onCreate(provider, label.trim(), apiKey.trim())}
+          onClick={() => onCreate(
+            provider,
+            label.trim(),
+            apiKey.trim(),
+            provider === 'smtp' ? { host: smtpHost, port: Number(smtpPort), encryption: smtpEncryption, username: smtpUsername } : undefined,
+          )}
         >
           Créer la passerelle
         </button>

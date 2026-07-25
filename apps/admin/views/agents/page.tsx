@@ -34,6 +34,7 @@ interface Agent {
   tools: Record<string, AgentTool>
   guardrails: Record<string, string>
   memories: AgentMemory[]
+  _promptDirty?: boolean
 }
 
 const TABS: { id: TabId; label: string }[] = [
@@ -165,16 +166,20 @@ export default function Agents() {
     setSaving(true)
     setError(null)
     try {
-      // 1. PATCH agent (name, description, tools, guardrails — pas systemPrompt).
+      // 1. PATCH agent (name, description, tools, guardrails, systemPrompt si modifié).
+      const patchBody: Record<string, unknown> = {
+        name: agent.name,
+        description: agent.description,
+        tools: agent.tools,
+        guardrails: agent.guardrails,
+      }
+      if (agent._promptDirty) {
+        patchBody.systemPrompt = agent.systemPrompt
+      }
       const res = await fetch(`/api/agents/${agent.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: agent.name,
-          description: agent.description,
-          tools: agent.tools,
-          guardrails: agent.guardrails,
-        }),
+        body: JSON.stringify(patchBody),
       })
       if (!res.ok) throw new Error('Échec PATCH agent')
 
@@ -328,11 +333,18 @@ export default function Agents() {
           <div className="ae-body">
             {activeTab === 'role' && (
               <div className="ae-tabpane active">
-                <div className="field-title">Instruction système (rôle verrouillé)</div>
+                <div className="field-title">Instruction système</div>
                 <div className="field-hint">
-                  Définit la mission et les limites. Non modifiable par le modèle ni le client — seul l&apos;admin peut l&apos;éditer (via seed ou migration).
+                  Définit la mission et les limites de l&apos;agent. Modifiable — les changements sont appliqués au prochain clic sur « Enregistrer l&apos;agent ».
                 </div>
-                <textarea className="code-area" defaultValue={agent.systemPrompt} readOnly />
+                <textarea
+                  className="code-area"
+                  defaultValue={agent.systemPrompt}
+                  onChange={(e) => {
+                    setAgents(prev => prev.map(a => a.id === agent.id ? { ...a, systemPrompt: e.target.value, _promptDirty: true } : a))
+                  }}
+                  rows={8}
+                />
               </div>
             )}
 
