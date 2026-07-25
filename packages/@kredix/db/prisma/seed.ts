@@ -163,15 +163,27 @@ async function main() {
     // ===== IA =====
     {
       key: 'ai_model_name',
-      value: 'gpt-4o-mini',
+      value: 'qwen2.5:7b',
       category: 'ai.model',
-      description: 'Modèle IA utilisé (ex: gpt-4o-mini, gpt-4o, Qwen3-8B…).',
+      description: 'Modèle IA utilisé (ex: qwen2.5:7b, llama3.2, gpt-4o-mini…). Pour Ollama, utiliser le nom exact du modèle installé.',
     },
     {
       key: 'ai_api_key',
       value: '',
       category: 'ai.model',
-      description: 'Clé API du fournisseur IA (OpenAI, etc.). Stockée chiffrée. Prioritaire sur la variable d\'env.',
+      description: 'Clé API (OpenAI, etc.). Vide pour Ollama local. Prioritaire sur la variable d\'env.',
+    },
+    {
+      key: 'ai_engine',
+      value: 'Ollama',
+      category: 'ai.model',
+      description: 'Moteur IA : Ollama, OpenAI, vLLM…',
+    },
+    {
+      key: 'ai_endpoint',
+      value: 'http://host.docker.internal:11434/v1',
+      category: 'ai.model',
+      description: 'Endpoint API. Pour Ollama sur le host Docker : host.docker.internal:11434/v1',
     },
     {
       key: 'ai_temperature',

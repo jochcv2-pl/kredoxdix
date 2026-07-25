@@ -85,6 +85,10 @@ services:
         NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_ADMIN_URL:-https://crm.kredix.fr}
     container_name: kredix-admin
     restart: unless-stopped
+    # Autorise l'accès aux services du host (Ollama sur localhost:11434)
+    # Depuis le container : http://host.docker.internal:11434
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "127.0.0.1:3101:3001"
     environment:

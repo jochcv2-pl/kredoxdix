@@ -4,12 +4,15 @@ import { prisma } from '@kredix/db';
 // =============================================================================
 // client.ts — Factory du client LLM (OpenAI-compatible).
 // =============================================================================
-// Lit la config depuis les Settings DB (ai_model_name, ai_engine, ai_endpoint).
-// La clé API vient de process.env.AI_API_KEY (jamais stockée en DB).
+// Lit la config depuis les Settings DB (ai_model_name, ai_engine, ai_endpoint,
+// ai_api_key, ai_temperature, ai_max_tokens).
+//
+// Clé API : DB (ai_api_key) > env (AI_API_KEY / OPENAI_API_KEY) > 'ollama'
 //
 // Compatible avec :
-//   - OpenAI (ai_endpoint vide, ai_engine="OpenAI")
-//   - Ollama local (ai_endpoint="http://localhost:11434/v1", ai_engine="Ollama")
+//   - Ollama local (ai_endpoint="http://host.docker.internal:11434/v1")
+//     → Ollama n'exige pas de clé réelle, 'ollama' suffit.
+//   - OpenAI (ai_endpoint vide, clé API requise)
 //   - vLLM / LM Studio / tout serveur compatible OpenAI API
 //
 // Le client est mis en cache pour éviter de recréer une instance à chaque appel.

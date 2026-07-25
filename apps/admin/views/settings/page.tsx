@@ -353,7 +353,7 @@ export default function Settings() {
           </div>
           <div className="panel-body" style={{ paddingTop: '16px' }}>
             <p className="field-hint">
-              Connectez, configurez et changez le modèle depuis ici. Le CRM parle au modèle via une API compatible OpenAI, donc vous pouvez en changer sans toucher au reste.
+              Configuration Ollama par défaut. Le CRM parle au modèle via une API compatible OpenAI. Pour Ollama, la clé API n'est pas nécessaire — laissez vide.
             </p>
             <div className="frow">
               <div className="fg">
@@ -361,7 +361,7 @@ export default function Settings() {
                 <input
                   value={settings[AI_KEYS.modelName] ?? ''}
                   onChange={(e) => setSetting(AI_KEYS.modelName, e.target.value)}
-                  placeholder="Ex : gpt-4o-mini, Qwen3-8B…"
+                  placeholder="Ollama : qwen2.5:7b, llama3.2 — OpenAI : gpt-4o-mini"
                 />
               </div>
               <div className="fg">
