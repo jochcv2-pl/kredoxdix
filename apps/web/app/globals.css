@@ -742,12 +742,16 @@ input[type=range]::-moz-range-thumb {
   gap: 18px;
   max-width: 840px;
   margin: 0 auto;
+  align-items: stretch;
 }
 .service {
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: 26px;
   background: #fff;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 .service .stag {
   font-size: 12px; /* A11y fix : was 10px (< 12px minimum) */
@@ -785,6 +789,7 @@ input[type=range]::-moz-range-thumb {
   grid-template-columns: repeat(4, 1fr);
   gap: 20px;
   margin-top: 36px;
+  align-items: stretch;
 }
 .engagement-card {
   padding: 28px 22px;
@@ -792,6 +797,9 @@ input[type=range]::-moz-range-thumb {
   background: #fff;
   border: 1px solid var(--line);
   transition: box-shadow .25s, transform .25s;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 .engagement-card:hover {
   box-shadow: 0 12px 40px -8px rgba(43, 139, 222, .15);
