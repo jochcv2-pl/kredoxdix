@@ -71,6 +71,16 @@ export default function Domains() {
 
   const [deleteTarget, setDeleteTarget] = useState<Domain | null>(null)
 
+  const [testingId, setTestingId] = useState<string | null>(null)
+  const [testResult, setTestResult] = useState<{
+    domain: string
+    dns: { resolved: boolean; ips: string[]; error: string | null }
+    ssl: { valid: boolean; issuer: string | null; daysLeft: number | null; error: string | null }
+    https: { reachable: boolean; statusCode: number | null; latencyMs: number | null; error?: string }
+    sslStatus: string
+  } | null>(null)
+  const [testModalOpen, setTestModalOpen] = useState(false)
+
   const fetchDomains = useCallback(async () => {
     try {
       setError(null)
@@ -191,6 +201,33 @@ export default function Domains() {
     } catch (e) {
       console.error('handleDelete:', e)
       setError('Erreur réseau lors de la suppression')
+    }
+  }
+
+  const handleTest = async (d: Domain) => {
+    setTestingId(d.id)
+    setTestResult(null)
+    setTestModalOpen(true)
+    try {
+      const res = await fetch(`/api/domains/${d.id}/test`, { method: 'POST' })
+      const json = await res.json()
+      const data = json.data ?? json
+      setTestResult(data)
+      // Rafraîchit la liste pour mettre à jour le badge SSL
+      if (data.sslStatus && data.sslStatus !== d.sslStatus) {
+        await fetchDomains()
+      }
+    } catch (e) {
+      console.error('handleTest:', e)
+      setTestResult({
+        domain: d.domain,
+        dns: { resolved: false, ips: [], error: 'Erreur réseau' },
+        ssl: { valid: false, issuer: null, daysLeft: null, error: 'Test impossible' },
+        https: { reachable: false, statusCode: null, latencyMs: null, error: 'Erreur réseau' },
+        sslStatus: d.sslStatus,
+      })
+    } finally {
+      setTestingId(null)
     }
   }
 
@@ -388,6 +425,13 @@ export default function Domains() {
                     >
                       <div className="mini-knob"></div>
                     </div>
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => handleTest(d)}
+                      disabled={testingId === d.id}
+                    >
+                      {testingId === d.id ? 'Test…' : 'Tester'}
+                    </button>
                     <button className="btn btn-ghost btn-sm" onClick={() => openEdit(d)}>Éditer</button>
                     <button className="btn btn-ghost btn-sm" onClick={() => setDeleteTarget(d)}>Supprimer</button>
                   </div>
@@ -503,6 +547,104 @@ export default function Domains() {
         onConfirm={handleDelete}
         onClose={() => setDeleteTarget(null)}
       />
+
+      {/* Modal résultats test DNS/SSL */}
+      <Modal
+        isOpen={testModalOpen}
+        onClose={() => { setTestModalOpen(false); setTestResult(null) }}
+        title={`Test du domaine — ${testResult?.domain ?? '…'}`}
+      >
+        {!testResult && (
+          <p className="field-hint">Test en cours… Résolution DNS, vérification SSL et connexion HTTPS.</p>
+        )}
+
+        {testResult && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* DNS */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                {testResult.dns.resolved ? (
+                  <span style={{ color: 'var(--green, #22c55e)', fontWeight: 600 }}>✓ DNS résolu</span>
+                ) : (
+                  <span style={{ color: 'var(--red, #ef4444)', fontWeight: 600 }}>✗ DNS échoué</span>
+                )}
+              </div>
+              {testResult.dns.resolved ? (
+                <div style={{ fontSize: 13, color: 'var(--slate, #64748b)' }}>
+                  Adresses IP : {testResult.dns.ips.join(', ')}
+                </div>
+              ) : (
+                <div style={{ fontSize: 13, color: 'var(--red, #ef4444)', fontFamily: 'monospace' }}>
+                  {testResult.dns.error}
+                </div>
+              )}
+            </div>
+
+            {/* SSL */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                {testResult.ssl.valid ? (
+                  <span style={{ color: 'var(--green, #22c55e)', fontWeight: 600 }}>✓ Certificat SSL valide</span>
+                ) : (
+                  <span style={{ color: 'var(--red, #ef4444)', fontWeight: 600 }}>✗ SSL invalide ou absent</span>
+                )}
+              </div>
+              {testResult.ssl.valid ? (
+                <div style={{ fontSize: 13, color: 'var(--slate, #64748b)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {testResult.ssl.issuer && <div>Émetteur : <b>{testResult.ssl.issuer}</b></div>}
+                  {testResult.ssl.daysLeft != null && (
+                    <div style={{
+                      color: testResult.ssl.daysLeft < 7 ? 'var(--red, #ef4444)'
+                        : testResult.ssl.daysLeft < 30 ? 'var(--orange, #f59e0b)'
+                        : 'var(--slate, #64748b)'
+                    }}>
+                      Expire dans <b>{testResult.ssl.daysLeft} jours</b>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div style={{ fontSize: 13, color: 'var(--red, #ef4444)', fontFamily: 'monospace' }}>
+                  {testResult.ssl.error || 'Certificat invalide ou inexistant'}
+                </div>
+              )}
+            </div>
+
+            {/* HTTPS */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                {testResult.https.reachable ? (
+                  <span style={{ color: 'var(--green, #22c55e)', fontWeight: 600 }}>✓ Serveur HTTPS accessible</span>
+                ) : (
+                  <span style={{ color: 'var(--red, #ef4444)', fontWeight: 600 }}>✗ Serveur injoignable</span>
+                )}
+              </div>
+              {testResult.https.reachable ? (
+                <div style={{ fontSize: 13, color: 'var(--slate, #64748b)' }}>
+                  Code HTTP : <b>{testResult.https.statusCode}</b>
+                  {testResult.https.latencyMs != null && <> · Latence : <b>{testResult.https.latencyMs} ms</b></>}
+                </div>
+              ) : (
+                <div style={{ fontSize: 13, color: 'var(--red, #ef4444)', fontFamily: 'monospace' }}>
+                  {testResult.https.error || 'Connexion refusée ou timeout'}
+                </div>
+              )}
+            </div>
+
+            <div style={{
+              fontSize: 12, color: 'var(--slate, #94a3b8)', borderTop: '1px solid var(--border, #e5e7eb)',
+              paddingTop: 12, marginTop: 4,
+            }}>
+              Statut SSL mis à jour : <b>{testResult.sslStatus}</b>
+            </div>
+
+            <div className="modal-actions">
+              <button className="btn btn-ghost" onClick={() => { setTestModalOpen(false); setTestResult(null) }}>
+                Fermer
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </section>
   )
 }
