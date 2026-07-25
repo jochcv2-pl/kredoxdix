@@ -15,6 +15,9 @@ import Documents from '@/views/documents/page'
 import Campaigns from '@/views/campaigns/page'
 import EmailHistory from '@/views/email-history/page'
 import CMS from '@/views/cms/page'
+import Testimonials from '@/views/testimonials/page'
+import Content from '@/views/content/page'
+import Legal from '@/views/legal/page'
 import SEO from '@/views/seo/page'
 import Domains from '@/views/domains/page'
 import Agents from '@/views/agents/page'
@@ -32,6 +35,9 @@ const pageTitles: Record<string, [string, string]> = {
   campaigns: ['Campagnes', 'Créez et envoyez des campagnes en masse'],
   history: ['Historique emails', 'Tous les emails envoyés à vos prospects'],
   cms: ['Contenu du site (CMS)', 'Modifiez le site public depuis le CRM'],
+  testimonials: ['Avis & témoignages', 'Témoignages clients affichés sur la landing'],
+  content: ['Sections du site', 'Éditez « Nos engagements » et « Nos services »'],
+  legal: ['Pages légales', 'Mentions légales, Impressum, Datenschutz, CGV'],
   seo: ['SEO', 'Audit et référencement du site'],
   domains: ['Domaines', 'Gérez vos domaines et sous-domaines'],
   agents: ['Agents IA', 'Créez et configurez vos agents'],
@@ -115,6 +121,9 @@ export default function AdminPage() {
       case 'campaigns': return <Campaigns />
       case 'history': return <EmailHistory />
       case 'cms': return <CMS />
+      case 'testimonials': return <Testimonials />
+      case 'content': return <Content />
+      case 'legal': return <Legal />
       case 'seo': return <SEO />
       case 'domains': return <Domains />
       case 'agents': return <Agents />

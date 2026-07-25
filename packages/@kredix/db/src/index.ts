@@ -2,7 +2,13 @@
 export { prisma } from '../prisma/client';
 
 // Helpers métier (queries réutilisables côté server)
-export { getActiveRates, getPublicSettings } from './queries';
+export {
+  getActiveRates,
+  getPublicSettings,
+  getVisibleTestimonials,
+  getContentBlock,
+  getActiveLegalPages,
+} from './queries';
 
 // Helper notifications (création d'événements notifiables)
 export { createNotification } from './notifications';
@@ -28,6 +34,8 @@ export type {
   ClientStep,
   DocumentTemplate,
   Notification,
+  Testimonial,
+  ContentBlock,
 } from '@prisma/client';
 
 // Enums (valeurs runtime) — pour usage direct dans les apps

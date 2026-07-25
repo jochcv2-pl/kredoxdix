@@ -132,6 +132,24 @@
     "card4Title": "Prestito professionale",
     "card4Text": "Fai crescere la tua attività con un finanziamento pensato per imprenditori, liberi professionisti e società."
   },
+  "Engagements": {
+    "eyebrow": "Perché Kredix",
+    "title": "I nostri impegni",
+    "lead": "Dal 2015, accompagniamo i nostri clienti in ogni tipo di credito — con trasparenza, rapidità e sempre nel vostro interesse.",
+    "item1Title": "100% trasparente",
+    "item1Desc": "Nessuna commissione nascosta. Vedete ogni tasso, ogni commissione e ogni costo in anticipo.",
+    "item2Title": "Risposta in 48h",
+    "item2Desc": "La vostra richiesta è gestita entro 48 ore da un consulente certificato.",
+    "item3Title": "I migliori tassi",
+    "item3Desc": "Confrontiamo oltre 40 banche per garantirvi il tasso più vantaggioso.",
+    "item4Title": "Assistenza fino all'erogazione",
+    "item4Desc": "Un consulente dedicato vi accompagna dal primo contatto fino all'erogazione del credito."
+  },
+  "Testimonials": {
+    "eyebrow": "Recensioni clienti",
+    "title": "Cosa dicono i nostri clienti",
+    "lead": "Oltre 350 pratiche finanziate, un tasso di soddisfazione del 94% e una valutazione di 4,9/5."
+  },
   "Contact": {
     "title": "Una domanda? <highlight>Parliamone.</highlight>",
     "subtitle": "Il tuo consulente Kredix è disponibile su WhatsApp o al telefono. Ricevi una risposta in giornata, senza impegno.",

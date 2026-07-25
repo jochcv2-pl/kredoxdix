@@ -132,6 +132,24 @@
     "card4Title": "Business loan",
     "card4Text": "Grow your business with financing designed for entrepreneurs, freelancers and companies."
   },
+  "Engagements": {
+    "eyebrow": "Why Kredix",
+    "title": "Our Commitments",
+    "lead": "Since 2015, we have guided our clients through every type of loan — transparent, fast, and always in your best interest.",
+    "item1Title": "100% Transparent",
+    "item1Desc": "No hidden fees. You see every rate, every commission, and every charge upfront.",
+    "item2Title": "48-Hour Response",
+    "item2Desc": "Your request is handled within 48 hours by a certified advisor.",
+    "item3Title": "Best Rates",
+    "item3Desc": "We compare over 40 banks to secure the most favorable rate for you.",
+    "item4Title": "Support Until Payout",
+    "item4Desc": "A dedicated advisor guides you from first contact to loan payout."
+  },
+  "Testimonials": {
+    "eyebrow": "Customer Reviews",
+    "title": "What Our Clients Say",
+    "lead": "Over 350 funded files, a 94% satisfaction rate, and a 4.9/5 rating."
+  },
   "Contact": {
     "title": "A question? <highlight>Let's talk.</highlight>",
     "subtitle": "Your Kredix advisor is available by WhatsApp or phone. You get an answer the same day, with no commitment.",

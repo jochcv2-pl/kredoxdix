@@ -768,6 +768,118 @@ input[type=range]::-moz-range-thumb {
   color: var(--slate);
   line-height: 1.65;
 }
+.service-icon {
+  width: 48px; height: 48px;
+  display: grid; place-items: center;
+  border-radius: 12px;
+  background: rgba(43, 139, 222, 0.1);
+  color: var(--blue);
+  margin-bottom: 14px;
+}
+
+/* =============================================================================
+   ENGAGEMENTS
+   ========================================================================== */
+.engagements-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  margin-top: 36px;
+}
+.engagement-card {
+  padding: 28px 22px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid var(--line);
+  transition: box-shadow .25s, transform .25s;
+}
+.engagement-card:hover {
+  box-shadow: 0 12px 40px -8px rgba(43, 139, 222, .15);
+  transform: translateY(-3px);
+}
+.engagement-icon {
+  width: 52px; height: 52px;
+  display: grid; place-items: center;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--blue), var(--blue-dark));
+  color: #fff;
+  margin-bottom: 16px;
+}
+.engagement-card h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+.engagement-card p {
+  font-size: 13px;
+  color: var(--slate);
+  line-height: 1.6;
+}
+
+/* =============================================================================
+   TESTIMONIALS
+   ========================================================================== */
+.testimonials-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+  margin-top: 36px;
+}
+.testimonial-card {
+  padding: 28px 24px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid var(--line);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.tst-quote {
+  position: absolute;
+  top: 18px; right: 18px;
+  color: var(--blue);
+  opacity: .15;
+}
+.tst-stars {
+  display: flex;
+  gap: 2px;
+  color: var(--orange);
+}
+.tst-content {
+  font-size: 14px;
+  color: var(--ink);
+  line-height: 1.65;
+  font-style: italic;
+  flex: 1;
+}
+.tst-author {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line-soft);
+}
+.tst-avatar {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--blue), var(--orange));
+  color: #fff;
+  font-weight: 700;
+  font-size: 18px;
+  display: grid; place-items: center;
+  flex-shrink: 0;
+}
+.tst-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.tst-role {
+  font-size: 12px;
+  color: var(--slate);
+}
 
 /* =============================================================================
    CONTACT
@@ -909,6 +1021,7 @@ input[type=range]::-moz-range-thumb {
   .contact-grid { gap: 28px; }
   .steps { grid-template-columns: 1fr; }
   .services { grid-template-columns: 1fr; }
+  .engagements-grid { grid-template-columns: repeat(2, 1fr); }
   .nav-menu { display: none; }
   .nav-menu.open {
     display: flex;
@@ -934,6 +1047,7 @@ input[type=range]::-moz-range-thumb {
   .hstat { width: 50%; padding: 8px 0; border-left: none !important; }
   .grid2 { grid-template-columns: 1fr; }
   .hero-ctas .btn { width: 100%; }
+  .engagements-grid { grid-template-columns: 1fr; }
   .footer-top { flex-direction: column; }
 }
 

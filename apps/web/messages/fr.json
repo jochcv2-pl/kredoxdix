@@ -132,6 +132,24 @@
     "card4Title": "Prêt professionnel",
     "card4Text": "Développez votre activité avec un financement pensé pour les entrepreneurs, indépendants et sociétés."
   },
+  "Engagements": {
+    "eyebrow": "Pourquoi Kredix",
+    "title": "Nos engagements",
+    "lead": "Depuis 2015, nous accompagnons nos clients dans tous types de crédit — en toute transparence, rapidité et toujours dans votre intérêt.",
+    "item1Title": "100% transparent",
+    "item1Desc": "Aucun frais caché. Vous voyez chaque taux, chaque commission et chaque frais à l'avance.",
+    "item2Title": "Réponse en 48h",
+    "item2Desc": "Votre demande est traitée sous 48h par un conseiller certifié.",
+    "item3Title": "Les meilleurs taux",
+    "item3Desc": "Nous comparons plus de 40 banques pour vous garantir le taux le plus avantageux.",
+    "item4Title": "Accompagnement jusqu'au déboursement",
+    "item4Desc": "Un conseiller dédié vous suit du premier contact jusqu'au déboursement de votre crédit."
+  },
+  "Testimonials": {
+    "eyebrow": "Avis clients",
+    "title": "Ce que disent nos clients",
+    "lead": "Plus de 350 dossiers financés, un taux de satisfaction de 94% et une note de 4,9/5."
+  },
   "Contact": {
     "title": "Une question ? <highlight>Parlons-en.</highlight>",
     "subtitle": "Votre conseiller Kredix est disponible par WhatsApp ou par téléphone. Vous obtenez une réponse dans la journée, sans engagement.",

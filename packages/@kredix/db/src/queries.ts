@@ -58,3 +58,41 @@ export async function getPublicSettings(category?: string): Promise<Record<strin
   for (const s of settings) out[s.key] = s.value;
   return out;
 }
+
+/**
+ * Récupère les témoignages VISIBLES pour une locale donnée, triés par `order`.
+ * Utilisé côté web (rendu SSR de la section Avis).
+ *
+ * @param locale  code langue ('de', 'fr', 'en'...) — 'de' par défaut (DEFAULT_LOCALE)
+ */
+export async function getVisibleTestimonials(locale = 'de') {
+  return prisma.testimonial.findMany({
+    where: { locale, isVisible: true },
+    orderBy: [{ order: 'asc' }, { createdAt: 'desc' }],
+  });
+}
+
+/**
+ * Récupère un bloc de contenu éditorial pour une section + locale.
+ * Retourne `null` si aucun bloc n'existe (l'app utilise alors le fallback i18n).
+ *
+ * @param section  'engagements' | 'services' | ... (clé technique)
+ * @param locale   code langue — 'de' par défaut
+ */
+export async function getContentBlock(section: string, locale = 'de') {
+  return prisma.contentBlock.findUnique({
+    where: { section_locale: { section, locale } },
+  });
+}
+
+/**
+ * Récupère toutes les pages légales ACTIVES, triées par `order`.
+ * Utilisé côté web pour construire dynamiquement les liens du footer.
+ */
+export async function getActiveLegalPages() {
+  return prisma.legalPage.findMany({
+    where: { isActive: true },
+    orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
+    select: { id: true, slug: true, title: true, category: true, order: true },
+  });
+}

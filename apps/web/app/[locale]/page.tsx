@@ -1,30 +1,63 @@
 import { getTranslations } from "next-intl/server";
+import { Shield, CheckCircle, Award, Key, TrendingUp, RefreshCw, Cpu, Bot, Phone, Mail, UserPlus, BarChart3, Download, Check, Star, Quote } from "lucide-react";
 import Navbar from "@/components/navbar";
 import SimulatorAndForm from "@/components/simulator-and-form";
-import { getActiveRates, getPublicSettings } from "@kredix/db";
+import { getActiveRates, getPublicSettings, getVisibleTestimonials, getContentBlock, getActiveLegalPages } from "@kredix/db";
 
 // =============================================================================
-// Landing page Kredix — reproduction EXACTE du HTML de référence (DEC-K1).
-// Server Component : fetch les taux + settings DB en SSR pour hydrater le
-// simulateur et le contenu dynamique (override i18n quand un setting existe).
+// Landing page Kredix — Server Component SSR.
+// Données dynamiques : taux, settings CMS, témoignages, sections CMS, pages lég.
+// Override i18n par les données DB quand elles existent.
 // =============================================================================
 
-async function loadData() {
-  const [rates, settings] = await Promise.all([
-    getActiveRates(),
-    getPublicSettings(),
-  ]);
-  return { rates, settings };
+// --- Icon map (CMS ContentBlock items utilisent des noms d'icône string) ---
+const ICON_MAP: Record<string, typeof Shield> = {
+  shield: Shield, check: Check, 'check-circle': CheckCircle, award: Award, key: Key,
+  phone: Phone, mail: Mail, trending: TrendingUp, cpu: Cpu, bot: Bot,
+  'user-plus': UserPlus, 'bar-chart': BarChart3, download: Download, 'refresh-cw': RefreshCw,
+};
+
+function CmsIcon({ name, size = 32 }: { name: string; size?: number }) {
+  const Icon = ICON_MAP[name] ?? Check;
+  return <Icon size={size} strokeWidth={1.6} />;
 }
 
-export default async function HomePage() {
+// Type d'un item CMS (ContentBlock.items est stocké en Json dans Prisma).
+type CmsItem = { icon: string; title: string; description: string };
+
+// Cast sécurisé du champ Json Prisma vers CmsItem[] (le seed/admin garantit le format).
+function cmsItems(raw: unknown, fallback: CmsItem[]): CmsItem[] {
+  if (Array.isArray(raw) && raw.length > 0) return raw as CmsItem[];
+  return fallback;
+}
+
+async function loadData(locale: string) {
+  const [rates, settings, testimonials, engagementsBlock, servicesBlock, legalPages] = await Promise.all([
+    getActiveRates(),
+    getPublicSettings(),
+    getVisibleTestimonials(locale),
+    getContentBlock('engagements', locale),
+    getContentBlock('services', locale),
+    getActiveLegalPages(),
+  ]);
+  return { rates, settings, testimonials, engagementsBlock, servicesBlock, legalPages };
+}
+
+export default async function HomePage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
   const t = await getTranslations("Hero");
   const tHow = await getTranslations("HowItWorks");
+  const tEng = await getTranslations("Engagements");
   const tServices = await getTranslations("Services");
+  const tTesti = await getTranslations("Testimonials");
   const tContact = await getTranslations("Contact");
   const tFooter = await getTranslations("Footer");
 
-  const { rates, settings } = await loadData();
+  const { rates, settings, testimonials, engagementsBlock, servicesBlock, legalPages } = await loadData(locale);
 
   // Override dynamique du contenu via settings DB (si la clé est non vide).
   // L'i18n reste la source primaire ; les settings surchargent quand l'admin
@@ -110,43 +143,100 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* ===== NOS ENGAGEMENTS (CMS-driven, fallback i18n) ===== */}
+      <section className="section" id="engagements">
+        <div className="wrap">
+          <p className="section-eyebrow">{engagementsBlock?.eyebrow ?? tEng("eyebrow")}</p>
+          <h2 className="section-title">{engagementsBlock?.title ?? tEng("title")}</h2>
+          <p className="section-lead">{engagementsBlock?.lead ?? tEng("lead")}</p>
+          <div className="engagements-grid">
+            {cmsItems(engagementsBlock?.items, [
+              { icon: 'shield', title: tEng("item1Title"), description: tEng("item1Desc") },
+              { icon: 'check-circle', title: tEng("item2Title"), description: tEng("item2Desc") },
+              { icon: 'award', title: tEng("item3Title"), description: tEng("item3Desc") },
+              { icon: 'key', title: tEng("item4Title"), description: tEng("item4Desc") },
+            ]).map((item, i) => (
+              <div className="engagement-card" key={i}>
+                <div className="engagement-icon">
+                  <CmsIcon name={item.icon} size={28} />
+                </div>
+                <h3>{item.title}</h3>
+                <p>{item.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ===== SIMULATEUR + FORMULAIRE (wrapper client) ===== */}
       <SimulatorAndForm rates={rates} />
 
-      {/* ===== NOS SERVICES ===== */}
+      {/* ===== NOS SERVICES (CMS-driven, fallback i18n) ===== */}
       <section
         className="section"
         id="services"
         style={{ background: "var(--bg-soft)", borderTop: "1px solid var(--line-soft)" }}
       >
         <div className="wrap">
-          <p className="section-eyebrow">{tServices("eyebrow")}</p>
-          <h2 className="section-title">{tServices("title")}</h2>
-          <p className="section-lead">{tServices("lead")}</p>
+          <p className="section-eyebrow">{servicesBlock?.eyebrow ?? tServices("eyebrow")}</p>
+          <h2 className="section-title">{servicesBlock?.title ?? tServices("title")}</h2>
+          <p className="section-lead">{servicesBlock?.lead ?? tServices("lead")}</p>
           <div className="services">
-            <div className="service">
-              <div className="stag">{tServices("card1Tag")}</div>
-              <h3>{settings.cms_service_1 || tServices("card1Title")}</h3>
-              <p>{tServices("card1Text")}</p>
-            </div>
-            <div className="service">
-              <div className="stag">{tServices("card2Tag")}</div>
-              <h3>{settings.cms_service_2 || tServices("card2Title")}</h3>
-              <p>{tServices("card2Text")}</p>
-            </div>
-            <div className="service">
-              <div className="stag">{tServices("card3Tag")}</div>
-              <h3>{settings.cms_service_3 || tServices("card3Title")}</h3>
-              <p>{tServices("card3Text")}</p>
-            </div>
-            <div className="service">
-              <div className="stag">{tServices("card4Tag")}</div>
-              <h3>{settings.cms_service_4 || tServices("card4Title")}</h3>
-              <p>{tServices("card4Text")}</p>
-            </div>
+            {cmsItems(servicesBlock?.items, [
+              { icon: 'trending', title: settings.cms_service_1 || tServices("card1Title"), description: tServices("card1Text") },
+              { icon: 'cpu', title: settings.cms_service_2 || tServices("card2Title"), description: tServices("card2Text") },
+              { icon: 'refresh-cw', title: settings.cms_service_3 || tServices("card3Title"), description: tServices("card3Text") },
+              { icon: 'bot', title: settings.cms_service_4 || tServices("card4Title"), description: tServices("card4Text") },
+            ]).map((item, i) => (
+              <div className="service" key={i}>
+                <div className="service-icon">
+                  <CmsIcon name={item.icon} size={26} />
+                </div>
+                <h3>{item.title}</h3>
+                <p>{item.description}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
+
+      {/* ===== AVIS & TÉMOIGNAGES (CMS-driven, masqué si vide) ===== */}
+      {testimonials.length > 0 && (
+        <section className="section" id="avis">
+          <div className="wrap">
+            <p className="section-eyebrow">{tTesti("eyebrow")}</p>
+            <h2 className="section-title">{tTesti("title")}</h2>
+            <p className="section-lead">{tTesti("lead")}</p>
+            <div className="testimonials-grid">
+              {testimonials.map((tst) => (
+                <div className="testimonial-card" key={tst.id}>
+                  <Quote className="tst-quote" size={28} />
+                  <div className="tst-stars">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star
+                        key={i}
+                        size={16}
+                        fill={i < tst.rating ? "currentColor" : "none"}
+                        strokeWidth={1.5}
+                      />
+                    ))}
+                  </div>
+                  <p className="tst-content">"{tst.content}"</p>
+                  <div className="tst-author">
+                    <div className="tst-avatar">
+                      {tst.authorName.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <div className="tst-name">{tst.authorName}</div>
+                      {tst.authorRole && <div className="tst-role">{tst.authorRole}{tst.authorLocation ? ` · ${tst.authorLocation}` : ''}</div>}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ===== CONTACT ===== */}
       <section className="section contact-section" id="contact">
@@ -243,9 +333,19 @@ export default async function HomePage() {
           <div className="footer-bottom">
             <p className="footer-legal">{tFooter("legal")}</p>
             <div className="footer-links">
-              <a href="#">{tFooter("legalLink1")}</a>
-              <a href="#">{tFooter("legalLink2")}</a>
-              <a href="#">{tFooter("legalLink3")}</a>
+              {legalPages.length > 0 ? (
+                legalPages.map((page) => (
+                  <a key={page.id} href={`/${locale}/${page.slug}`}>
+                    {page.title}
+                  </a>
+                ))
+              ) : (
+                <>
+                  <a href="#">{tFooter("legalLink1")}</a>
+                  <a href="#">{tFooter("legalLink2")}</a>
+                  <a href="#">{tFooter("legalLink3")}</a>
+                </>
+              )}
             </div>
           </div>
         </div>

@@ -132,6 +132,24 @@
     "card4Title": "Crédito profissional",
     "card4Text": "Faça crescer o seu negócio com financiamento pensado para empreendedores, independentes e empresas."
   },
+  "Engagements": {
+    "eyebrow": "Porquê a Kredix",
+    "title": "Os nossos compromissos",
+    "lead": "Desde 2015, acompanhamos os nossos clientes em todos os tipos de crédito — com transparência, rapidez e sempre no seu interesse.",
+    "item1Title": "100% transparente",
+    "item1Desc": "Sem taxas ocultas. Vê cada taxa, cada comissão e cada encargo antecipadamente.",
+    "item2Title": "Resposta em 48h",
+    "item2Desc": "O seu pedido é processado em 48 horas por um consultor certificado.",
+    "item3Title": "As melhores taxas",
+    "item3Desc": "Comparamos mais de 40 bancos para lhe garantir a taxa mais vantajosa.",
+    "item4Title": "Acompanhamento até ao desembolso",
+    "item4Desc": "Um consultor dedicado acompanha-o desde o primeiro contacto até ao desembolso do seu crédito."
+  },
+  "Testimonials": {
+    "eyebrow": "Opiniões de clientes",
+    "title": "O que dizem os nossos clientes",
+    "lead": "Mais de 350 processos financiados, uma taxa de satisfação de 94% e uma avaliação de 4,9/5."
+  },
   "Contact": {
     "title": "Uma questão? <highlight>Vamos falar.</highlight>",
     "subtitle": "O seu consultor Kredix está disponível por WhatsApp ou telefone. Recebe resposta no próprio dia, sem compromisso.",

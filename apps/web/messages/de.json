@@ -132,6 +132,24 @@
     "card4Title": "Geschäftskredit",
     "card4Text": "Erweitern Sie Ihr Geschäft mit Finanzierung für Unternehmer, Selbständige und Firmen."
   },
+  "Engagements": {
+    "eyebrow": "Warum Kredix",
+    "title": "Unsere Versprechen",
+    "lead": "Seit 2015 begleiten wir unsere Kunden bei jeder Art von Kredit – transparent, schnell und immer zu Ihrem Vorteil.",
+    "item1Title": "100% transparent",
+    "item1Desc": "Keine versteckten Gebühren. Sie sehen jeden Zinssatz, jede Provision und jede Gebühr im Voraus.",
+    "item2Title": "Antwort in 48 Std.",
+    "item2Desc": "Ihre Anfrage wird innerhalb von 48 Stunden von einem zertifizierten Berater bearbeitet.",
+    "item3Title": "Beste Zinsen",
+    "item3Desc": "Wir vergleichen über 40 Banken, um Ihnen den günstigsten Zinssatz zu sichern.",
+    "item4Title": "Begleitung bis zur Auszahlung",
+    "item4Desc": "Ein dedizierter Berater begleitet Sie vom ersten Kontakt bis zur Auszahlung Ihres Kredits."
+  },
+  "Testimonials": {
+    "eyebrow": "Kundenstimmen",
+    "title": "Was unsere Kunden sagen",
+    "lead": "Über 350 finanzierte Dossiers, eine Zufriedenheitsquote von 94% und Bewertungen von 4,9/5."
+  },
   "Contact": {
     "title": "Eine Frage? <highlight>Sprechen wir.</highlight>",
     "subtitle": "Ihr Kredix-Berater ist per WhatsApp oder Telefon erreichbar. Sie erhalten noch am selben Tag eine Antwort, unverbindlich.",
