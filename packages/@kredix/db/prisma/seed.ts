@@ -602,7 +602,7 @@ ${SECURITY_BLOCK}`,
     subject: string;
     bodyText: string;
     htmlContent: string | null;
-    languages: string[];
+    language: string;
     bannerEnabled: boolean;
     status: TemplateStatus;
   }> = [
@@ -619,7 +619,7 @@ Un de nos conseillers vous rappellera sous 48h ouvrées pour étudier votre doss
 À très vite,
 L'équipe Kredix`,
       htmlContent: null,
-      languages: ['fr', 'en', 'de', 'es', 'pt', 'it'],
+      language: 'fr',
       bannerEnabled: true,
       status: TemplateStatus.active,
     },
@@ -642,7 +642,7 @@ Pour finaliser votre dossier, contactez votre conseiller.
 
 L'équipe Kredix`,
       htmlContent: null,
-      languages: ['fr', 'en', 'de', 'es', 'pt', 'it'],
+      language: 'fr',
       bannerEnabled: true,
       status: TemplateStatus.active,
     },
@@ -720,7 +720,7 @@ Pour vous désinscrire : {{LienDesinscription}}`,
 
 L'équipe Kredix`,
       htmlContent: null,
-      languages: ['fr', 'en', 'de', 'es', 'pt', 'it'],
+      language: 'fr',
       bannerEnabled: true,
       status: TemplateStatus.draft,
     },
