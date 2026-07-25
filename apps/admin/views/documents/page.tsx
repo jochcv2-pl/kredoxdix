@@ -342,7 +342,7 @@ export default function Documents() {
                   </div>
                 </div>
 
-                {doc.fields.length > 0 ? (
+                {(doc.fields?.length ?? 0) > 0 ? (
                   <div className="doc-fields">
                     {doc.fields.map((f, i) => (
                       <span key={i} className="doc-field-chip">{f}</span>

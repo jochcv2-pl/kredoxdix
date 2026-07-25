@@ -5,11 +5,11 @@ import { Modal } from '@/components/Modal'
 import { Icon } from '@/components/Icon'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 
-type ContactStatus = 'new' | 'contacted' | 'progress' | 'offer' | 'wait' | 'client' | 'lost'
+type ContactStatus = 'new' | 'contacted' | 'progress' | 'offer' | 'waiting' | 'client' | 'lost'
 
 // Ordre canonique du pipeline (sans le terminal négatif "lost" qui ne se "traverse" pas).
 const PIPELINE_ORDER: ContactStatus[] = [
-  'new', 'contacted', 'progress', 'offer', 'wait', 'client',
+  'new', 'contacted', 'progress', 'offer', 'waiting', 'client',
 ]
 
 const STATUS_CONFIG: Record<ContactStatus, { label: string; class: string }> = {
@@ -17,7 +17,7 @@ const STATUS_CONFIG: Record<ContactStatus, { label: string; class: string }> = {
   contacted:  { label: 'Contacté',        class: 'b-contacted' },
   progress:   { label: 'En cours',        class: 'b-progress' },
   offer:      { label: 'Offre envoyée',   class: 'b-offer' },
-  wait:       { label: 'En attente',      class: 'b-wait' },
+  waiting:    { label: 'En attente',      class: 'b-wait' },
   client:     { label: 'Client',          class: 'b-client' },
   lost:       { label: 'Perdu',           class: 'b-lost' },
 }
@@ -374,7 +374,7 @@ export default function Contacts() {
             Tous les contacts
             {statusFilter !== 'all' && (
               <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--slate)', marginLeft: 8 }}>
-                · Filtré : {STATUS_CONFIG[statusFilter as ContactStatus].label}
+                · Filtré : {(STATUS_CONFIG[statusFilter as ContactStatus] ?? { label: statusFilter }).label}
                 <span className="link" style={{ marginLeft: 8 }} onClick={() => setStatusFilter('all')}>✕ Réinitialiser</span>
               </span>
             )}
@@ -405,7 +405,7 @@ export default function Contacts() {
               </thead>
               <tbody>
                 {filteredContacts.map((c) => {
-                  const cfg = STATUS_CONFIG[c.status]
+                  const cfg = STATUS_CONFIG[c.status] ?? { label: c.status, class: 'b-wait' }
                   const canAdvance = c.status !== 'client' && c.status !== 'lost'
                   const canGoBack = c.status !== 'new'
                   const isPending = pendingId === c.id
@@ -501,7 +501,7 @@ export default function Contacts() {
             <option value="contacted">Contacté</option>
             <option value="progress">En cours</option>
             <option value="offer">Offre envoyée</option>
-            <option value="wait">En attente</option>
+            <option value="waiting">En attente</option>
             <option value="client">Client</option>
             <option value="lost">Perdu</option>
           </select>
