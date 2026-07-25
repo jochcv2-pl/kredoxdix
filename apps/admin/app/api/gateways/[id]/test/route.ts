@@ -10,14 +10,13 @@ import { prisma } from '@kredix/db';
 import { successResponse, errorResponse, ERR } from '@/app/api/_lib/responses';
 import { isValidId } from '@/app/api/_lib/id-validation';
 import { requireAuth } from '../../../_lib/auth-server';
-import { getSetting } from '@/app/api/_lib/settings';
 import { sendEmail } from '@/app/api/_lib/email-sender';
 
 export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const [, deny] = await requireAuth();
+  const [admin, deny] = await requireAuth();
   if (deny) return deny;
 
   try {
@@ -31,11 +30,8 @@ export async function POST(
       return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);
     }
 
-    // Adresse de destination : from_email setting ou fallback
-    const fromEmail = await getSetting('from_email', 'noreply@kredix.fr');
-    const testEmail = fromEmail.includes('<')
-      ? fromEmail.match(/<(.+)>/)?.[1] || 'admin@kredix.fr'
-      : fromEmail || 'admin@kredix.fr';
+    // Destinataire du test : email de l'admin connecté.
+    const testEmail = admin.email;
 
     const result = await sendEmail(gateway, {
       to: testEmail,
