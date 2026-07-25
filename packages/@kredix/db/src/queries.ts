@@ -89,9 +89,11 @@ export async function getContentBlock(section: string, locale = 'de') {
  * Récupère toutes les pages légales ACTIVES, triées par `order`.
  * Utilisé côté web pour construire dynamiquement les liens du footer.
  */
-export async function getActiveLegalPages(locale?: string) {
+export async function getActiveLegalPages(_locale?: string) {
+  // Les pages légales sont communes à toutes les langues (locale = 'all').
+  // Les titres du footer sont traduits via i18n (map slug → clé de traduction).
   return prisma.legalPage.findMany({
-    where: { isActive: true, ...(locale ? { locale } : {}) },
+    where: { isActive: true },
     orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
     select: { id: true, slug: true, title: true, category: true, order: true, locale: true },
   });

@@ -54,12 +54,12 @@ export async function generateMetadata({
   const fb = SEO_FALLBACKS[locale] ?? SEO_FALLBACKS.de;
   let title = fb.title;
   let description = fb.description;
-  let favicon = '/favicon.ico';
+  let favicon = '';
   try {
     [title, description, favicon] = await Promise.all([
       getPublicSetting('seo_meta_title', title),
       getPublicSetting('seo_meta_description', description),
-      getPublicSetting('cms_favicon_url', favicon),
+      getPublicSetting('cms_favicon_url', ''),
     ]);
   } catch {
     // DB indispo → fallback statique (build Docker ou panne DB)
@@ -77,7 +77,7 @@ export async function generateMetadata({
   return {
     title,
     description,
-    icons: { icon: favicon },
+    ...(favicon ? { icons: { icon: favicon } } : {}),
     alternates: {
       languages: alternates,
       canonical: `${SITE_URL}/${locale}`,

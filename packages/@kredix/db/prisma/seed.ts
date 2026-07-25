@@ -125,15 +125,15 @@ async function main() {
     // ===== CMS =====
     {
       key: 'cms_hero_title',
-      value: 'Le crédit, simplement.',
+      value: '',
       category: 'cms.hero',
-      description: 'Titre principal de la page d\'accueil.',
+      description: 'Titre principal de la page d\'accueil (vide = utilise la traduction i18n).',
     },
     {
       key: 'cms_hero_subtitle',
-      value: 'Comparez les meilleures offres de prêt en 2 minutes.',
+      value: '',
       category: 'cms.hero',
-      description: 'Sous-titre du hero.',
+      description: 'Sous-titre du hero (vide = utilise la traduction i18n).',
     },
     {
       key: 'cms_about_text',
@@ -296,7 +296,7 @@ async function main() {
   }> = [
     {
       slug: 'mentions-legales',
-      locale: 'fr',
+      locale: 'all',
       title: 'Mentions Légales',
       category: 'legal',
       order: 1,
@@ -304,7 +304,7 @@ async function main() {
     },
     {
       slug: 'cgu',
-      locale: 'fr',
+      locale: 'all',
       title: 'Conditions Générales d\'Utilisation',
       category: 'terms',
       order: 2,
@@ -312,7 +312,7 @@ async function main() {
     },
     {
       slug: 'politique-confidentialite',
-      locale: 'fr',
+      locale: 'all',
       title: 'Politique de Confidentialité',
       category: 'privacy',
       order: 3,
@@ -320,7 +320,7 @@ async function main() {
     },
     {
       slug: 'cookies',
-      locale: 'fr',
+      locale: 'all',
       title: 'Politique Cookies',
       category: 'privacy',
       order: 4,
@@ -328,44 +328,11 @@ async function main() {
     },
     {
       slug: 'cgv',
-      locale: 'fr',
+      locale: 'all',
       title: 'Conditions Générales de Vente',
       category: 'terms',
       order: 5,
       content: `<h1>Conditions Générales de Vente</h1>\n<h2>Article 1 — Prestations</h2>\n<p>{{SiteName}} propose des services de courtage en crédit.</p>\n<h2>Article 2 — Tarification</h2>\n<p>Les modalités de rémunération sont précisées lors de la mise en relation.</p>\n<h2>Article 3 — Annulation</h2>\n<p>Conformément à la législation en vigueur.</p>\n<p style="color:#666;font-style:italic;">Ce contenu est un modèle. Modifiez-le depuis le CRM pour l'adapter à vos conditions.</p>`,
-    },
-    // --- Pages légales ALLEMAND (langue par défaut du site) ---
-    {
-      slug: 'impressum',
-      locale: 'de',
-      title: 'Impressum',
-      category: 'legal',
-      order: 10,
-      content: `<h1>Impressum</h1>\n<p><strong>Angaben gemäß § 5 TMG:</strong></p>\n<p>{{SiteName}}<br>[Straße und Hausnummer]<br>[PLZ Ort], Deutschland</p>\n<h2>Vertreten durch</h2>\n<p>[Vor- und Nachname der Geschäftsführung]</p>\n<h2>Kontakt</h2>\n<p>Telefon: [Telefonnummer]<br>E-Mail: [E-Mail-Adresse]</p>\n<h2>Registereintrag</h2>\n<p>Eintragung im Handelsregister<br>Registergericht: [Amtsgericht]<br>Registernummer: [HRB-Nummer]</p>\n<h2>Umsatzsteuer-ID</h2>\n<p>Umsatzsteuer-Identifikationsnummer gemäß § 27a Umsatzsteuergesetz:<br>[USt-IdNr.]</p>\n<h2>Verantwortlich für den Inhalt nach § 55 Abs. 2 RStV</h2>\n<p>[Vor- und Nachname]<br>[Anschrift]</p>\n<h2>Berufsbezeichnung und berufsrechtliche Regelungen</h2>\n<p>Berufsbezeichnung: Finanzierungsvermittler (verliehen in: Deutschland)<br>Zuständige Kammer: [Kammer]</p>\n<h2>Streitschlichtung</h2>\n<p>Wir sind nicht bereit oder verpflichtet, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen.</p>\n<p style="color:#666;font-style:italic;">Dies ist eine Vorlage. Bitte passen Sie die Inhalte im CRM an Ihre tatsächlichen Unternehmensdaten an.</p>`,
-    },
-    {
-      slug: 'datenschutz',
-      locale: 'de',
-      title: 'Datenschutzerklärung',
-      category: 'privacy',
-      order: 11,
-      content: `<h1>Datenschutzerklärung</h1>\n<h2>1. Datenschutz auf einen Blick</h2>\n<h3>Allgemeine Hinweise</h3>\n<p>Die folgenden Hinweise geben einen einfachen Überblick darüber, was mit Ihren personenbezogenen Daten passiert, wenn Sie diese Website besuchen. Personenbezogene Daten sind alle Daten, mit denen Sie persönlich identifiziert werden können.</p>\n<h2>2. Verantwortliche Stelle</h2>\n<p>Verantwortlich für die Datenverarbeitung auf dieser Website ist:<br><br>{{SiteName}}<br>[Straße und Hausnummer]<br>[PLZ Ort], Deutschland<br><br>Telefon: [Telefonnummer]<br>E-Mail: [E-Mail-Adresse]</p>\n<h2>3. Datenerfassung auf dieser Website</h2>\n<h3>Kontaktformular / Kreditanfrage</h3>\n<p>Wenn Sie uns per Kontaktformular oder Kreditanfrage kontaktieren, werden Ihre Angaben aus dem Anfrageformular inklusive der von Ihnen dort angegebenen Kontaktdaten zwecks Bearbeitung der Anfrage und für den Fall von Anschlussfragen bei uns gespeichert. Diese Daten geben wir nicht ohne Ihre Einwilligung weiter.</p>\n<p>Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO (Vertragsanbahnung).</p>\n<h2>4. Ihre Rechte</h2>\n<p>Sie haben jederzeit das Recht, unentgeltlich Auskunft über die Herkunft, den Empfänger und den Zweck Ihrer gespeicherten personenbezogenen Daten zu erhalten. Sie haben außerdem ein Recht, die Berichtigung oder Löschung dieser Daten zu verlangen. Hierzu sowie zu weiteren Fragen zum Thema personenbezogener Daten können Sie sich jederzeit unter der im Impressum angegebenen Adresse an uns wenden.</p>\n<p>Des Weiteren steht Ihnen ein Beschwerderecht bei der zuständigen Aufsichtsbehörde zu.</p>\n<h2>5. Cookies</h2>\n<p>Unsere Internetseiten verwenden Cookies. Weitere Informationen dazu finden Sie in unserer <a href="/cookie-richtlinie">Cookie-Richtlinie</a>.</p>\n<p style="color:#666;font-style:italic;">Dies ist eine Vorlage. Bitte passen Sie die Datenschutzerklärung an Ihre tatsächliche Datenverarbeitung an.</p>`,
-    },
-    {
-      slug: 'agb',
-      locale: 'de',
-      title: 'AGB — Allgemeine Geschäftsbedingungen',
-      category: 'terms',
-      order: 12,
-      content: `<h1>Allgemeine Geschäftsbedingungen (AGB)</h1>\n<h2>§ 1 Geltungsbereich</h2>\n<p>Für die Geschäftsbeziehung zwischen {{SiteName}} und dem Kunden gelten ausschließlich die nachfolgenden Allgemeinen Geschäftsbedingungen in ihrer zum Zeitpunkt der Bestellung gültigen Fassung.</p>\n<h2>§ 2 Leistungen</h2>\n<p>{{SiteName}} bietet Vermittlungsleistungen für Kredite und Finanzierungslösungen an. Die Beratung erfolgt unverbindlich. Ein Anspruch auf Kreditvermittlung besteht nicht.</p>\n<h2>§ 3 Kostenlose Beratung</h2>\n<p>Die Beratung und Kreditvermittlung durch {{SiteName}} ist für den Kunden kostenlos. Unsere Vergütung erfolgt durch die vermittelnden Banken.</p>\n<h2>§ 4 Pflichten des Kunden</h2>\n<p>Der Kunde verpflichtet sich, wahrheitsgemäße Angaben zu machen und alle für die Kreditprüfung relevanten Informationen vollständig zur Verfügung zu stellen.</p>\n<h2>§ 5 Datennutzung</h2>\n<p>Mit der Anfrage willigt der Kunde ein, dass seine Daten zur Prüfung und Weiterleitung an Partnerbanken verwendet werden. Es gilt unsere <a href="/datenschutz">Datenschutzerklärung</a>.</p>\n<h2>§ 6 Haftungsbeschränkung</h2>\n<p>{{SiteName}} haftet nicht für die Kreditentscheidung der Banken. Alle auf der Website angegebenen Zinssätze sind Richtwerte und stellen kein verbindliches Angebot dar.</p>\n<h2>§ 7 Schlussbestimmungen</h2>\n<p>Es gilt deutsches Recht. Gerichtsstand ist [Ort]. Sollten einzelne Bestimmungen unwirksam sein, bleibt die Wirksamkeit der übrigen Bestimmungen unberührt.</p>\n<p style="color:#666;font-style:italic;">Dies ist eine Vorlage. Bitte passen Sie die AGB im CRM an Ihre tatsächlichen Bedingungen an.</p>`,
-    },
-    {
-      slug: 'cookie-richtlinie',
-      locale: 'de',
-      title: 'Cookie-Richtlinie',
-      category: 'privacy',
-      order: 13,
-      content: `<h1>Cookie-Richtlinie</h1>\n<p>Diese Website verwendet Cookies, um Ihren Besuch zu verbessern und die Nutzung zu analysieren.</p>\n<h2>1. Was sind Cookies?</h2>\n<p>Cookies sind kleine Textdateien, die auf Ihrem Gerät gespeichert werden, wenn Sie eine Website besuchen. Sie ermöglichen es der Website, Ihren Browser zu erkennen.</p>\n<h2>2. Arten von Cookies</h2>\n<h3>Erforderliche Cookies</h3>\n<p>Diese Cookies sind für das Funktionieren der Website unbedingt notwendig. Sie ermöglichen grundlegende Funktionen wie Sitzungsverwaltung und Sicherheit.</p>\n<h3>Analyse-Cookies</h3>\n<p>Mit diesen Cookies können wir Besuche und Traffic-Quellen zählen, um die Leistung der Website zu messen und zu verbessern. Alle Daten werden anonymisiert.</p>\n<h3>Marketing-Cookies</h3>\n<p>Diese Cookies werden verwendet, um Werbung relevanter für Sie und Ihre Interessen zu gestalten.</p>\n<h2>3. Verwaltung von Cookies</h2>\n<p>Sie können Cookies jederzeit in den Einstellungen Ihres Browsers verwalten oder löschen. Das Deaktivieren einiger Cookies kann jedoch die Funktionalität der Website beeinträchtigen.</p>\n<p style="color:#666;font-style:italic;">Passen Sie diese Richtlinie im CRM an Ihre tatsächliche Cookie-Nutzung an.</p>`,
     },
   ];
 
@@ -376,6 +343,11 @@ async function main() {
       create: { ...page, isActive: true },
     });
   }
+
+  // Supprime les anciennes pages légales allemandes (remplacées par les pages communes ci-dessus).
+  await prisma.legalPage.deleteMany({
+    where: { slug: { in: ['impressum', 'datenschutz', 'agb', 'cookie-richtlinie'] } },
+  });
 
   // ---------------------------------------------------------------------------
   // AdminUser — utilisateur de test (auth NextAuth v5 + bcrypt — DEC-K4)

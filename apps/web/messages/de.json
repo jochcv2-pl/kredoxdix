@@ -192,8 +192,10 @@
     "col2Link2": "Rechner",
     "col2Link3": "Kontakt",
     "legal": "Kredix · Vermittler für Bank- und Zahlungsdienste · ORIAS Nr. 00000000 · © 2026",
-    "legalLink1": "Impressum",
-    "legalLink2": "Datenschutz",
-    "legalLink3": "Abmelden"
+    "legalMentions": "Impressum",
+    "legalCgu": "Nutzungsbedingungen",
+    "legalPrivacy": "Datenschutz",
+    "legalCookies": "Cookie-Richtlinie",
+    "legalCgv": "AGB"
   }
 }

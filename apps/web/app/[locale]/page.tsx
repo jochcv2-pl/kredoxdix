@@ -63,10 +63,7 @@ export default async function HomePage({
   const { rates, settings, testimonials, engagementsBlock, servicesBlock, legalPages, bankPartners } = await loadData(locale);
 
   // Override dynamique du contenu via settings DB (si la clé est non vide).
-  // L'i18n reste la source primaire ; les settings surchargent quand l'admin
-  // a personnalisé le contenu (fallback multilingue préservé).
-  const heroTitle = settings.cms_hero_title || null;
-  const heroSubtitle = settings.cms_hero_subtitle || null;
+  // hero_title / hero_subtitle : i18n uniquement (les settings sont monolingues → on ne surcharge pas)
   const heroCtaPrimary = settings.cms_hero_cta_primary || null;
   const heroCtaSecondary = settings.cms_hero_cta_secondary || null;
 
@@ -100,11 +97,11 @@ export default async function HomePage({
           <div className="hero-inner">
             <span className="hero-eyebrow">{t("eyebrow")}</span>
             <h1>
-              {heroTitle ?? t.rich("title", {
+              {t.rich("title", {
                 highlight: (chunks) => <span className="mark">{chunks}</span>,
               })}
             </h1>
-            <p className="hero-sub">{heroSubtitle ?? t("subtitle")}</p>
+            <p className="hero-sub">{t("subtitle")}</p>
             <div className="hero-ctas">
               <a href="#simulateur" className="btn btn-orange">{heroCtaPrimary ?? t("cta1")}</a>
               <a href="#contact" className="btn btn-ghost">{heroCtaSecondary ?? t("cta2")}</a>
@@ -326,16 +323,29 @@ export default async function HomePage({
             <p className="footer-legal">{tFooter("legal")}</p>
             <div className="footer-links">
               {legalPages.length > 0 ? (
-                legalPages.map((page) => (
-                  <a key={page.id} href={`/${locale}/legal/${page.slug}`}>
-                    {page.title}
-                  </a>
-                ))
+                legalPages.map((page) => {
+                  // Map slug → i18n key pour traduire le titre selon la langue
+                  const slugKeyMap: Record<string, string> = {
+                    'mentions-legales': 'legalMentions',
+                    'cgu': 'legalCgu',
+                    'politique-confidentialite': 'legalPrivacy',
+                    'cookies': 'legalCookies',
+                    'cgv': 'legalCgv',
+                  }
+                  const i18nKey = slugKeyMap[page.slug]
+                  return (
+                    <a key={page.id} href={`/${locale}/legal/${page.slug}`}>
+                      {i18nKey ? tFooter(i18nKey as any) : page.title}
+                    </a>
+                  )
+                })
               ) : (
                 <>
-                  <a href="#">{tFooter("legalLink1")}</a>
-                  <a href="#">{tFooter("legalLink2")}</a>
-                  <a href="#">{tFooter("legalLink3")}</a>
+                  <a href={`/${locale}/legal/mentions-legales`}>{tFooter("legalMentions")}</a>
+                  <a href={`/${locale}/legal/cgu`}>{tFooter("legalCgu")}</a>
+                  <a href={`/${locale}/legal/politique-confidentialite`}>{tFooter("legalPrivacy")}</a>
+                  <a href={`/${locale}/legal/cookies`}>{tFooter("legalCookies")}</a>
+                  <a href={`/${locale}/legal/cgv`}>{tFooter("legalCgv")}</a>
                 </>
               )}
             </div>

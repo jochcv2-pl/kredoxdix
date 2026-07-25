@@ -192,8 +192,10 @@
     "col2Link2": "Simulateur",
     "col2Link3": "Nous contacter",
     "legal": "Kredix · Intermédiaire en opérations de banque et services de paiement · ORIAS n° 00000000 · © 2026",
-    "legalLink1": "Mentions légales",
-    "legalLink2": "Confidentialité",
-    "legalLink3": "Se désabonner"
+    "legalMentions": "Mentions Légales",
+    "legalCgu": "CGU",
+    "legalPrivacy": "Confidentialité",
+    "legalCookies": "Cookies",
+    "legalCgv": "CGV"
   }
 }
