@@ -249,9 +249,9 @@ async function main() {
     },
     {
       key: 'cms_favicon_url',
-      value: '/favicon.ico',
+      value: '',
       category: 'cms.branding',
-      description: 'URL du favicon. Format: PNG ou ICO, 512×512px recommandé, max 50KB.',
+      description: 'URL du favicon (vide = utilise app/icon.svg automatiquement). Format: PNG ou ICO, 512×512px, max 50KB.',
     },
     // ===== EMAIL (expédition) =====
     {

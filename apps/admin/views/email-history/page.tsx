@@ -96,6 +96,10 @@ export default function EmailHistory() {
           align-items: flex-end;
           flex-wrap: wrap;
           margin-bottom: 16px;
+          background: var(--bg, #f8fafc);
+          border: 1px solid var(--border, #e5e7eb);
+          border-radius: 12px;
+          padding: 16px 18px;
         }
         .eh-field {
           display: flex;
@@ -103,15 +107,28 @@ export default function EmailHistory() {
           gap: 6px;
         }
         .eh-field label {
-          font-size: 12px;
-          font-weight: 600;
-          color: var(--slate);
+          font-size: 11px;
+          font-weight: 700;
+          color: var(--slate, #64748b);
           text-transform: uppercase;
-          letter-spacing: 0.04em;
+          letter-spacing: 0.05em;
         }
         .eh-field input,
         .eh-field select {
-          min-width: 240px;
+          min-width: 220px;
+          padding: 8px 12px;
+          border: 1px solid var(--border, #e2e8f0);
+          border-radius: 8px;
+          background: var(--white, #fff);
+          font-size: 14px;
+          color: var(--ink, #1e293b);
+          transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .eh-field input:focus,
+        .eh-field select:focus {
+          outline: none;
+          border-color: var(--blue, #2B8BDE);
+          box-shadow: 0 0 0 3px rgba(43, 139, 222, 0.12);
         }
         .eh-toolbar .btn { height: 38px; }
         .eh-meta {
@@ -164,6 +181,23 @@ export default function EmailHistory() {
         #email-history table {
           width: 100%;
           border-collapse: collapse;
+        }
+        #email-history table th {
+          font-size: 11px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+          color: var(--slate, #64748b);
+          padding: 10px 14px;
+          border-bottom: 2px solid var(--border, #e5e7eb);
+        }
+        #email-history table td {
+          padding: 12px 14px;
+          border-bottom: 1px solid var(--border, #f1f5f9);
+          font-size: 13px;
+        }
+        #email-history table tbody tr:hover {
+          background: var(--bg, #f8fafc);
         }
       `}</style>
 

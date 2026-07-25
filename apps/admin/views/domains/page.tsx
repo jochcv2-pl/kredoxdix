@@ -342,13 +342,35 @@ export default function Domains() {
           font-size: 13px;
         }
 
-        .domain-form { display: flex; flex-direction: column; gap: 14px; }
+        .domain-form { display: flex; flex-direction: column; gap: 16px; }
+        .domain-form .field { display: flex; flex-direction: column; gap: 6px; }
+        .domain-form .field-label {
+          font-size: 11px; font-weight: 700; text-transform: uppercase;
+          letter-spacing: 0.05em; color: var(--slate, #64748b);
+        }
+        .domain-form .field-input,
+        .domain-form .field-select {
+          padding: 9px 12px; border: 1px solid var(--border, #e2e8f0);
+          border-radius: 8px; font-size: 14px; color: var(--ink, #1e293b);
+          background: var(--white, #fff); transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .domain-form .field-input:focus,
+        .domain-form .field-select:focus {
+          outline: none; border-color: var(--blue, #2B8BDE);
+          box-shadow: 0 0 0 3px rgba(43, 139, 222, 0.12);
+        }
         .color-row { display: flex; align-items: center; gap: 8px; }
         .color-row input[type="color"] {
           width: 38px; height: 38px; padding: 0; border: 1px solid var(--border, #e5e7eb);
           border-radius: 8px; background: none; cursor: pointer;
         }
-        .check-row { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; }
+        .check-row {
+          display: flex; align-items: center; gap: 8px; cursor: pointer;
+          font-size: 14px; padding: 10px 12px; border: 1px solid var(--border, #e5e7eb);
+          border-radius: 8px; background: var(--bg, #f8fafc); transition: background 0.15s;
+        }
+        .check-row:hover { background: color-mix(in srgb, var(--blue, #2B8BDE) 5%, var(--bg, #f8fafc)); }
+        .check-row input[type="checkbox"] { width: 16px; height: 16px; }
       `}</style>
 
       <div className="domains-head">

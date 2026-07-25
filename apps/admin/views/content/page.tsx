@@ -134,27 +134,28 @@ export default function Content() {
   return (
     <div>
       {/* Sélecteurs section + langue */}
-      <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginBottom: 24, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', background: 'var(--bg, #f8fafc)', border: '1px solid var(--border, #e5e7eb)', borderRadius: 12, padding: '14px 16px' }}>
         <div style={{ display: 'flex', gap: 6 }}>
           {SECTIONS.map((s) => (
             <button
               key={s.key}
               className={`btn btn-sm ${section === s.key ? 'btn-primary' : 'btn-ghost'}`}
               onClick={() => setSection(s.key)}
-              style={{ padding: '6px 14px', fontSize: 13 }}
+              style={{ padding: '6px 14px', fontSize: 13, fontWeight: 600 }}
             >
               {s.label}
             </button>
           ))}
         </div>
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          <span style={{ fontSize: 13, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Langue :</span>
+        <div style={{ width: 1, height: 28, background: 'var(--border, #e5e7eb)' }} />
+        <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+          <span style={{ fontSize: 11, color: 'var(--slate, #64748b)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em', marginRight: 4 }}>Langue</span>
           {LOCALES.map((lc) => (
             <button
               key={lc}
               className={`btn btn-sm ${locale === lc ? 'btn-primary' : 'btn-ghost'}`}
               onClick={() => setLocale(lc)}
-              style={{ padding: '4px 10px', fontSize: 12 }}
+              style={{ padding: '4px 10px', fontSize: 12, fontWeight: 600, minWidth: 34, textAlign: 'center' }}
             >
               {lc.toUpperCase()}
             </button>
@@ -162,76 +163,74 @@ export default function Content() {
         </div>
       </div>
 
-      {error && <div className="alert alert-error" style={{ marginBottom: 16 }}>{error}</div>}
+      {error && <div className="alert alert-error" style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 8, background: 'rgba(239,68,68,0.08)', color: '#dc2626', fontSize: 13 }}>{error}</div>}
       {savedAt && (
-        <div className="alert alert-success" style={{ marginBottom: 16, color: '#16a34a' }}>
+        <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 8, background: 'rgba(34,197,94,0.08)', color: '#16a34a', fontSize: 13, fontWeight: 500 }}>
           ✓ Sauvegardé à {savedAt.toLocaleTimeString()}
         </div>
       )}
 
       {loading ? (
-        <div className="loading-state">Chargement…</div>
+        <div style={{ padding: 40, textAlign: 'center', color: 'var(--slate, #64748b)' }}>Chargement…</div>
       ) : (
-        <div style={{ maxWidth: 700 }}>
+        <div style={{ maxWidth: 720 }}>
           {/* Méta de section */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 28 }}>
-            <label className="form-field">
-              <span className="form-label">Sur-titre (eyebrow)</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 28, background: 'var(--white, #fff)', border: '1px solid var(--border, #e5e7eb)', borderRadius: 12, padding: 20 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--slate, #64748b)' }}>Sur-titre (eyebrow)</label>
               <input
                 type="text"
                 value={form.eyebrow}
                 onChange={(e) => setForm({ ...form, eyebrow: e.target.value })}
                 placeholder="Ex : Pourquoi nous choisir"
-                className="form-input"
+                style={{ padding: '9px 12px', border: '1px solid var(--border, #e2e8f0)', borderRadius: 8, fontSize: 14, color: 'var(--ink, #1e293b)', background: 'var(--white, #fff)', transition: 'border-color 0.15s, box-shadow 0.15s' }}
               />
-            </label>
-            <label className="form-field">
-              <span className="form-label">Titre principal</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--slate, #64748b)' }}>Titre principal</label>
               <input
                 type="text"
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
                 placeholder="Ex : Des engagements concrets"
-                className="form-input"
+                style={{ padding: '9px 12px', border: '1px solid var(--border, #e2e8f0)', borderRadius: 8, fontSize: 15, fontWeight: 600, color: 'var(--ink, #1e293b)', background: 'var(--white, #fff)' }}
               />
-            </label>
-            <label className="form-field">
-              <span className="form-label">Phrase d'introduction</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--slate, #64748b)' }}>Phrase d'introduction</label>
               <textarea
                 value={form.lead}
                 onChange={(e) => setForm({ ...form, lead: e.target.value })}
                 placeholder="Ex : Depuis 2015, nous accompagnons…"
                 rows={2}
-                className="form-input"
-                style={{ resize: 'vertical', fontFamily: 'inherit' }}
+                style={{ resize: 'vertical', fontFamily: 'inherit', padding: '9px 12px', border: '1px solid var(--border, #e2e8f0)', borderRadius: 8, fontSize: 14, color: 'var(--ink, #1e293b)', background: 'var(--white, #fff)' }}
               />
-            </label>
+            </div>
           </div>
 
           {/* Items / cartes */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h4 style={{ fontSize: 14, fontWeight: 700, textTransform: 'uppercase', color: '#374151' }}>
+            <h4 style={{ margin: 0, fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--slate, #64748b)' }}>
               Cartes ({form.items.length})
             </h4>
-            <button className="btn btn-primary btn-sm" onClick={addItem}>
+            <button className="btn btn-primary btn-sm" onClick={addItem} style={{ fontWeight: 600 }}>
               + Ajouter une carte
             </button>
           </div>
 
           {form.items.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 24, color: '#9ca3af', border: '2px dashed #e5e7eb', borderRadius: 10 }}>
+            <div style={{ textAlign: 'center', padding: 32, color: 'var(--slate, #9ca3af)', border: '2px dashed var(--border, #e5e7eb)', borderRadius: 12, fontSize: 14 }}>
               Aucune carte. Cliquez sur « Ajouter une carte ».
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {form.items.map((item, idx) => (
-                <div key={idx} style={{ padding: 16, border: '1px solid #e5e7eb', borderRadius: 10, background: '#fafafa' }}>
+                <div key={idx} style={{ padding: 16, border: '1px solid var(--border, #e5e7eb)', borderRadius: 12, background: 'var(--white, #fff)', transition: 'box-shadow 0.15s', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
                   <div style={{ display: 'flex', gap: 10, marginBottom: 10, alignItems: 'flex-start' }}>
                     <select
                       value={item.icon}
                       onChange={(e) => updateItem(idx, 'icon', e.target.value)}
-                      className="form-input"
-                      style={{ width: 'auto', minWidth: 120 }}
+                      style={{ width: 'auto', minWidth: 120, padding: '8px 10px', border: '1px solid var(--border, #e2e8f0)', borderRadius: 8, fontSize: 13, background: 'var(--white, #fff)', color: 'var(--ink, #1e293b)' }}
                     >
                       {ICON_OPTIONS.map((ic) => <option key={ic} value={ic}>{ic}</option>)}
                     </select>
@@ -240,12 +239,11 @@ export default function Content() {
                       value={item.title}
                       onChange={(e) => updateItem(idx, 'title', e.target.value)}
                       placeholder="Titre de la carte"
-                      className="form-input"
-                      style={{ flex: 1, fontWeight: 600 }}
+                      style={{ flex: 1, fontWeight: 600, padding: '8px 12px', border: '1px solid var(--border, #e2e8f0)', borderRadius: 8, fontSize: 14, color: 'var(--ink, #1e293b)', background: 'var(--white, #fff)' }}
                     />
                     <div style={{ display: 'flex', gap: 2 }}>
-                      <button className="btn btn-ghost btn-sm" onClick={() => moveItem(idx, -1)} disabled={idx === 0} title="Monter">↑</button>
-                      <button className="btn btn-ghost btn-sm" onClick={() => moveItem(idx, 1)} disabled={idx === form.items.length - 1} title="Descendre">↓</button>
+                      <button className="btn btn-ghost btn-sm" onClick={() => moveItem(idx, -1)} disabled={idx === 0} title="Monter" style={{ opacity: idx === 0 ? 0.3 : 1 }}>↑</button>
+                      <button className="btn btn-ghost btn-sm" onClick={() => moveItem(idx, 1)} disabled={idx === form.items.length - 1} title="Descendre" style={{ opacity: idx === form.items.length - 1 ? 0.3 : 1 }}>↓</button>
                       <button className="btn btn-ghost btn-sm" onClick={() => removeItem(idx)} title="Supprimer" style={{ color: '#ef4444' }}>
                         <Icon name="trash" size={16} />
                       </button>
@@ -256,8 +254,7 @@ export default function Content() {
                     onChange={(e) => updateItem(idx, 'description', e.target.value)}
                     placeholder="Description de la carte (1-2 phrases)"
                     rows={2}
-                    className="form-input"
-                    style={{ resize: 'vertical', fontFamily: 'inherit' }}
+                    style={{ resize: 'vertical', fontFamily: 'inherit', width: '100%', padding: '8px 12px', border: '1px solid var(--border, #e2e8f0)', borderRadius: 8, fontSize: 13, color: 'var(--slate, #64748b)', background: 'var(--bg, #f8fafc)' }}
                   />
                 </div>
               ))}
@@ -265,7 +262,7 @@ export default function Content() {
           )}
 
           {/* Save bar */}
-          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 24, paddingTop: 16, borderTop: '1px solid #e5e7eb' }}>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--border, #e5e7eb)' }}>
             <button
               className="btn btn-primary"
               onClick={handleSave}
