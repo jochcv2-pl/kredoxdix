@@ -13,6 +13,7 @@ import { Icon } from '@/components/Icon'
 interface LegalPage {
   id: string
   slug: string
+  locale: string
   title: string
   category: string
   content: string
@@ -24,6 +25,7 @@ interface LegalPage {
 
 interface FormState {
   slug: string
+  locale: string
   title: string
   category: string
   content: string
@@ -32,7 +34,7 @@ interface FormState {
 }
 
 const EMPTY: FormState = {
-  slug: '', title: '', category: 'legal', content: '', order: 0, isActive: true,
+  slug: '', locale: 'de', title: '', category: 'legal', content: '', order: 0, isActive: true,
 }
 
 // Suggestions de slugs légaux courants (DE/FR).
@@ -243,6 +245,21 @@ export default function Legal() {
                 className="form-input"
               />
               <small style={{ color: '#9ca3af', fontSize: 12 }}>Apparaît comme : kredix.fr/<b>{form.slug || 'slug'}</b></small>
+            </label>
+            <label className="form-field" style={{ flex: 1 }}>
+              <span className="form-label">Langue</span>
+              <select
+                value={form.locale}
+                onChange={(e) => setForm({ ...form, locale: e.target.value })}
+                className="form-input"
+              >
+                <option value="de">Deutsch</option>
+                <option value="fr">Français</option>
+                <option value="en">English</option>
+                <option value="es">Español</option>
+                <option value="it">Italiano</option>
+                <option value="pt">Português</option>
+              </select>
             </label>
             <label className="form-field" style={{ flex: 1 }}>
               <span className="form-label">Catégorie</span>

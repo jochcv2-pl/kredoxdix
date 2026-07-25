@@ -288,6 +288,7 @@ async function main() {
   // ---------------------------------------------------------------------------
   const legalPages: Array<{
     slug: string;
+    locale: string;
     title: string;
     category: string;
     content: string;
@@ -295,6 +296,7 @@ async function main() {
   }> = [
     {
       slug: 'mentions-legales',
+      locale: 'fr',
       title: 'Mentions Légales',
       category: 'legal',
       order: 1,
@@ -302,6 +304,7 @@ async function main() {
     },
     {
       slug: 'cgu',
+      locale: 'fr',
       title: 'Conditions Générales d\'Utilisation',
       category: 'terms',
       order: 2,
@@ -309,6 +312,7 @@ async function main() {
     },
     {
       slug: 'politique-confidentialite',
+      locale: 'fr',
       title: 'Politique de Confidentialité',
       category: 'privacy',
       order: 3,
@@ -316,6 +320,7 @@ async function main() {
     },
     {
       slug: 'cookies',
+      locale: 'fr',
       title: 'Politique Cookies',
       category: 'privacy',
       order: 4,
@@ -323,6 +328,7 @@ async function main() {
     },
     {
       slug: 'cgv',
+      locale: 'fr',
       title: 'Conditions Générales de Vente',
       category: 'terms',
       order: 5,
@@ -331,6 +337,7 @@ async function main() {
     // --- Pages légales ALLEMAND (langue par défaut du site) ---
     {
       slug: 'impressum',
+      locale: 'de',
       title: 'Impressum',
       category: 'legal',
       order: 10,
@@ -338,6 +345,7 @@ async function main() {
     },
     {
       slug: 'datenschutz',
+      locale: 'de',
       title: 'Datenschutzerklärung',
       category: 'privacy',
       order: 11,
@@ -345,6 +353,7 @@ async function main() {
     },
     {
       slug: 'agb',
+      locale: 'de',
       title: 'AGB — Allgemeine Geschäftsbedingungen',
       category: 'terms',
       order: 12,
@@ -352,6 +361,7 @@ async function main() {
     },
     {
       slug: 'cookie-richtlinie',
+      locale: 'de',
       title: 'Cookie-Richtlinie',
       category: 'privacy',
       order: 13,
@@ -362,7 +372,7 @@ async function main() {
   for (const page of legalPages) {
     await prisma.legalPage.upsert({
       where: { slug: page.slug },
-      update: { title: page.title, category: page.category, content: page.content, order: page.order },
+      update: { title: page.title, category: page.category, content: page.content, order: page.order, locale: page.locale },
       create: { ...page, isActive: true },
     });
   }
@@ -1258,10 +1268,12 @@ L'équipe Kredix`,
       title: 'Unsere Versprechen',
       lead: 'Seit 2015 begleiten wir unsere Kunden bei jeder Art von Kredit — transparent, schnell und immer zu Ihrem Vorteil.',
       items: [
-        { icon: 'shield', title: '100% transparent', description: 'Keine versteckten Gebühren. Sie sehen jeden Zinssatz, jede Provision und jede Gebühr im Voraus.' },
-        { icon: 'check-circle', title: 'Antwort in 48 Std.', description: 'Ihre Anfrage wird innerhalb von 48 Stunden von einem zertifizierten Berater bearbeitet.' },
-        { icon: 'award', title: 'Beste Zinsen', description: 'Wir vergleichen über 120 Banken, um Ihnen den günstigsten Zinssatz zu sichern.' },
-        { icon: 'key', title: 'Begleitung bis zur Auszahlung', description: 'Ein dedizierter Berater begleitet Sie vom ersten Kontakt bis zur Auszahlung Ihres Kredits.' },
+        { icon: 'shield', title: '0 € Vorkosten', description: 'Keine Vorauszahlung. Sie zahlen nichts, bis Ihr Kredit bewilligt ist.' },
+        { icon: 'check-circle', title: 'Antwort in 24 Std.', description: 'Ihre Anfrage wird innerhalb von 24 Stunden von einem zertifizierten Berater bearbeitet.' },
+        { icon: 'award', title: '40+ Banken verglichen', description: 'Wir vergleichen über 40 Partnerbanken, um Ihnen den günstigsten Zinssatz zu sichern.' },
+        { icon: 'trending', title: '94 % Bewilligungsquote', description: '94 % unserer Anfragen werden von den Banken bewilligt.' },
+        { icon: 'key', title: 'Begleitung bis zur Auszahlung', description: 'Ein dedizierter Berater begleitet Sie vom ersten Kontakt bis zur Auszahlung.' },
+        { icon: 'bar-chart', title: '350+ finanzierte Dossiers', description: 'Seit 2015 haben wir über 350 Kredite erfolgreich finanziert.' },
       ],
     },
     {
@@ -1274,7 +1286,7 @@ L'équipe Kredix`,
         { icon: 'trending', title: 'Baukredit', description: 'Bauen, kaufen oder renovieren — sichern Sie sich die besten Konditionen für Ihr Immobilienprojekt.' },
         { icon: 'refresh-cw', title: 'Umschuldung', description: 'Senken Sie Ihre monatliche Belastung durch Umschuldung Ihrer bestehenden Kredite zu besseren Konditionen.' },
         { icon: 'cpu', title: 'Konsumkredit', description: 'Auto, Möbel, Studiengebühren — flexibler Konsumkredit zu transparenten Konditionen.' },
-        { icon: 'bot', title: 'KI-Beratung', description: 'Unser KI-Berater vergleicht in Echtzeit über 120 Banken und findet das beste Angebot für Ihr Profil.' },
+        { icon: 'bot', title: 'KI-Beratung', description: 'Unser KI-Berater vergleicht in Echtzeit über 40 Banken und findet das beste Angebot für Ihr Profil.' },
       ],
     },
     {
@@ -1284,10 +1296,12 @@ L'équipe Kredix`,
       title: 'Nos engagements',
       lead: 'Depuis 2015, nous accompagnons nos clients dans tous types de crédit — en toute transparence, rapidité et toujours dans votre intérêt.',
       items: [
-        { icon: 'shield', title: '100% transparent', description: 'Aucun frais caché. Vous voyez chaque taux, chaque commission et chaque frais à l\'avance.' },
-        { icon: 'check-circle', title: 'Réponse en 48h', description: 'Votre demande est traitée sous 48h par un conseiller certifié.' },
-        { icon: 'award', title: 'Les meilleurs taux', description: 'Nous comparons plus de 40 banques pour vous garantir le taux le plus avantageux.' },
-        { icon: 'key', title: 'Accompagnement jusqu\'au déboursement', description: 'Un conseiller dédié vous suit du premier contact jusqu\'au déboursement de votre crédit.' },
+        { icon: 'shield', title: '0 € à l\'avance', description: 'Aucun frais à payer avant l\'acceptation de votre crédit. Vous ne déboursez rien tant que votre dossier n\'est pas validé.' },
+        { icon: 'check-circle', title: 'Réponse en 24h', description: 'Votre demande est traitée sous 24h par un conseiller certifié.' },
+        { icon: 'award', title: '40+ banques comparées', description: 'Nous comparons plus de 40 banques partenaires pour vous garantir le taux le plus avantageux.' },
+        { icon: 'trending', title: '94% d\'acceptation', description: '94% de nos demandes sont acceptées par les banques.' },
+        { icon: 'key', title: 'Accompagnement complet', description: 'Un conseiller dédié vous suit du premier contact jusqu\'au déboursement de votre crédit.' },
+        { icon: 'bar-chart', title: '350+ dossiers financés', description: 'Depuis 2015, plus de 350 crédits financés avec succès.' },
       ],
     },
     {

@@ -171,29 +171,26 @@ export default function Testimonials() {
       {loading ? (
         <div className="loading-state">Chargement…</div>
       ) : list.length === 0 ? (
-        <div className="empty-state" style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>
+        <div className="card-grid-empty">
           Aucun témoignage en <b>{filterLocale.toUpperCase()}</b>. Cliquez sur « Nouvel avis ».
         </div>
       ) : (
-        <div className="card-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>
+        <div className="card-grid">
           {list.map((t) => (
-            <div key={t.id} className="card" style={{ padding: 20, borderRadius: 12, border: '1px solid #e5e7eb', background: '#fff' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+            <div key={t.id} className="card">
+              <div className="card-head">
                 <div>
-                  <b style={{ fontSize: 15 }}>{t.authorName}</b>
-                  {t.authorRole && <span style={{ color: '#6b7280', fontSize: 13 }}> · {t.authorRole}</span>}
+                  <div className="card-title">{t.authorName}</div>
+                  {t.authorRole && <div className="card-meta">{t.authorRole}{t.authorLocation ? ` · ${t.authorLocation}` : ''}</div>}
                 </div>
-                <span style={{ fontSize: 15, letterSpacing: -1 }}>
+                <span style={{ fontSize: 15, letterSpacing: -1, flexShrink: 0 }}>
                   {'★'.repeat(t.rating)}<span style={{ color: '#e5e7eb' }}>{'★'.repeat(5 - t.rating)}</span>
                 </span>
               </div>
-              {t.authorLocation && (
-                <div style={{ color: '#9ca3af', fontSize: 12, marginBottom: 8 }}>{t.authorLocation}</div>
-              )}
-              <p style={{ fontSize: 14, color: '#374151', lineHeight: 1.5, marginBottom: 12 }}>
+              <p className="card-body">
                 « {t.content.length > 140 ? t.content.slice(0, 140) + '…' : t.content} »
               </p>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <div className="card-actions">
                 <span className={`badge ${t.isVisible ? 'b-client' : 'b-lost'}`} style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20 }}>
                   {t.isVisible ? 'Visible' : 'Masqué'}
                 </span>

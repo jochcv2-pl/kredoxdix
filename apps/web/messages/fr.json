@@ -136,19 +136,28 @@
     "eyebrow": "Pourquoi Kredix",
     "title": "Nos engagements",
     "lead": "Depuis 2015, nous accompagnons nos clients dans tous types de crédit — en toute transparence, rapidité et toujours dans votre intérêt.",
-    "item1Title": "100% transparent",
-    "item1Desc": "Aucun frais caché. Vous voyez chaque taux, chaque commission et chaque frais à l'avance.",
-    "item2Title": "Réponse en 48h",
-    "item2Desc": "Votre demande est traitée sous 48h par un conseiller certifié.",
-    "item3Title": "Les meilleurs taux",
-    "item3Desc": "Nous comparons plus de 40 banques pour vous garantir le taux le plus avantageux.",
-    "item4Title": "Accompagnement jusqu'au déboursement",
-    "item4Desc": "Un conseiller dédié vous suit du premier contact jusqu'au déboursement de votre crédit."
+    "item1Title": "0 € à l'avance",
+    "item1Desc": "Aucun frais à payer avant l'acceptation de votre crédit. Vous ne déboursez rien tant que votre dossier n'est pas validé.",
+    "item2Title": "Réponse en 24h",
+    "item2Desc": "Votre demande est traitée sous 24h par un conseiller certifié.",
+    "item3Title": "40+ banques comparées",
+    "item3Desc": "Nous comparons plus de 40 banques partenaires pour vous garantir le taux le plus avantageux.",
+    "item4Title": "94% d'acceptation",
+    "item4Desc": "94% de nos demandes sont acceptées par les banques.",
+    "item5Title": "Accompagnement complet",
+    "item5Desc": "Un conseiller dédié vous suit du premier contact jusqu'au déboursement de votre crédit.",
+    "item6Title": "350+ dossiers financés",
+    "item6Desc": "Depuis 2015, plus de 350 crédits financés avec succès."
   },
   "Testimonials": {
     "eyebrow": "Avis clients",
     "title": "Ce que disent nos clients",
     "lead": "Plus de 350 dossiers financés, un taux de satisfaction de 94% et une note de 4,9/5."
+  },
+  "Partners": {
+    "eyebrow": "Nos banques partenaires",
+    "title": "Plus de 40 banques comparées",
+    "lead": "Nous travaillons avec les principales banques en France et en Europe pour vous garantir toujours les meilleures conditions."
   },
   "Contact": {
     "title": "Une question ? <highlight>Parlons-en.</highlight>",

@@ -136,19 +136,28 @@
     "eyebrow": "Porquê a Kredix",
     "title": "Os nossos compromissos",
     "lead": "Desde 2015, acompanhamos os nossos clientes em todos os tipos de crédito — com transparência, rapidez e sempre no seu interesse.",
-    "item1Title": "100% transparente",
-    "item1Desc": "Sem taxas ocultas. Vê cada taxa, cada comissão e cada encargo antecipadamente.",
-    "item2Title": "Resposta em 48h",
-    "item2Desc": "O seu pedido é processado em 48 horas por um consultor certificado.",
-    "item3Title": "As melhores taxas",
-    "item3Desc": "Comparamos mais de 40 bancos para lhe garantir a taxa mais vantajosa.",
-    "item4Title": "Acompanhamento até ao desembolso",
-    "item4Desc": "Um consultor dedicado acompanha-o desde o primeiro contacto até ao desembolso do seu crédito."
+    "item1Title": "0 € adiantados",
+    "item1Desc": "Sem custos a pagar antes da aprovação do crédito. Não paga nada até que o seu processo seja validado.",
+    "item2Title": "Resposta em 24h",
+    "item2Desc": "O seu pedido é processado em 24 horas por um consultor certificado.",
+    "item3Title": "40+ bancos comparados",
+    "item3Desc": "Comparamos mais de 40 bancos parceiros para lhe garantir a taxa mais vantajosa.",
+    "item4Title": "94% de aceitação",
+    "item4Desc": "94% dos nossos pedidos são aceites pelos bancos.",
+    "item5Title": "Acompanhamento completo",
+    "item5Desc": "Um consultor dedicado acompanha-o desde o primeiro contacto até ao desembolso do seu crédito.",
+    "item6Title": "350+ processos financiados",
+    "item6Desc": "Desde 2015, mais de 350 créditos financiados com sucesso."
   },
   "Testimonials": {
     "eyebrow": "Opiniões de clientes",
     "title": "O que dizem os nossos clientes",
     "lead": "Mais de 350 processos financiados, uma taxa de satisfação de 94% e uma avaliação de 4,9/5."
+  },
+  "Partners": {
+    "eyebrow": "Os nossos bancos parceiros",
+    "title": "Mais de 40 bancos comparados",
+    "lead": "Trabalhamos com os principais bancos europeus para lhe garantir sempre as melhores condições."
   },
   "Contact": {
     "title": "Uma questão? <highlight>Vamos falar.</highlight>",

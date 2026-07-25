@@ -136,19 +136,28 @@
     "eyebrow": "Por qué Kredix",
     "title": "Nuestros compromisos",
     "lead": "Desde 2015, acompañamos a nuestros clientes en todo tipo de crédito — con transparencia, rapidez y siempre en su beneficio.",
-    "item1Title": "100% transparente",
-    "item1Desc": "Sin comisiones ocultas. Usted ve cada tipo, cada comisión y cada cargo por adelantado.",
-    "item2Title": "Respuesta en 48h",
-    "item2Desc": "Su solicitud es procesada en 48 horas por un asesor certificado.",
-    "item3Title": "Las mejores tasas",
-    "item3Desc": "Comparamos más de 40 bancos para garantizarle la tasa más ventajosa.",
-    "item4Title": "Acompañamiento hasta el desembolso",
-    "item4Desc": "Un asesor dedicado le acompaña desde el primer contacto hasta el desembolso de su crédito."
+    "item1Title": "0 € por adelantado",
+    "item1Desc": "Sin gastos que pagar antes de la aprobación de su crédito. No paga nada hasta que su expediente sea validado.",
+    "item2Title": "Respuesta en 24h",
+    "item2Desc": "Su solicitud es procesada en 24 horas por un asesor certificado.",
+    "item3Title": "40+ bancos comparados",
+    "item3Desc": "Comparamos más de 40 bancos asociados para garantizarle la tasa más ventajosa.",
+    "item4Title": "94% de aceptación",
+    "item4Desc": "El 94% de nuestras solicitudes son aceptadas por los bancos.",
+    "item5Title": "Acompañamiento completo",
+    "item5Desc": "Un asesor dedicado le acompaña desde el primer contacto hasta el desembolso de su crédito.",
+    "item6Title": "350+ expedientes financiados",
+    "item6Desc": "Desde 2015, más de 350 créditos financiados con éxito."
   },
   "Testimonials": {
     "eyebrow": "Opiniones de clientes",
     "title": "Lo que dicen nuestros clientes",
     "lead": "Más de 350 expedientes financiados, una tasa de satisfacción del 94% y una valoración de 4,9/5."
+  },
+  "Partners": {
+    "eyebrow": "Nuestros bancos asociados",
+    "title": "Más de 40 bancos comparados",
+    "lead": "Trabajamos con los principales bancos de Europa para garantizarle siempre las mejores condiciones."
   },
   "Contact": {
     "title": "¿Una pregunta? <highlight>Hablemos.</highlight>",

@@ -89,10 +89,21 @@ export async function getContentBlock(section: string, locale = 'de') {
  * Récupère toutes les pages légales ACTIVES, triées par `order`.
  * Utilisé côté web pour construire dynamiquement les liens du footer.
  */
-export async function getActiveLegalPages() {
+export async function getActiveLegalPages(locale?: string) {
   return prisma.legalPage.findMany({
-    where: { isActive: true },
+    where: { isActive: true, ...(locale ? { locale } : {}) },
     orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
-    select: { id: true, slug: true, title: true, category: true, order: true },
+    select: { id: true, slug: true, title: true, category: true, order: true, locale: true },
+  });
+}
+
+/**
+ * Récupère tous les partenaires bancaires ACTIFS pour la section "Nos partenaires".
+ */
+export async function getActiveBankPartners() {
+  return prisma.bankPartner.findMany({
+    where: { isActive: true },
+    orderBy: { displayOrder: 'asc' },
+    select: { id: true, name: true, slug: true, logoUrl: true },
   });
 }

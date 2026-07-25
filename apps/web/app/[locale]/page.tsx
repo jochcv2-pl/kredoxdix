@@ -1,8 +1,9 @@
 import { getTranslations } from "next-intl/server";
-import { Shield, CheckCircle, Award, Key, TrendingUp, RefreshCw, Cpu, Bot, Phone, Mail, UserPlus, BarChart3, Download, Check, Star, Quote } from "lucide-react";
+import { Shield, CheckCircle, Award, Key, TrendingUp, RefreshCw, Cpu, Bot, Phone, Mail, UserPlus, BarChart3, Download, Check, MessageCircle } from "lucide-react";
 import Navbar from "@/components/navbar";
 import SimulatorAndForm from "@/components/simulator-and-form";
-import { getActiveRates, getPublicSettings, getVisibleTestimonials, getContentBlock, getActiveLegalPages } from "@kredix/db";
+import TestimonialsCarousel from "./TestimonialsCarousel";
+import { getActiveRates, getPublicSettings, getVisibleTestimonials, getContentBlock, getActiveLegalPages, getActiveBankPartners } from "@kredix/db";
 
 // =============================================================================
 // Landing page Kredix — Server Component SSR.
@@ -32,15 +33,16 @@ function cmsItems(raw: unknown, fallback: CmsItem[]): CmsItem[] {
 }
 
 async function loadData(locale: string) {
-  const [rates, settings, testimonials, engagementsBlock, servicesBlock, legalPages] = await Promise.all([
+  const [rates, settings, testimonials, engagementsBlock, servicesBlock, legalPages, bankPartners] = await Promise.all([
     getActiveRates(),
     getPublicSettings(),
     getVisibleTestimonials(locale),
     getContentBlock('engagements', locale),
     getContentBlock('services', locale),
-    getActiveLegalPages(),
+    getActiveLegalPages(locale),
+    getActiveBankPartners(),
   ]);
-  return { rates, settings, testimonials, engagementsBlock, servicesBlock, legalPages };
+  return { rates, settings, testimonials, engagementsBlock, servicesBlock, legalPages, bankPartners };
 }
 
 export default async function HomePage({
@@ -54,10 +56,11 @@ export default async function HomePage({
   const tEng = await getTranslations("Engagements");
   const tServices = await getTranslations("Services");
   const tTesti = await getTranslations("Testimonials");
+  const tPartners = await getTranslations("Partners");
   const tContact = await getTranslations("Contact");
   const tFooter = await getTranslations("Footer");
 
-  const { rates, settings, testimonials, engagementsBlock, servicesBlock, legalPages } = await loadData(locale);
+  const { rates, settings, testimonials, engagementsBlock, servicesBlock, legalPages, bankPartners } = await loadData(locale);
 
   // Override dynamique du contenu via settings DB (si la clé est non vide).
   // L'i18n reste la source primaire ; les settings surchargent quand l'admin
@@ -71,7 +74,6 @@ export default async function HomePage({
   const whatsapp = settings.whatsapp_number || "";
   const contactEmail = settings.contact_email || "contact@kredix.fr";
   const contactPhone = settings.contact_phone || "";
-  const orias = settings.orias_number || "";
 
   // WhatsApp link : nettoie tout sauf les chiffres pour wa.me.
   const waLink = whatsapp
@@ -154,7 +156,9 @@ export default async function HomePage({
               { icon: 'shield', title: tEng("item1Title"), description: tEng("item1Desc") },
               { icon: 'check-circle', title: tEng("item2Title"), description: tEng("item2Desc") },
               { icon: 'award', title: tEng("item3Title"), description: tEng("item3Desc") },
-              { icon: 'key', title: tEng("item4Title"), description: tEng("item4Desc") },
+              { icon: 'trending', title: tEng("item4Title"), description: tEng("item4Desc") },
+              { icon: 'key', title: tEng("item5Title"), description: tEng("item5Desc") },
+              { icon: 'bar-chart', title: tEng("item6Title"), description: tEng("item6Desc") },
             ]).map((item, i) => (
               <div className="engagement-card" key={i}>
                 <div className="engagement-icon">
@@ -200,37 +204,23 @@ export default async function HomePage({
         </div>
       </section>
 
-      {/* ===== AVIS & TÉMOIGNAGES (CMS-driven, masqué si vide) ===== */}
-      {testimonials.length > 0 && (
-        <section className="section" id="avis">
+      {/* ===== NOS PARTENAIRES BANCAIRES (carousel animé, masqué si vide) ===== */}
+      {bankPartners.length > 0 && (
+        <section className="section partners-section" id="partenaires">
           <div className="wrap">
-            <p className="section-eyebrow">{tTesti("eyebrow")}</p>
-            <h2 className="section-title">{tTesti("title")}</h2>
-            <p className="section-lead">{tTesti("lead")}</p>
-            <div className="testimonials-grid">
-              {testimonials.map((tst) => (
-                <div className="testimonial-card" key={tst.id}>
-                  <Quote className="tst-quote" size={28} />
-                  <div className="tst-stars">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Star
-                        key={i}
-                        size={16}
-                        fill={i < tst.rating ? "currentColor" : "none"}
-                        strokeWidth={1.5}
-                      />
-                    ))}
-                  </div>
-                  <p className="tst-content">&ldquo;{tst.content}&rdquo;</p>
-                  <div className="tst-author">
-                    <div className="tst-avatar">
-                      {tst.authorName.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <div className="tst-name">{tst.authorName}</div>
-                      {tst.authorRole && <div className="tst-role">{tst.authorRole}{tst.authorLocation ? ` · ${tst.authorLocation}` : ''}</div>}
-                    </div>
-                  </div>
+            <p className="section-eyebrow">{tPartners("eyebrow")}</p>
+            <h2 className="section-title">{tPartners("title")}</h2>
+            <p className="section-lead">{tPartners("lead")}</p>
+          </div>
+          <div className="partners-marquee">
+            <div className="partners-marquee-track">
+              {[...bankPartners, ...bankPartners].map((bank, i) => (
+                <div className="partner-logo" key={`${bank.id}-${i}`}>
+                  {bank.logoUrl ? (
+                    <img src={bank.logoUrl} alt={bank.name} />
+                  ) : (
+                    <span className="partner-name">{bank.name}</span>
+                  )}
                 </div>
               ))}
             </div>
@@ -238,69 +228,71 @@ export default async function HomePage({
         </section>
       )}
 
+      {/* ===== AVIS & TÉMOIGNAGES (Carousel animé CMS-driven, masqué si vide) ===== */}
+      {testimonials.length > 0 && (
+        <section className="section tst-section" id="avis">
+          <div className="wrap">
+            <p className="section-eyebrow">{tTesti("eyebrow")}</p>
+            <h2 className="section-title">{tTesti("title")}</h2>
+            <p className="section-lead">{tTesti("lead")}</p>
+          </div>
+          <TestimonialsCarousel testimonials={testimonials} />
+        </section>
+      )}
+
       {/* ===== CONTACT ===== */}
       <section className="section contact-section" id="contact">
         <div className="wrap">
-          <div className="contact-grid">
-            <div>
-              <h2>
-                {tContact.rich("title", {
-                  highlight: (chunks) => <em>{chunks}</em>,
-                })}
-              </h2>
-              <p className="csub">{tContact("subtitle")}</p>
-              <div className="contact-actions">
-                <a
-                  href={waLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="contact-btn"
-                >
-                  <div className="cmark">WA</div>
-                  <div>
-                    <div className="ctitle">{tContact("whatsappTitle")}</div>
-                    <div className="cdesc">{whatsapp || tContact("whatsappDesc")}</div>
-                  </div>
-                </a>
-                <a
-                  href="https://m.me/kredix"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="contact-btn"
-                >
-                  <div className="cmark">
-                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden>
-                      <path d="M12 2C6.36 2 1.8 6.13 1.8 11.25c0 2.88 1.42 5.45 3.65 7.18V22l3.33-1.83c.95.26 1.96.4 3 .4 5.64 0 10.2-4.13 10.2-9.25S17.64 2 12 2zm1.07 12.25l-2.65-2.83-5.18 2.83 5.69-6.04 2.71 2.83 5.13-2.83-5.7 6.04z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <div className="ctitle">{tContact("messengerTitle")}</div>
-                    <div className="cdesc">{tContact("messengerDesc")}</div>
-                  </div>
-                </a>
-                <a href={telLink} className="contact-btn">
-                  <div className="cmark">TEL</div>
-                  <div>
-                    <div className="ctitle">{tContact("phoneTitle")}</div>
-                    <div className="cdesc">{contactPhone || "+33 6 00 00 00 00"}</div>
-                  </div>
-                </a>
-                <a href={`mailto:${contactEmail}`} className="contact-btn">
-                  <div className="cmark">@</div>
-                  <div>
-                    <div className="ctitle">{tContact("emailTitle")}</div>
-                    <div className="cdesc">{contactEmail}</div>
-                  </div>
-                </a>
-              </div>
-            </div>
-            <div className="contact-card">
-              <p className="cctitle">{tContact("cardTitle")}</p>
-              <div className="contact-row"><span>{tContact("row1Label")}</span><span>{tContact("row1Value")}</span></div>
-              <div className="contact-row"><span>{tContact("row2Label")}</span><span>{tContact("row2Value")}</span></div>
-              <div className="contact-row"><span>{tContact("row3Label")}</span><span>{tContact("row3Value")}</span></div>
-              <div className="contact-row"><span>{tContact("row4Label")}</span><span>{tContact("row4Value")}</span></div>
-              <div className="contact-row"><span>{tContact("row5Label")}</span><span>{orias || tContact("row5Value")}</span></div>
+          <div className="contact-inner">
+            <h2>
+              {tContact.rich("title", {
+                highlight: (chunks) => <em>{chunks}</em>,
+              })}
+            </h2>
+            <p className="csub">{tContact("subtitle")}</p>
+            <div className="contact-actions">
+              <a
+                href={waLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="contact-btn"
+              >
+                <div className="cmark"><MessageCircle size={20} strokeWidth={1.8} /></div>
+                <div>
+                  <div className="ctitle">{tContact("whatsappTitle")}</div>
+                  <div className="cdesc">{whatsapp || tContact("whatsappDesc")}</div>
+                </div>
+              </a>
+              <a
+                href="https://m.me/kredix"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="contact-btn"
+              >
+                <div className="cmark">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden>
+                    <path d="M12 2C6.36 2 1.8 6.13 1.8 11.25c0 2.88 1.42 5.45 3.65 7.18V22l3.33-1.83c.95.26 1.96.4 3 .4 5.64 0 10.2-4.13 10.2-9.25S17.64 2 12 2zm1.07 12.25l-2.65-2.83-5.18 2.83 5.69-6.04 2.71 2.83 5.13-2.83-5.7 6.04z" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="ctitle">{tContact("messengerTitle")}</div>
+                  <div className="cdesc">{tContact("messengerDesc")}</div>
+                </div>
+              </a>
+              <a href={telLink} className="contact-btn">
+                <div className="cmark"><Phone size={20} strokeWidth={1.8} /></div>
+                <div>
+                  <div className="ctitle">{tContact("phoneTitle")}</div>
+                  <div className="cdesc">{contactPhone || "+33 6 00 00 00 00"}</div>
+                </div>
+              </a>
+              <a href={`mailto:${contactEmail}`} className="contact-btn">
+                <div className="cmark"><Mail size={20} strokeWidth={1.8} /></div>
+                <div>
+                  <div className="ctitle">{tContact("emailTitle")}</div>
+                  <div className="cdesc">{contactEmail}</div>
+                </div>
+              </a>
             </div>
           </div>
         </div>
@@ -335,7 +327,7 @@ export default async function HomePage({
             <div className="footer-links">
               {legalPages.length > 0 ? (
                 legalPages.map((page) => (
-                  <a key={page.id} href={`/${locale}/${page.slug}`}>
+                  <a key={page.id} href={`/${locale}/legal/${page.slug}`}>
                     {page.title}
                   </a>
                 ))

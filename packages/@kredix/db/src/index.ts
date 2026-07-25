@@ -8,6 +8,7 @@ export {
   getVisibleTestimonials,
   getContentBlock,
   getActiveLegalPages,
+  getActiveBankPartners,
 } from './queries';
 
 // Helper notifications (création d'événements notifiables)

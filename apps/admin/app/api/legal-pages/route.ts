@@ -11,6 +11,7 @@ import { requireAuth } from '../_lib/auth-server';
 // Champs attendus pour la création d'une page légale.
 interface CreateLegalPageBody {
   slug?: unknown;
+  locale?: unknown;
   title?: unknown;
   category?: unknown;
   content?: unknown;
@@ -91,10 +92,15 @@ export async function POST(req: NextRequest) {
       typeof body.order === 'number' && Number.isFinite(body.order)
         ? body.order
         : 0;
+    const locale =
+      typeof body.locale === 'string' && body.locale.trim()
+        ? body.locale.trim()
+        : 'de';
 
     const page = await prisma.legalPage.create({
       data: {
         slug,
+        locale,
         title: body.title.trim(),
         category,
         content: body.content,

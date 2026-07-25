@@ -1,7 +1,8 @@
 import { notFound } from 'next/navigation';
-import { prisma } from '@kredix/db';
-import { getPublicSetting, interpolateSiteName } from '@/lib/settings';
+import { prisma, getPublicSettings } from '@kredix/db';
+import { interpolateSiteName } from '@/lib/settings';
 import { sanitizeHtml } from '@/lib/sanitize';
+import Navbar from '@/components/navbar';
 import type { Metadata } from 'next';
 
 // =============================================================================
@@ -12,7 +13,6 @@ import type { Metadata } from 'next';
 // =============================================================================
 
 // force-dynamic : aucun pré-render au build (la DB n'est pas disponible au build Docker).
-// La page est rendue à chaque requête (SSR).
 export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({
@@ -27,7 +27,8 @@ export async function generateMetadata({
       select: { title: true },
     });
     if (!page) return { title: 'Page introuvable' };
-    const siteName = await getPublicSetting('site_name', 'Kredix');
+    const settings = await getPublicSettings();
+    const siteName = settings.site_name || 'Kredix';
     return { title: `${page.title} — ${siteName}` };
   } catch {
     return { title: 'Kredix' };
@@ -39,15 +40,14 @@ export default async function LegalPage({
 }: {
   params: Promise<{ locale: string; slug: string }>;
 }) {
-  const { slug } = await params;
+  const { locale, slug } = await params;
 
   let page;
   try {
-    page = await prisma.legalPage.findUnique({
-      where: { slug, isActive: true },
+    page = await prisma.legalPage.findFirst({
+      where: { slug, isActive: true, locale },
     });
   } catch {
-    // DB indispo → 404 (la page ne peut pas être rendue)
     notFound();
   }
 
@@ -55,18 +55,26 @@ export default async function LegalPage({
     notFound();
   }
 
-  const siteName = await getPublicSetting('site_name', 'Kredix');
+  const settings = await getPublicSettings();
+  const siteName = settings.site_name || 'Kredix';
   const interpolatedContent = interpolateSiteName(page.content, siteName);
-  // Sanitisation HTML (defense in depth) — neutralise les vecteurs XSS même si
-  // du contenu malveillant a été stocké en DB. Sécurise le rendu via dangerouslySetInnerHTML.
   const safeContent = sanitizeHtml(interpolatedContent);
 
   return (
-    <div className="legal-page-container">
-      <article
-        className="legal-content"
-        dangerouslySetInnerHTML={{ __html: safeContent }}
-      />
-    </div>
+    <>
+      <Navbar siteName={siteName} logoUrl={settings.logo_url} />
+      <div className="legal-page-container">
+        <div className="wrap">
+          <div className="legal-breadcrumb">
+            <a href={`/${locale}`}>← {siteName}</a>
+          </div>
+          <h1 className="legal-page-title">{page.title}</h1>
+          <article
+            className="legal-content"
+            dangerouslySetInnerHTML={{ __html: safeContent }}
+          />
+        </div>
+      </div>
+    </>
   );
 }

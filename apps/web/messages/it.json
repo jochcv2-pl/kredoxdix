@@ -136,19 +136,28 @@
     "eyebrow": "Perché Kredix",
     "title": "I nostri impegni",
     "lead": "Dal 2015, accompagniamo i nostri clienti in ogni tipo di credito — con trasparenza, rapidità e sempre nel vostro interesse.",
-    "item1Title": "100% trasparente",
-    "item1Desc": "Nessuna commissione nascosta. Vedete ogni tasso, ogni commissione e ogni costo in anticipo.",
-    "item2Title": "Risposta in 48h",
-    "item2Desc": "La vostra richiesta è gestita entro 48 ore da un consulente certificato.",
-    "item3Title": "I migliori tassi",
-    "item3Desc": "Confrontiamo oltre 40 banche per garantirvi il tasso più vantaggioso.",
-    "item4Title": "Assistenza fino all'erogazione",
-    "item4Desc": "Un consulente dedicato vi accompagna dal primo contatto fino all'erogazione del credito."
+    "item1Title": "0 € in anticipo",
+    "item1Desc": "Nessun costo da pagare prima dell'approvazione del credito. Non pagate nulla finché il vostro dossier non è convalidato.",
+    "item2Title": "Risposta in 24h",
+    "item2Desc": "La vostra richiesta è gestita entro 24 ore da un consulente certificato.",
+    "item3Title": "40+ banche confrontate",
+    "item3Desc": "Confrontiamo oltre 40 banche partner per garantirvi il tasso più vantaggioso.",
+    "item4Title": "94% di accettazione",
+    "item4Desc": "Il 94% delle nostre richieste viene accettato dalle banche.",
+    "item5Title": "Assistenza completa",
+    "item5Desc": "Un consulente dedicato vi accompagna dal primo contatto fino all'erogazione del credito.",
+    "item6Title": "350+ dossier finanziati",
+    "item6Desc": "Dal 2015, oltre 350 crediti finanziati con successo."
   },
   "Testimonials": {
     "eyebrow": "Recensioni clienti",
     "title": "Cosa dicono i nostri clienti",
-    "lead": "Oltre 350 pratiche finanziate, un tasso di soddisfazione del 94% e una valutazione di 4,9/5."
+    "lead": "Oltre 350 dossier finanziati, un tasso di soddisfazione del 94% e un punteggio di 4,9/5."
+  },
+  "Partners": {
+    "eyebrow": "Le nostre banche partner",
+    "title": "Oltre 40 banche confrontate",
+    "lead": "Lavoriamo con le principali banche europee per garantirvi sempre le migliori condizioni."
   },
   "Contact": {
     "title": "Una domanda? <highlight>Parliamone.</highlight>",

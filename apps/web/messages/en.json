@@ -136,19 +136,28 @@
     "eyebrow": "Why Kredix",
     "title": "Our Commitments",
     "lead": "Since 2015, we have guided our clients through every type of loan — transparent, fast, and always in your best interest.",
-    "item1Title": "100% Transparent",
-    "item1Desc": "No hidden fees. You see every rate, every commission, and every charge upfront.",
-    "item2Title": "48-Hour Response",
-    "item2Desc": "Your request is handled within 48 hours by a certified advisor.",
-    "item3Title": "Best Rates",
-    "item3Desc": "We compare over 40 banks to secure the most favorable rate for you.",
-    "item4Title": "Support Until Payout",
-    "item4Desc": "A dedicated advisor guides you from first contact to loan payout."
+    "item1Title": "€0 Upfront",
+    "item1Desc": "No fees to pay before your loan is approved. You pay nothing until your application is validated.",
+    "item2Title": "24-Hour Response",
+    "item2Desc": "Your request is handled within 24 hours by a certified advisor.",
+    "item3Title": "40+ Banks Compared",
+    "item3Desc": "We compare over 40 partner banks to secure the most favorable rate for you.",
+    "item4Title": "94% Approval Rate",
+    "item4Desc": "94% of our applications are approved by the banks.",
+    "item5Title": "Full Support",
+    "item5Desc": "A dedicated advisor guides you from first contact to loan payout.",
+    "item6Title": "350+ Funded Files",
+    "item6Desc": "Since 2015, over 350 loans successfully funded."
   },
   "Testimonials": {
     "eyebrow": "Customer Reviews",
     "title": "What Our Clients Say",
     "lead": "Over 350 funded files, a 94% satisfaction rate, and a 4.9/5 rating."
+  },
+  "Partners": {
+    "eyebrow": "Our Partner Banks",
+    "title": "Over 40 Banks Compared",
+    "lead": "We work with leading banks across Europe to secure you the best rates, every time."
   },
   "Contact": {
     "title": "A question? <highlight>Let's talk.</highlight>",

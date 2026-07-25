@@ -392,6 +392,7 @@ model SuppressionList {
 model LegalPage {
   id        String   @id @default(cuid())
   slug      String   @unique    // "cgu", "mentions-legales", "politique-confidentialite"
+  locale    String   @default("de") // "de" | "fr" | "en" | ...
   title     String               // "Conditions Générales d'Utilisation"
   category  String               // "legal" | "privacy" | "terms"
   content   String   @db.Text    // contenu HTML (éditeur riche)
@@ -401,6 +402,7 @@ model LegalPage {
   createdAt DateTime @default(now())
 
   @@index([category, isActive])
+  @@index([locale, isActive])
   @@index([order])
 }
 

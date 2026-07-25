@@ -12,6 +12,7 @@ import { isValidId } from '@/app/api/_lib/id-validation';
 // Champs optionnels pour la mise à jour d'une page légale.
 interface UpdateLegalPageBody {
   slug?: unknown;
+  locale?: unknown;
   title?: unknown;
   category?: unknown;
   content?: unknown;
@@ -91,6 +92,18 @@ export async function PATCH(
         }
       }
       data.slug = slug;
+    }
+
+    if (body.locale !== undefined) {
+      if (typeof body.locale !== 'string' || !body.locale.trim()) {
+        return errorResponse(
+          'Champ "locale" invalide',
+          ERR.VALIDATION.code,
+          undefined,
+          422,
+        );
+      }
+      data.locale = body.locale.trim();
     }
 
     if (body.title !== undefined) {
