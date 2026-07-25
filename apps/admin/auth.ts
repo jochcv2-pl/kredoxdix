@@ -103,6 +103,7 @@ const credentialsProvider = Credentials({
 
 export const { auth, handlers, signIn, signOut } = NextAuth({
   ...authConfig,
+  trustHost: true,
   providers: [credentialsProvider],
 
   callbacks: {

@@ -92,6 +92,7 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_ADMIN_URL:-https://crm.kredix.fr}
       AUTH_SECRET: ${AUTH_SECRET}
+      AUTH_TRUST_HOST: ${AUTH_TRUST_HOST:-true}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
       CRON_SECRET: ${CRON_SECRET}
       WEBHOOK_EMAIL_SECRET: ${WEBHOOK_EMAIL_SECRET}
@@ -105,7 +106,7 @@ services:
       migrator:
         condition: service_completed_successfully
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://localhost:3001/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s
       timeout: 5s
       retries: 3
