@@ -159,8 +159,11 @@ export async function POST(req: NextRequest) {
     const prefix = typeof type === 'string' && type ? type : 'asset';
     const filename = `${prefix}-${Date.now()}${ext}`;
 
-    // Répertoire de destination (public/uploads/ à la racine de l'admin).
-    const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+    // Répertoire de destination.
+    // Dev : process.cwd() = apps/admin → public/uploads/
+    // Docker standalone : UPLOADS_DIR pointe vers le volume partagé
+    const uploadsDir = process.env.UPLOADS_DIR
+      || path.join(process.cwd(), 'public', 'uploads')
     await mkdir(uploadsDir, { recursive: true });
 
     // Écriture du fichier sur le disque.

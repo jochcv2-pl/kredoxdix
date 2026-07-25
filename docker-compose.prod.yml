@@ -46,6 +46,9 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:3100:3000"
+    # Volume partagé : les uploads du CMS (admin) sont visibles sur le site (web)
+    volumes:
+      - kredix_uploads:/app/apps/web/public/uploads
     environment:
       NODE_ENV: production
       DATABASE_URL: ${DATABASE_URL}
@@ -85,12 +88,14 @@ services:
         NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_ADMIN_URL:-https://crm.kredix.fr}
     container_name: kredix-admin
     restart: unless-stopped
-    # Autorise l'accès aux services du host (Ollama sur localhost:11434)
-    # Depuis le container : http://host.docker.internal:11434
+    # Autorise l'accès aux services du host (Ollama natif, debug…)
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
       - "127.0.0.1:3101:3001"
+    # Volume partagé : les uploads du CMS sont servis à la fois par admin et web
+    volumes:
+      - kredix_uploads:/app/apps/admin/public/uploads
     environment:
       NODE_ENV: production
       DATABASE_URL: ${DATABASE_URL}
@@ -104,6 +109,7 @@ services:
       TRUST_PROXY: ${TRUST_PROXY:-true}
       NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-${NEXT_PUBLIC_APP_URL}}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      UPLOADS_DIR: /app/apps/admin/public/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -115,6 +121,22 @@ services:
       timeout: 5s
       retries: 3
       start_period: 20s
+    networks:
+      - kredix-network
+
+  # ---------------------------------------------------------------------------
+  # ollama — Serveur LLM local (OpenAI-compatible).
+  # Models stockés dans le volume kredix_ollama.
+  # Pull : docker compose -f docker-compose.prod.yml exec ollama ollama pull qwen2.5:7b
+  # ---------------------------------------------------------------------------
+  ollama:
+    image: ollama/ollama:latest
+    container_name: kredix-ollama
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:11434:11434"
+    volumes:
+      - kredix_ollama:/root/.ollama
     networks:
       - kredix-network
 
@@ -207,6 +229,10 @@ volumes:
     name: kredix_pgdata
   kredix_backups:
     name: kredix_backups
+  kredix_uploads:
+    name: kredix_uploads
+  kredix_ollama:
+    name: kredix_ollama
 
 # =============================================================================
 # Réseau bridge partagé entre les services

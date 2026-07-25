@@ -181,9 +181,9 @@ async function main() {
     },
     {
       key: 'ai_endpoint',
-      value: 'http://host.docker.internal:11434/v1',
+      value: 'http://ollama:11434/v1',
       category: 'ai.model',
-      description: 'Endpoint API. Pour Ollama sur le host Docker : host.docker.internal:11434/v1',
+      description: 'Endpoint API. Ollama Docker : http://ollama:11434/v1',
     },
     {
       key: 'ai_temperature',
