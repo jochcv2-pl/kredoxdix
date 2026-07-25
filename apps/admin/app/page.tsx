@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import { Sidebar } from '@/components/Sidebar'
 import { Topbar } from '@/components/Topbar'
+import { ViewErrorBoundary } from '@/components/ViewErrorBoundary'
 import Dashboard from '@/views/dashboard/page'
 import Contacts from '@/views/contacts/page'
 import Clients from '@/views/clients/page'
@@ -113,26 +114,26 @@ export default function AdminPage() {
 
   const renderView = () => {
     switch (viewId) {
-      case 'dashboard': return <Dashboard />
-      case 'contacts': return <Contacts />
-      case 'clients': return <Clients />
-      case 'dossiers': return <Dossiers />
-      case 'taux': return <Taux />
-      case 'emails': return <Emails />
-      case 'documents': return <Documents />
-      case 'campaigns': return <Campaigns />
-      case 'pipeline': return <Pipeline />
-      case 'history': return <EmailHistory />
-      case 'cms': return <CMS />
-      case 'testimonials': return <Testimonials />
-      case 'content': return <Content />
-      case 'legal': return <Legal />
-      case 'seo': return <SEO />
-      case 'domains': return <Domains />
-      case 'agents': return <Agents />
-      case 'settings': return <Settings />
-      case 'profil': return <Profil />
-      default: return <Dashboard />
+      case 'dashboard': return <ViewErrorBoundary viewName="Tableau de bord"><Dashboard /></ViewErrorBoundary>
+      case 'contacts': return <ViewErrorBoundary viewName="Prospects"><Contacts /></ViewErrorBoundary>
+      case 'clients': return <ViewErrorBoundary viewName="Clients"><Clients /></ViewErrorBoundary>
+      case 'dossiers': return <ViewErrorBoundary viewName="Dossiers"><Dossiers /></ViewErrorBoundary>
+      case 'taux': return <ViewErrorBoundary viewName="Taux"><Taux /></ViewErrorBoundary>
+      case 'emails': return <ViewErrorBoundary viewName="Modèles d'emails"><Emails /></ViewErrorBoundary>
+      case 'documents': return <ViewErrorBoundary viewName="Documents"><Documents /></ViewErrorBoundary>
+      case 'campaigns': return <ViewErrorBoundary viewName="Campagnes"><Campaigns /></ViewErrorBoundary>
+      case 'pipeline': return <ViewErrorBoundary viewName="Pipeline"><Pipeline /></ViewErrorBoundary>
+      case 'history': return <ViewErrorBoundary viewName="Historique"><EmailHistory /></ViewErrorBoundary>
+      case 'cms': return <ViewErrorBoundary viewName="CMS"><CMS /></ViewErrorBoundary>
+      case 'testimonials': return <ViewErrorBoundary viewName="Témoignages"><Testimonials /></ViewErrorBoundary>
+      case 'content': return <ViewErrorBoundary viewName="Sections"><Content /></ViewErrorBoundary>
+      case 'legal': return <ViewErrorBoundary viewName="Pages légales"><Legal /></ViewErrorBoundary>
+      case 'seo': return <ViewErrorBoundary viewName="SEO"><SEO /></ViewErrorBoundary>
+      case 'domains': return <ViewErrorBoundary viewName="Domaines"><Domains /></ViewErrorBoundary>
+      case 'agents': return <ViewErrorBoundary viewName="Agents IA"><Agents /></ViewErrorBoundary>
+      case 'settings': return <ViewErrorBoundary viewName="Configuration"><Settings /></ViewErrorBoundary>
+      case 'profil': return <ViewErrorBoundary viewName="Profil"><Profil /></ViewErrorBoundary>
+      default: return <ViewErrorBoundary viewName="Tableau de bord"><Dashboard /></ViewErrorBoundary>
     }
   }
 

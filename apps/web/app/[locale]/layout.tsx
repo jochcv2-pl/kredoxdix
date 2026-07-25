@@ -74,10 +74,15 @@ export async function generateMetadata({
   // x-default → locale par défaut (depuis @kredix/types DEFAULT_LOCALE = 'de')
   alternates["x-default"] = `${SITE_URL}/de`;
 
+  // Favicon : on ne surcharge app/icon.svg QUE si la DB contient une URL valide
+  // (upload custom via CMS). Les valeurs comme '/favicon.ico' (seed obsolète)
+  // ou '' sont ignorées → Next.js utilise app/icon.svg automatiquement.
+  const faviconValid = favicon && (favicon.startsWith('/uploads/') || favicon.startsWith('http') || favicon.startsWith('data:'));
+
   return {
     title,
     description,
-    ...(favicon ? { icons: { icon: favicon } } : {}),
+    ...(faviconValid ? { icons: { icon: favicon } } : {}),
     alternates: {
       languages: alternates,
       canonical: `${SITE_URL}/${locale}`,

@@ -31,7 +31,16 @@ export async function GET(req: NextRequest) {
       orderBy: [{ category: 'asc' }, { key: 'asc' }],
     });
 
-    return successResponse(settings);
+    // Masquer la clé API IA dans la réponse (sécurité — ne jamais exposer en clair côté client).
+    const masked = settings.map((s) => {
+      if (s.key === 'ai_api_key' && s.value) {
+        const last4 = s.value.slice(-4);
+        return { ...s, value: `••••${last4}` };
+      }
+      return s;
+    });
+
+    return successResponse(masked);
   } catch {
     return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500);
   }

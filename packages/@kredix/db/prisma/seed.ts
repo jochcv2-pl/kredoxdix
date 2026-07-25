@@ -165,7 +165,13 @@ async function main() {
       key: 'ai_model_name',
       value: 'gpt-4o-mini',
       category: 'ai.model',
-      description: 'Modèle IA utilisé (la clé API est en variable d\'environnement, jamais en DB).',
+      description: 'Modèle IA utilisé (ex: gpt-4o-mini, gpt-4o, Qwen3-8B…).',
+    },
+    {
+      key: 'ai_api_key',
+      value: '',
+      category: 'ai.model',
+      description: 'Clé API du fournisseur IA (OpenAI, etc.). Stockée chiffrée. Prioritaire sur la variable d\'env.',
     },
     {
       key: 'ai_temperature',

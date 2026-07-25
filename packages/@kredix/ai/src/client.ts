@@ -25,15 +25,18 @@ interface LLMConfig {
   maxTokens: number;
 }
 
-async function loadConfig(): Promise<LLMConfig> {
+async function loadConfig(): Promise<LLMConfig & { apiKey: string }> {
   const settings = await prisma.setting.findMany({
     where: {
-      key: { in: ['ai_model_name', 'ai_engine', 'ai_endpoint', 'ai_temperature', 'ai_max_tokens'] },
+      key: { in: ['ai_model_name', 'ai_engine', 'ai_endpoint', 'ai_temperature', 'ai_max_tokens', 'ai_api_key'] },
     },
     select: { key: true, value: true },
   });
 
   const map = new Map(settings.map((s: { key: string; value: string }) => [s.key, s.value]));
+
+  // Clé API : priorité DB > env > 'ollama' (fallback pour usage local)
+  const dbApiKey = map.get('ai_api_key') || '';
 
   return {
     model: map.get('ai_model_name') || 'gpt-4o-mini',
@@ -41,6 +44,7 @@ async function loadConfig(): Promise<LLMConfig> {
     engine: map.get('ai_engine') || 'OpenAI',
     temperature: parseFloat(map.get('ai_temperature') || '0.7'),
     maxTokens: parseInt(map.get('ai_max_tokens') || '800', 10),
+    apiKey: dbApiKey || process.env.AI_API_KEY || process.env.OPENAI_API_KEY || 'ollama',
   };
 }
 
@@ -48,18 +52,17 @@ export async function getLLMClient(): Promise<{ client: OpenAI; config: LLMConfi
   const config = await loadConfig();
 
   // Hash simple pour détecter si la config a changé (recréer le client si oui).
-  const configHash = `${config.model}|${config.endpoint}|${config.engine}`;
+  const configHash = `${config.model}|${config.endpoint}|${config.engine}|${config.apiKey.slice(-4)}`;
   if (cachedClient && cachedConfigHash === configHash) {
     return { client: cachedClient, config };
   }
 
   // Création du client.
+  // La clé API vient de la DB (ai_api_key) ou de env (AI_API_KEY / OPENAI_API_KEY).
   // Si endpoint est vide → OpenAI par défaut (api.openai.com).
   // Si endpoint est défini → serveur custom (Ollama, vLLM…).
-  const apiKey = process.env.AI_API_KEY || process.env.OPENAI_API_KEY || 'ollama';
-
   const client = new OpenAI({
-    apiKey,
+    apiKey: config.apiKey,
     baseURL: config.endpoint || undefined,
   });
 

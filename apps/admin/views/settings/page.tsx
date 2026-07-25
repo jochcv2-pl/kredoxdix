@@ -32,6 +32,7 @@ interface Gateway {
 
 const AI_KEYS = {
   modelName: 'ai_model_name',
+  apiKey: 'ai_api_key',
   engine: 'ai_engine', // non seedé — créé à l'upsert
   endpoint: 'ai_endpoint', // non seedé — créé à l'upsert
   temperature: 'ai_temperature',
@@ -77,6 +78,12 @@ export default function Settings() {
 
   const [newGatewayModalOpen, setNewGatewayModalOpen] = useState(false)
   const [deleteGatewayTarget, setDeleteGatewayTarget] = useState<Gateway | null>(null)
+
+  // Clé API IA — input séparé car masqué (on ne charge que les 4 derniers chars en affichage).
+  // L'utilisateur saisit une nouvelle clé → sauvegardée en clair en DB (setting).
+  // Affichée masquée (sk-...xxxx) tant que l'utilisateur ne tape pas dessus.
+  const [aiApiKeyInput, setAiApiKeyInput] = useState('')
+  const [aiApiKeyEditing, setAiApiKeyEditing] = useState(false)
 
   // Chargement initial : settings + gateways en parallèle.
   useEffect(() => {
@@ -143,13 +150,23 @@ export default function Settings() {
   }
 
   // Sauvegarde section IA
-  const saveAI = () => saveSection('ai', [
-    { key: AI_KEYS.modelName, value: settings[AI_KEYS.modelName] ?? '', category: 'ai.model' },
-    { key: AI_KEYS.engine, value: settings[AI_KEYS.engine] ?? '', category: 'ai.model' },
-    { key: AI_KEYS.endpoint, value: settings[AI_KEYS.endpoint] ?? '', category: 'ai.model' },
-    { key: AI_KEYS.temperature, value: settings[AI_KEYS.temperature] ?? '', category: 'ai.model' },
-    { key: AI_KEYS.maxTokens, value: settings[AI_KEYS.maxTokens] ?? '', category: 'ai.model' },
-  ])
+  const saveAI = () => {
+    const entries: Array<{ key: string; value: string; category: string }> = [
+      { key: AI_KEYS.modelName, value: settings[AI_KEYS.modelName] ?? '', category: 'ai.model' },
+      { key: AI_KEYS.engine, value: settings[AI_KEYS.engine] ?? '', category: 'ai.model' },
+      { key: AI_KEYS.endpoint, value: settings[AI_KEYS.endpoint] ?? '', category: 'ai.model' },
+      { key: AI_KEYS.temperature, value: settings[AI_KEYS.temperature] ?? '', category: 'ai.model' },
+      { key: AI_KEYS.maxTokens, value: settings[AI_KEYS.maxTokens] ?? '', category: 'ai.model' },
+    ]
+    // N'inclure la clé API que si l'utilisateur a saisi une nouvelle valeur
+    // (pas le masque ••••xxxx, pas vide).
+    if (aiApiKeyInput && !aiApiKeyInput.startsWith('••••')) {
+      entries.push({ key: AI_KEYS.apiKey, value: aiApiKeyInput, category: 'ai.model' })
+    }
+    saveSection('ai', entries)
+    setAiApiKeyEditing(false)
+    setAiApiKeyInput('')
+  }
 
   // Sauvegarde section Cadence
   const saveCadence = () => saveSection('cadence', [
@@ -348,6 +365,43 @@ export default function Settings() {
                 />
               </div>
               <div className="fg">
+                <label>Clé API</label>
+                {aiApiKeyEditing ? (
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <input
+                      type="password"
+                      value={aiApiKeyInput}
+                      onChange={(e) => setAiApiKeyInput(e.target.value)}
+                      placeholder="sk-..."
+                      autoFocus
+                      style={{ flex: 1 }}
+                    />
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => { setAiApiKeyEditing(false); setAiApiKeyInput('') }}
+                      title="Annuler"
+                    >✕</button>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <span style={{
+                      flex: 1, padding: '8px 12px', border: '1px solid var(--border, #e2e8f0)',
+                      borderRadius: 8, fontSize: 13, fontFamily: 'monospace',
+                      color: settings[AI_KEYS.apiKey] ? 'var(--ink, #1e293b)' : 'var(--slate, #9ca3af)',
+                      background: 'var(--bg, #f8fafc)',
+                    }}>
+                      {settings[AI_KEYS.apiKey] || 'Non configurée'}
+                    </span>
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => { setAiApiKeyEditing(true); setAiApiKeyInput('') }}
+                    >
+                      {settings[AI_KEYS.apiKey] ? 'Changer' : 'Configurer'}
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div className="fg">
                 <label>Moteur</label>
                 <input
                   value={settings[AI_KEYS.engine] ?? ''}
@@ -383,9 +437,11 @@ export default function Settings() {
             <div className="set-row">
               <div className="set-label">
                 <b>État</b>
-                <small>La clé API est en variable d&apos;environnement serveur (jamais en DB).</small>
+                <small>La clé API est prioritaire sur la variable d&apos;environnement serveur.</small>
               </div>
-              <span className="pill-on">Configuré</span>
+              <span className={`pill ${settings[AI_KEYS.apiKey] ? 'pill-on' : 'pill-off'}`}>
+                {settings[AI_KEYS.apiKey] ? 'Configurée' : 'À configurer'}
+              </span>
             </div>
             <div style={{ display: 'flex', gap: '8px', marginTop: '12px', alignItems: 'center' }}>
               <button className="btn btn-primary" onClick={saveAI} disabled={sectionSaving === 'ai'}>
