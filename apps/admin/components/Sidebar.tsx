@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import {
   LayoutDashboard, Users, UserCheck, FolderOpen, Percent,
   Mail, Megaphone, History, Globe, LayoutTemplate,
-  Star, LayoutGrid, FileText, Search, Bot, Settings, User,
+  Star, LayoutGrid, FileText, Search, Bot, Settings, User, Activity,
 } from "lucide-react";
 
 const ICON_PROPS = { className: "sb-ico", size: 18, strokeWidth: 1.8 } as const;
@@ -17,6 +17,7 @@ const ICONS: Record<string, ReactNode> = {
   taux: <Percent {...ICON_PROPS} />,
   emails: <Mail {...ICON_PROPS} />,
   campaigns: <Megaphone {...ICON_PROPS} />,
+  pipeline: <Activity {...ICON_PROPS} />,
   history: <History {...ICON_PROPS} />,
   domains: <Globe {...ICON_PROPS} />,
   cms: <LayoutTemplate {...ICON_PROPS} />,
@@ -38,6 +39,7 @@ const navigation = [
   { id: "emails", label: "Modèles d'emails", group: "Pilotage" },
   { id: "documents", label: "Documents modèles", group: "Pilotage" },
   { id: "campaigns", label: "Campagnes", group: "Pilotage" },
+  { id: "pipeline", label: "Pipeline email", group: "Pilotage" },
   { id: "history", label: "Historique emails", group: "Pilotage" },
   { id: "cms", label: "Contenu du site (CMS)", group: "Site web" },
   { id: "testimonials", label: "Avis & témoignages", group: "Site web" },

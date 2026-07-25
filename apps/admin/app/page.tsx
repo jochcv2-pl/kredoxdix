@@ -13,6 +13,7 @@ import Taux from '@/views/taux/page'
 import Emails from '@/views/emails/page'
 import Documents from '@/views/documents/page'
 import Campaigns from '@/views/campaigns/page'
+import Pipeline from '@/views/pipeline/page'
 import EmailHistory from '@/views/email-history/page'
 import CMS from '@/views/cms/page'
 import Testimonials from '@/views/testimonials/page'
@@ -33,6 +34,7 @@ const pageTitles: Record<string, [string, string]> = {
   emails: ["Modèles d'emails", 'Les emails utilisés par vos agents'],
   documents: ['Documents modèles', 'Modèles PDF à champs remplissables'],
   campaigns: ['Campagnes', 'Créez et envoyez des campagnes en masse'],
+  pipeline: ['Pipeline email', 'Séquence de relance automatique — file d\'attente et observabilité'],
   history: ['Historique emails', 'Tous les emails envoyés à vos prospects'],
   cms: ['Contenu du site (CMS)', 'Modifiez le site public depuis le CRM'],
   testimonials: ['Avis & témoignages', 'Témoignages clients affichés sur la landing'],
@@ -119,6 +121,7 @@ export default function AdminPage() {
       case 'emails': return <Emails />
       case 'documents': return <Documents />
       case 'campaigns': return <Campaigns />
+      case 'pipeline': return <Pipeline />
       case 'history': return <EmailHistory />
       case 'cms': return <CMS />
       case 'testimonials': return <Testimonials />

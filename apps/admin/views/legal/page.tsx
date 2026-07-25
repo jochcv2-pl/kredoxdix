@@ -84,6 +84,7 @@ export default function Legal() {
   const openEdit = (p: LegalPage) => {
     setForm({
       slug: p.slug,
+      locale: p.locale,
       title: p.title,
       category: p.category,
       content: p.content,

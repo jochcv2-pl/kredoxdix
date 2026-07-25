@@ -35,6 +35,12 @@ export async function POST(req: NextRequest) {
   try {
     const now = new Date();
 
+    // ----- Pause d'urgence (pipeline.paused en DB) -----
+    const pausedVal = await getSetting('pipeline.paused', 'false');
+    if (pausedVal === 'true') {
+      return successResponse({ paused: true, stoppedReason: 'paused' }, 200);
+    }
+
     // ----- Paramètres cadence -----
     const timeoutDays = await getSettingNumber('cadence_timeout_days', 10);
     const dailyCap = await getSettingNumber('cadence_daily_cap', 200);
