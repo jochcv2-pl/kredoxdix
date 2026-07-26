@@ -183,6 +183,7 @@ export default function Emails() {
   const [fullIframeOpen, setFullIframeOpen] = useState(false);
   const [iframeRenderMode, setIframeRenderMode] = useState<IframeRenderMode>('composed');
   const [deleteTarget, setDeleteTarget] = useState<Template | null>(null);
+  const [previewTpl, setPreviewTpl] = useState<Template | null>(null);
 
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -257,6 +258,32 @@ export default function Emails() {
     : '';
 
   const fullscreenIframeDoc = iframeRenderMode === 'composed' ? composedIframeDoc : importSrcDoc;
+
+  // ---------------------------------------------------------------------------
+  // Actions UI
+  // ---------------------------------------------------------------------------
+
+  // Charge un template existant dans l'éditeur visuel pour modification.
+  const editTemplate = (tpl: Template) => {
+    setNameInput(tpl.name);
+    setTriggerInput(tpl.trigger);
+    setLanguageInput(tpl.language);
+    setSubjInput(tpl.subject);
+    setBodyInput(tpl.bodyText);
+    setBannerVisible(tpl.bannerEnabled);
+    // Si le template a du HTML importé, bascule en mode import.
+    if (tpl.htmlContent) {
+      setHtmlArea(tpl.htmlContent);
+      setImportName(tpl.name);
+      setImportTrigger(tpl.trigger);
+      setImportLanguage(tpl.language);
+      setActiveMode('import');
+    } else {
+      setHtmlArea('');
+      setActiveMode('visuel');
+    }
+    setActiveSub('generer');
+  };
 
   // ---------------------------------------------------------------------------
   // Actions API
@@ -602,41 +629,63 @@ export default function Emails() {
 
       {activeSub === 'liste' && (
         <div className="subview active" id="liste">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-            <div style={{ fontSize: 13, color: 'var(--slate)' }}>
+          <div className="tpl-list-head">
+            <div className="tpl-list-count">
               {loading
                 ? 'Chargement…'
                 : `${templates.length} modèle${templates.length > 1 ? 's' : ''} · utilisés automatiquement par les agents à chaque envoi`}
             </div>
-            <button className="btn btn-primary" onClick={() => setActiveSub('generer')}>+ Nouveau modèle</button>
+            <button className="btn btn-primary" onClick={() => setActiveSub('generer')}>
+              <Icon name="plus" size={16} />
+              Nouveau modèle
+            </button>
           </div>
           <div className="tpl-grid">
             {templates.map((tpl) => (
-              <div className="tpl-card" key={tpl.id}>
-                <div className="tpl-top">
-                  <div>
-                    <div className="tpl-name">{tpl.name}</div>
-                    <div className="tpl-trigger">{TRIGGER_LABEL[tpl.trigger] ?? tpl.trigger}</div>
+              <div className={`tpl-card2 ${tpl.status === 'active' ? 'is-active' : 'is-draft'}`} key={tpl.id}>
+                <div className="tpl2-header">
+                  <div className="tpl2-header-left">
+                    <span className={`tpl2-status-dot ${tpl.status === 'active' ? 'active' : 'draft'}`} />
+                    <div>
+                      <div className="tpl2-name">{tpl.name}</div>
+                      <div className="tpl2-trigger">{TRIGGER_LABEL[tpl.trigger] ?? tpl.trigger}</div>
+                    </div>
                   </div>
-                  <button
-                    className={`badge ${tpl.status === 'active' ? 'b-offer' : 'b-wait'}`}
-                    style={{ border: 'none', cursor: 'pointer' }}
-                    onClick={() => toggleTemplateStatus(tpl)}
-                    title={tpl.status === 'active' ? 'Cliquer pour passer en brouillon' : 'Cliquer pour activer (désactive les autres du même déclencheur)'}
-                  >
+                  <span className={`tpl2-badge ${tpl.status === 'active' ? 'badge-active' : 'badge-draft'}`}>
                     {tpl.status === 'active' ? 'Actif' : 'Brouillon'}
-                  </button>
+                  </span>
                 </div>
-                <div className="tpl-lang-row">
-                  <span className="lang-tag">{(tpl.language || 'fr').toUpperCase()}</span>
+                <div className="tpl2-body">
+                  <div className="tpl2-excerpt">{tpl.bodyText?.slice(0, 180) ?? '—'}{(tpl.bodyText?.length ?? 0) > 180 ? '…' : ''}</div>
                 </div>
-                <div className="tpl-excerpt">{tpl.bodyText?.slice(0, 160) ?? '—'}{(tpl.bodyText?.length ?? 0) > 160 ? '…' : ''}</div>
-                <div className="tpl-meta">
-                  <div className="tpl-vars">
-                    {(detectVars(tpl.bodyText ?? '')).slice(0, 5).map((v) => <span className="tpl-var" key={v}>{v}</span>)}
+                <div className="tpl2-vars">
+                  {(detectVars(tpl.bodyText ?? '')).slice(0, 6).map((v) => <span className="tpl2-var" key={v}>{v}</span>)}
+                </div>
+                <div className="tpl2-footer">
+                  <div className="tpl2-meta">
+                    <span className="tpl2-lang">{(tpl.language || 'fr').toUpperCase()}</span>
+                    <span className="tpl2-type">{tpl.htmlContent ? 'HTML' : 'Visuel'}</span>
                   </div>
-                  <div className="tpl-actions">
-                    <button className="tpl-delete" onClick={() => setDeleteTarget(tpl)}>Supprimer</button>
+                  <div className="tpl2-actions">
+                    <button className="tpl2-btn tpl2-btn-preview" onClick={() => setPreviewTpl(tpl)} title="Aperçu de l'email">
+                      <Icon name="search" size={15} />
+                      Aperçu
+                    </button>
+                    <button className="tpl2-btn tpl2-btn-edit" onClick={() => editTemplate(tpl)} title="Modifier le modèle">
+                      <Icon name="pencil" size={15} />
+                      Modifier
+                    </button>
+                    <button
+                      className={`tpl2-btn tpl2-btn-toggle ${tpl.status === 'active' ? 'is-on' : ''}`}
+                      onClick={() => toggleTemplateStatus(tpl)}
+                      title={tpl.status === 'active' ? 'Désactiver' : 'Activer'}
+                    >
+                      <Icon name={tpl.status === 'active' ? 'pause' : 'play'} size={15} />
+                      {tpl.status === 'active' ? 'Désactiver' : 'Activer'}
+                    </button>
+                    <button className="tpl2-btn tpl2-btn-delete" onClick={() => setDeleteTarget(tpl)} title="Supprimer">
+                      <Icon name="trash" size={15} />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -707,6 +756,41 @@ export default function Emails() {
         )}
         <div className="modal-actions">
           <button className="btn btn-primary" onClick={() => setFullIframeOpen(false)}>Fermer</button>
+        </div>
+      </Modal>
+
+      {/* ===== PREVIEW SINGLE TEMPLATE ===== */}
+      <Modal
+        isOpen={!!previewTpl}
+        onClose={() => setPreviewTpl(null)}
+        title={`Aperçu — ${previewTpl?.name ?? ''}`}
+        wide
+      >
+        {previewTpl && (
+          <div className="tpl-preview-modal">
+            <div className="tpl-preview-info">
+              <div className="pv-from">Objet : {previewTpl.subject}</div>
+              <div className="tpl-preview-tags">
+                <span className="tpl2-lang">{(previewTpl.language || 'fr').toUpperCase()}</span>
+                <span className="tpl2-type">{previewTpl.htmlContent ? 'HTML' : 'Visuel'}</span>
+                <span>{TRIGGER_LABEL[previewTpl.trigger] ?? previewTpl.trigger}</span>
+              </div>
+            </div>
+            <div className="tpl-preview-body">
+              <EmailHeader bannerVisible={previewTpl.bannerEnabled} />
+              <div className="tpl-preview-text">{renderFilled(previewTpl.bodyText ?? '', 'data')}</div>
+              <EmailFooter data={footerData} />
+            </div>
+          </div>
+        )}
+        <div className="modal-actions">
+          <button className="btn btn-ghost" onClick={() => setPreviewTpl(null)}>Fermer</button>
+          {previewTpl && (
+            <button className="btn btn-primary" onClick={() => { editTemplate(previewTpl); setPreviewTpl(null); }}>
+              <Icon name="pencil" size={15} />
+              Modifier ce modèle
+            </button>
+          )}
         </div>
       </Modal>
 
