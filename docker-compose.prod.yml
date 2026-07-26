@@ -125,26 +125,13 @@ services:
       - kredix-network
 
   # ---------------------------------------------------------------------------
-  # ollama — LLM local (qwen2.5:7b par défaut). Modèles persistés dans un volume.
-  # Accessible depuis admin via http://ollama:11434/v1 (même réseau Docker).
-  # Pour télécharger un modèle : docker compose -f docker-compose.prod.yml exec ollama ollama pull qwen2.5:7b
+  # NOTE : Ollama tourne déjà sur le VPS dans son propre container Docker.
+  # Container: `ollama` (ollama/ollama:latest), port 127.0.0.1:11434.
+  # Pour que admin puisse le joindre par DNS interne Docker :
+  #   docker network connect kredix-network ollama
+  # Puis l'endpoint dans le CRM settings : http://ollama:11434/v1
+  # Fallback possible via host.docker.internal (extra_hosts sur admin).
   # ---------------------------------------------------------------------------
-  ollama:
-    image: ollama/ollama:latest
-    container_name: kredix-ollama
-    restart: unless-stopped
-    volumes:
-      - kredix_ollama:/root/.ollama
-    # Décommenter si GPU disponible sur le VPS :
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: all
-    #           capabilities: [gpu]
-    networks:
-      - kredix-network
 
   # tools — Image d'opérations (seed, scripts runtime, migrate-encryption-key).
   # Ne démarre pas automatiquement avec `up -d` (pas de CMD long-running).
@@ -237,8 +224,6 @@ volumes:
     name: kredix_backups
   kredix_uploads:
     name: kredix_uploads
-  kredix_ollama:
-    name: kredix_ollama
 
 # =============================================================================
 # Réseau bridge partagé entre les services
