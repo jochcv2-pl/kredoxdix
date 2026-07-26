@@ -423,8 +423,9 @@ export default function Domains() {
                         className="domain-primary-star"
                         title={d.isPrimary ? 'Domaine primaire — cliquer pour retirer' : 'Définir comme primaire'}
                         onClick={() => handleTogglePrimary(d)}
+                        style={{ display: 'inline-flex', alignItems: 'center', color: d.isPrimary ? '#f59e0b' : '#cbd5e1', cursor: 'pointer' }}
                       >
-                        {d.isPrimary ? '★' : '☆'}
+                        <Icon name={d.isPrimary ? 'star' : 'star-off'} size={16} />
                       </span>
                       {d.domain}
                     </div>
@@ -586,9 +587,9 @@ export default function Domains() {
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                 {testResult.dns.resolved ? (
-                  <span style={{ color: 'var(--green, #22c55e)', fontWeight: 600 }}>✓ DNS résolu</span>
+                  <span style={{ color: 'var(--green, #22c55e)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Icon name="check-circle" size={15} /> DNS résolu</span>
                 ) : (
-                  <span style={{ color: 'var(--red, #ef4444)', fontWeight: 600 }}>✗ DNS échoué</span>
+                  <span style={{ color: 'var(--red, #ef4444)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Icon name="x-circle" size={15} /> DNS échoué</span>
                 )}
               </div>
               {testResult.dns.resolved ? (
@@ -606,9 +607,9 @@ export default function Domains() {
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                 {testResult.ssl.valid ? (
-                  <span style={{ color: 'var(--green, #22c55e)', fontWeight: 600 }}>✓ Certificat SSL valide</span>
+                  <span style={{ color: 'var(--green, #22c55e)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Icon name="check-circle" size={15} /> Certificat SSL valide</span>
                 ) : (
-                  <span style={{ color: 'var(--red, #ef4444)', fontWeight: 600 }}>✗ SSL invalide ou absent</span>
+                  <span style={{ color: 'var(--red, #ef4444)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Icon name="x-circle" size={15} /> SSL invalide ou absent</span>
                 )}
               </div>
               {testResult.ssl.valid ? (
@@ -635,9 +636,9 @@ export default function Domains() {
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                 {testResult.https.reachable ? (
-                  <span style={{ color: 'var(--green, #22c55e)', fontWeight: 600 }}>✓ Serveur HTTPS accessible</span>
+                  <span style={{ color: 'var(--green, #22c55e)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Icon name="check-circle" size={15} /> Serveur HTTPS accessible</span>
                 ) : (
-                  <span style={{ color: 'var(--red, #ef4444)', fontWeight: 600 }}>✗ Serveur injoignable</span>
+                  <span style={{ color: 'var(--red, #ef4444)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Icon name="x-circle" size={15} /> Serveur injoignable</span>
                 )}
               </div>
               {testResult.https.reachable ? (

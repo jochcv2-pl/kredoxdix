@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Modal } from '@/components/Modal'
+import { Icon } from '@/components/Icon'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 
 interface DocTemplate {
@@ -258,7 +259,7 @@ export default function Documents() {
 
       {/* Info banner */}
       <div className="doc-info-banner">
-        <h4>📋 Comment fonctionne le système de documents PDF ?</h4>
+        <h4 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Icon name="clipboard" size={18} /> Comment fonctionne le système de documents PDF ?</h4>
         <ol>
           <li>Créez votre document dans Word, LibreOffice ou tout autre éditeur</li>
           <li>Aux endroits où les données du client doivent apparaître, insérez des <b>champs de formulaire texte</b> (AcroForm)</li>
@@ -352,7 +353,7 @@ export default function Documents() {
                   </div>
                 ) : (
                   <div className="doc-fields-empty">
-                    ⚠️ Aucun champ AcroForm détecté — ce PDF sera envoyé tel quel sans personnalisation.
+                    ⚠ Aucun champ AcroForm détecté — ce PDF sera envoyé tel quel sans personnalisation.
                   </div>
                 )}
               </div>
@@ -408,8 +409,8 @@ export default function Documents() {
             />
             {selectedFile ? (
               <div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--green)' }}>
-                  ✅ {selectedFile.name}
+                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--green)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Icon name="check-circle" size={16} /> {selectedFile.name}
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--slate)', marginTop: 4 }}>
                   {(selectedFile.size / 1024).toFixed(0)} Ko — Cliquez pour changer
@@ -417,8 +418,8 @@ export default function Documents() {
               </div>
             ) : (
               <div>
-                <div style={{ fontSize: 14, color: 'var(--slate)' }}>
-                  📄 Cliquez pour sélectionner un PDF
+                <div style={{ fontSize: 14, color: 'var(--slate)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Icon name="file-text" size={16} /> Cliquez pour sélectionner un PDF
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--slate)', marginTop: 4 }}>
                   Le PDF doit contenir des champs AcroForm pour la personnalisation automatique

@@ -386,7 +386,7 @@ export default function Settings() {
                       className="btn btn-ghost btn-sm"
                       onClick={() => { setAiApiKeyEditing(false); setAiApiKeyInput('') }}
                       title="Annuler"
-                    >✕</button>
+                    >{<Icon name="x" size={15} />}</button>
                   </div>
                 ) : (
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -451,7 +451,7 @@ export default function Settings() {
             </div>
             <div style={{ display: 'flex', gap: '8px', marginTop: '12px', alignItems: 'center' }}>
               <button className="btn btn-primary" onClick={saveAI} disabled={sectionSaving === 'ai'}>
-                {sectionSaving === 'ai' ? 'Enregistrement…' : sectionSaved === 'ai' ? '✓ Enregistré' : 'Enregistrer'}
+                {sectionSaving === 'ai' ? 'Enregistrement…' : sectionSaved === 'ai' ? 'Enregistré' : 'Enregistrer'}
               </button>
               <button className="btn btn-ghost" onClick={() => { setTestModalOpen(true); setTestResult(null) }}>
                 Tester la connexion
@@ -635,7 +635,7 @@ export default function Settings() {
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
               <button className="btn btn-primary" onClick={saveCadence} disabled={sectionSaving === 'cadence'}>
-                {sectionSaving === 'cadence' ? 'Enregistrement…' : sectionSaved === 'cadence' ? '✓ Enregistré' : 'Enregistrer'}
+                {sectionSaving === 'cadence' ? 'Enregistrement…' : sectionSaved === 'cadence' ? 'Enregistré' : 'Enregistrer'}
               </button>
             </div>
           </div>
@@ -665,8 +665,8 @@ export default function Settings() {
               />
             </div>
             {trackingTest?.key === 'fb_pixel' && trackingTest.result && (
-              <div style={{ fontSize: 12, marginTop: '-8px', marginBottom: '8px', color: trackingTest.result.success ? 'var(--green)' : 'var(--red, #dc2626)' }}>
-                {trackingTest.result.success ? '✓' : '✗'} {trackingTest.result.message}
+              <div style={{ fontSize: 12, marginTop: '-8px', marginBottom: '8px', color: trackingTest.result.success ? 'var(--green)' : 'var(--red, #dc2626)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Icon name={trackingTest.result.success ? 'check-circle' : 'x-circle'} size={14} /> {trackingTest.result.message}
               </div>
             )}
             <div className="set-row">
@@ -683,8 +683,8 @@ export default function Settings() {
               />
             </div>
             {trackingTest?.key === 'ga4' && trackingTest.result && (
-              <div style={{ fontSize: 12, marginTop: '-8px', marginBottom: '8px', color: trackingTest.result.success ? 'var(--green)' : 'var(--red, #dc2626)' }}>
-                {trackingTest.result.success ? '✓' : '✗'} {trackingTest.result.message}
+              <div style={{ fontSize: 12, marginTop: '-8px', marginBottom: '8px', color: trackingTest.result.success ? 'var(--green)' : 'var(--red, #dc2626)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Icon name={trackingTest.result.success ? 'check-circle' : 'x-circle'} size={14} /> {trackingTest.result.message}
               </div>
             )}
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '12px' }}>
@@ -705,7 +705,7 @@ export default function Settings() {
                 </button>
               </div>
               <button className="btn btn-primary" onClick={saveTracking} disabled={sectionSaving === 'tracking'}>
-                {sectionSaving === 'tracking' ? 'Enregistrement…' : sectionSaved === 'tracking' ? '✓ Enregistré' : 'Enregistrer'}
+                {sectionSaving === 'tracking' ? 'Enregistrement…' : sectionSaved === 'tracking' ? 'Enregistré' : 'Enregistrer'}
               </button>
             </div>
           </div>
@@ -728,7 +728,7 @@ export default function Settings() {
                   onClick={saveEmail}
                   disabled={sectionSaving === 'email'}
                 >
-                  {sectionSaving === 'email' ? 'Enregistrement…' : sectionSaved === 'email' ? '✓ Enregistré' : 'Enregistrer'}
+                  {sectionSaving === 'email' ? 'Enregistrement…' : sectionSaved === 'email' ? 'Enregistré' : 'Enregistrer'}
                 </button>
               </div>
               <input
@@ -773,12 +773,12 @@ export default function Settings() {
                           const res = await fetch(`/api/gateways/${g.id}/test`, { method: 'POST' })
                           const body = await res.json()
                           if (body.success || body.data?.success) {
-                            alert(`✅ Email de test envoyé avec succès via ${g.label}`)
+                            alert(`Email de test envoyé avec succès via ${g.label}`)
                           } else {
-                            alert(`❌ Échec : ${body.data?.error || body.error || 'Erreur inconnue'}`)
+                            alert(`Échec : ${body.data?.error || body.error || 'Erreur inconnue'}`)
                           }
                         } catch {
-                          alert('❌ Impossible de tester la passerelle')
+                          alert('Impossible de tester la passerelle')
                         }
                       }}
                     >

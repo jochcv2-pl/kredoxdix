@@ -201,7 +201,7 @@ export default function Legal() {
                   <button className="btn btn-ghost btn-sm" onClick={() => toggleActive(p)} title={p.isActive ? 'Désactiver' : 'Activer'}>
                     <Icon name={p.isActive ? 'check-circle' : 'x'} size={16} />
                   </button>
-                  <button className="btn btn-ghost btn-sm" onClick={() => openEdit(p)} title="Modifier">✏️</button>
+                  <button className="btn btn-ghost btn-sm" onClick={() => openEdit(p)} title="Modifier"><Icon name="pencil" size={15} /></button>
                   <button className="btn btn-ghost btn-sm" onClick={() => setDeleteTarget(p)} title="Supprimer" style={{ color: '#ef4444' }}>
                     <Icon name="trash" size={16} />
                   </button>

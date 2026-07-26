@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Modal } from '@/components/Modal'
+import { Icon } from '@/components/Icon'
 
 const LANGUES = ['Français', 'English', 'Deutsch', 'Español', 'Português', 'Italiano'] as const
 
@@ -44,7 +45,7 @@ export default function CMS() {
   const [brandName, setBrandName] = useState('')
   const [brandLogo, setBrandLogo] = useState('')
   const [renaming, setRenaming] = useState(false)
-  const [renameResult, setRenameResult] = useState<string | null>(null)
+  const [renameResult, setRenameResult] = useState<{ ok: boolean; msg: string } | null>(null)
 
   // Valeurs éditables localement (chargées depuis l'API au mount).
   const [hero, setHero] = useState({
@@ -133,7 +134,7 @@ export default function CMS() {
       }
       const data = await res.json()
       const d = data.data ?? data
-      setRenameResult(`✓ Marque mise à jour — ${d.settingsUpdated} paramètre(s) et ${d.templatesUpdated} template(s) modifié(s).`)
+      setRenameResult({ ok: true, msg: `Marque mise à jour — ${d.settingsUpdated} paramètre(s) et ${d.templatesUpdated} template(s) modifié(s).` })
       // Sauvegarde aussi le logo si modifié.
       if (brandLogo !== '') {
         await fetch('/api/settings', {
@@ -143,7 +144,7 @@ export default function CMS() {
         })
       }
     } catch (e) {
-      setRenameResult(`✗ ${e instanceof Error ? e.message : 'Erreur inconnue'}`)
+      setRenameResult({ ok: false, msg: e instanceof Error ? e.message : 'Erreur inconnue' })
     } finally {
       setRenaming(false)
     }
@@ -254,8 +255,9 @@ export default function CMS() {
               {renaming ? 'Renommage…' : 'Appliquer le renommage global'}
             </button>
             {renameResult && (
-              <span style={{ fontSize: 13, color: renameResult.startsWith('✓') ? '#16a34a' : '#dc2626' }}>
-                {renameResult}
+              <span style={{ fontSize: 13, color: renameResult.ok ? '#16a34a' : '#dc2626', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <Icon name={renameResult.ok ? 'check-circle' : 'x-circle'} size={14} />
+                {renameResult.msg}
               </span>
             )}
           </div>

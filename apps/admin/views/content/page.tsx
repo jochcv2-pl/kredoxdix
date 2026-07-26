@@ -247,7 +247,7 @@ export default function Content() {
           color: '#16a34a', fontSize: 13, fontWeight: 500,
           display: 'flex', alignItems: 'center', gap: 8,
         }}>
-          <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#22c55e', color: '#fff', display: 'grid', placeItems: 'center', fontSize: 11 }}>✓</span>
+          <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#22c55e', color: '#fff', display: 'grid', placeItems: 'center' }}><Icon name="check" size={12} /></span>
           Sauvegardé à {savedAt.toLocaleTimeString()}
         </div>
       )}
@@ -355,7 +355,7 @@ export default function Content() {
               textAlign: 'center', padding: 48, borderRadius: 14,
               border: '2px dashed #e5e7eb', background: '#fafbfc',
             }}>
-              <div style={{ fontSize: 28, marginBottom: 8 }}>📋</div>
+              <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'center' }}><Icon name="clipboard" size={32} style={{ color: '#cbd5e1' }} /></div>
               <div style={{ fontSize: 14, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>
                 Aucune carte
               </div>
@@ -372,8 +372,8 @@ export default function Content() {
 
                   {/* Actions en haut à droite */}
                   <div style={{ position: 'absolute', top: 10, right: 12, display: 'flex', gap: 2 }}>
-                    <button className="ct-icon-btn" onClick={() => moveItem(idx, -1)} disabled={idx === 0} title="Monter">↑</button>
-                    <button className="ct-icon-btn" onClick={() => moveItem(idx, 1)} disabled={idx === form.items.length - 1} title="Descendre">↓</button>
+                    <button className="ct-icon-btn" onClick={() => moveItem(idx, -1)} disabled={idx === 0} title="Monter"><Icon name="chevron-up" size={16} /></button>
+                    <button className="ct-icon-btn" onClick={() => moveItem(idx, 1)} disabled={idx === form.items.length - 1} title="Descendre"><Icon name="chevron-down" size={16} /></button>
                     <button className="ct-icon-btn danger" onClick={() => removeItem(idx)} title="Supprimer">
                       <Icon name="trash" size={15} />
                     </button>

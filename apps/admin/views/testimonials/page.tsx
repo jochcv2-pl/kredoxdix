@@ -183,8 +183,10 @@ export default function Testimonials() {
                   <div className="card-title">{t.authorName}</div>
                   {t.authorRole && <div className="card-meta">{t.authorRole}{t.authorLocation ? ` · ${t.authorLocation}` : ''}</div>}
                 </div>
-                <span style={{ fontSize: 15, letterSpacing: -1, flexShrink: 0 }}>
-                  {'★'.repeat(t.rating)}<span style={{ color: '#e5e7eb' }}>{'★'.repeat(5 - t.rating)}</span>
+                <span style={{ display: 'flex', gap: 1, flexShrink: 0 }}>
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Icon key={i} name="star" size={14} style={{ color: i < t.rating ? '#f59e0b' : '#e5e7eb' }} />
+                  ))}
                 </span>
               </div>
               <p className="card-body">
@@ -202,7 +204,7 @@ export default function Testimonials() {
                     <Icon name={t.isVisible ? 'check-circle' : 'x'} size={16} />
                   </button>
                   <button className="btn btn-ghost btn-sm" onClick={() => openEdit(t)} title="Modifier">
-                    ✏️
+                    <Icon name="pencil" size={16} />
                   </button>
                   <button className="btn btn-ghost btn-sm" onClick={() => setDeleteTarget(t)} title="Supprimer" style={{ color: '#ef4444' }}>
                     <Icon name="trash" size={16} />
@@ -256,7 +258,7 @@ export default function Testimonials() {
                 onChange={(e) => setForm({ ...form, rating: Number(e.target.value) })}
                 className="form-input"
               >
-                {[5, 4, 3, 2, 1].map((n) => <option key={n} value={n}>{'★'.repeat(n)} ({n}/5)</option>)}
+                {[5, 4, 3, 2, 1].map((n) => <option key={n} value={n}>{n} étoile{n > 1 ? 's' : ''} ({n}/5)</option>)}
               </select>
             </label>
             <label className="form-field" style={{ flex: 1 }}>
