@@ -134,108 +134,146 @@ export default function Clients() {
   return (
     <section className="view" id="clients">
       <style>{`
-        .clt-head { margin-bottom: 20px; }
+        .clt-head { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; }
         .clt-head h2 { font-size: 22px; font-weight: 600; color: var(--text); margin: 0 0 4px; }
         .clt-head p { margin: 0; color: var(--slate); font-size: 14px; }
 
-        .clt-levels-banner {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 8px;
-          padding: 14px 16px;
-          background: var(--bg);
-          border: 1px solid var(--border);
-          border-radius: 10px;
-          margin-bottom: 20px;
-        }
-        .clt-level-cell { display: flex; gap: 8px; align-items: baseline; font-size: 13px; }
-        .clt-level-cell b { color: var(--blue-deep); min-width: 64px; }
-        .clt-level-cell span { color: var(--text); }
+        .clt-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
 
-        .clt-card {
-          background: var(--white);
-          border: 1px solid var(--border);
-          border-radius: 10px;
-          padding: 16px;
-          margin-bottom: 14px;
+        .clt-card2 {
+          background: #fff; border: 1px solid #e5e7eb; border-radius: 14px;
+          overflow: hidden; transition: border-color 0.2s, box-shadow 0.2s;
         }
-        .clt-row { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
-        .clt-name { font-size: 16px; font-weight: 600; color: var(--text); }
-        .clt-sub { font-size: 13px; color: var(--slate); margin-top: 2px; }
-        .clt-meta { display: flex; gap: 8px; align-items: center; margin-top: 6px; flex-wrap: wrap; }
-        .clt-badge {
+        .clt-card2:hover { border-color: #cbd5e1; box-shadow: 0 4px 20px rgba(0,0,0,0.04); }
+
+        .clt2-header {
+          display: flex; justify-content: space-between; align-items: center;
+          padding: 16px 20px; border-bottom: 1px solid #f1f5f9;
+        }
+        .clt2-h-left { display: flex; align-items: center; gap: 12px; }
+        .clt2-avatar {
+          width: 42px; height: 42px; border-radius: 11px;
+          display: grid; place-items: center; font-size: 16px; font-weight: 700;
+          flex-shrink: 0; color: #fff;
+        }
+        .clt2-name { font-size: 15px; font-weight: 700; color: #1e293b; }
+        .clt2-sub { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+
+        .clt2-progress-ring {
+          display: flex; align-items: center; gap: 8px;
+          padding: 6px 14px; border-radius: 20px;
+          background: #f1f5f9;
+        }
+        .clt2-progress-num { font-size: 18px; font-weight: 700; color: #1E6FB8; }
+        .clt2-progress-label { font-size: 11px; color: #64748b; font-weight: 500; }
+
+        .clt2-body { padding: 14px 20px; display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
+        .clt2-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+        .clt2-tag {
           display: inline-flex; align-items: center; gap: 4px;
-          padding: 3px 8px; border-radius: 6px; font-size: 12px; font-weight: 500;
-          background: var(--bg); color: var(--blue-deep); border: 1px solid var(--border);
+          font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 7px;
         }
-        .clt-current {
-          font-size: 13px; color: var(--slate); margin-top: 10px;
-        }
-        .clt-current b { color: var(--text); }
+        .clt2-tag.type { background: rgba(43,139,222,0.08); color: #1E6FB8; }
+        .clt2-tag.amount { background: rgba(34,197,94,0.08); color: #15803d; }
+        .clt2-tag.monthly { background: rgba(139,92,246,0.08); color: #7c3aed; }
+        .clt2-tag svg { opacity: 0.7; }
 
-        .clt-levels { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
-        .lvl-btn {
-          flex: 1 1 0;
-          min-width: 96px;
-          padding: 8px 10px;
-          border-radius: 8px;
-          border: 1px solid var(--border);
-          background: var(--white);
-          color: var(--text);
-          font-size: 12px;
-          cursor: pointer;
-          text-align: left;
-          transition: border-color .15s, box-shadow .15s, background .15s;
-          display: flex; flex-direction: column; gap: 2px;
+        .clt2-bar-wrap { flex: 1; min-width: 120px; }
+        .clt2-bar-track {
+          height: 6px; background: #f1f5f9; border-radius: 3px; overflow: hidden;
         }
-        .lvl-btn:hover { border-color: var(--blue-deep); }
-        .lvl-btn .lvl-num { font-weight: 600; font-size: 11px; color: var(--slate); }
-        .lvl-btn .lvl-label { font-weight: 500; }
-        .lvl-btn.done {
-          background: var(--green, #16a34a);
-          border-color: var(--green, #16a34a);
-          color: #fff;
-          cursor: default;
+        .clt2-bar-fill {
+          height: 100%; border-radius: 3px;
+          background: linear-gradient(90deg, #22c55e, #16a34a);
+          transition: width 0.4s ease;
         }
-        .lvl-btn.done .lvl-num,
-        .lvl-btn.done .lvl-label { color: #fff; }
-        .lvl-btn.done:hover { border-color: var(--green, #16a34a); }
-        .lvl-btn.next {
-          border-color: var(--blue-deep);
-          box-shadow: 0 0 0 1px var(--blue-deep);
-        }
-        .lvl-btn:disabled { cursor: default; opacity: 1; }
 
-        .clt-feedback { margin-top: 10px; font-size: 13px; }
-        .clt-feedback.ok { color: var(--green, #16a34a); }
-        .clt-feedback.err { color: var(--red); }
+        .clt2-levels {
+          display: grid;
+          grid-template-columns: repeat(7, 1fr);
+          gap: 0;
+          padding: 0; border-top: 1px solid #f1f5f9;
+        }
+        @media (max-width: 900px) {
+          .clt2-levels { grid-template-columns: repeat(4, 1fr); }
+        }
+        @media (max-width: 600px) {
+          .clt2-levels { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        .clt2-lvl {
+          position: relative; padding: 12px 8px; text-align: center;
+          cursor: pointer; transition: background 0.15s;
+          border-right: 1px solid #f8fafc;
+        }
+        .clt2-lvl:last-child { border-right: none; }
+
+        .clt2-lvl-num {
+          width: 28px; height: 28px; border-radius: 50%;
+          display: grid; place-items: center; margin: 0 auto 6px;
+          font-size: 12px; font-weight: 700;
+          transition: all 0.15s;
+        }
+        .clt2-lvl-label {
+          font-size: 10px; font-weight: 500; color: #94a3b8;
+          line-height: 1.3;
+        }
+
+        .clt2-lvl.done .clt2-lvl-num {
+          background: #22c55e; color: #fff;
+        }
+        .clt2-lvl.done .clt2-lvl-label { color: #15803d; }
+
+        .clt2-lvl.next .clt2-lvl-num {
+          background: #2B8BDE; color: #fff;
+          box-shadow: 0 0 0 3px rgba(43,139,222,0.15);
+          animation: pulse-blue 2s ease-in-out infinite;
+        }
+        .clt2-lvl.next .clt2-lvl-label { color: #1E6FB8; font-weight: 700; }
+
+        @keyframes pulse-blue {
+          0%, 100% { box-shadow: 0 0 0 3px rgba(43,139,222,0.15); }
+          50% { box-shadow: 0 0 0 6px rgba(43,139,222,0.08); }
+        }
+
+        .clt2-lvl.locked .clt2-lvl-num {
+          background: #f1f5f9; color: #cbd5e1;
+        }
+        .clt2-lvl.locked { cursor: default; }
+
+        .clt2-lvl:not(.locked):hover { background: rgba(43,139,222,0.03); }
+        .clt2-lvl.done:hover { background: rgba(34,197,94,0.03); cursor: default; }
+
+        .clt2-lvl-date {
+          font-size: 9px; color: #cbd5e1; margin-top: 2px;
+        }
+
+        .clt2-feedback {
+          padding: 8px 20px; font-size: 12px; font-weight: 500;
+          border-top: 1px solid #f1f5f9;
+        }
+        .clt2-feedback.ok { background: rgba(34,197,94,0.04); color: #15803d; }
+        .clt2-feedback.err { background: rgba(220,38,38,0.04); color: #dc2626; }
 
         .clt-loading { padding: 40px; text-align: center; color: var(--slate); }
         .clt-empty {
           padding: 40px; text-align: center; color: var(--slate);
-          background: var(--white); border: 1px solid var(--border); border-radius: 10px;
+          background: #fff; border: 1px solid #e5e7eb; border-radius: 14px;
         }
       `}</style>
 
       <div className="clt-head">
-        <h2>Clients</h2>
-        <p>Parcours d&apos;accompagnement en 7 niveaux</p>
-      </div>
-
-      <div className="clt-levels-banner">
-        {ALL_LEVELS.map((lvl) => (
-          <div className="clt-level-cell" key={lvl}>
-            <b>Niveau {lvl}</b>
-            <span>— {LEVEL_NAMES[lvl]}</span>
-          </div>
-        ))}
+        <div>
+          <h2>Clients</h2>
+          <p>Parcours d&apos;accompagnement en 7 niveaux</p>
+        </div>
       </div>
 
       {loading && <div className="clt-loading">Chargement des clients…</div>}
 
       {!loading && error && (
-        <div className="clt-card">
-          <p className="clt-feedback err">{error}</p>
+        <div className="clt-card2">
+          <div className="clt2-feedback err">{error}</div>
         </div>
       )}
 
@@ -245,76 +283,128 @@ export default function Clients() {
         </div>
       )}
 
-      {!loading && !error && clients.map((client) => {
-        const stepsByLevel = new Map<number, string>()
-        for (const s of client.steps) stepsByLevel.set(s.level, s.sentAt)
-        const currentLevel = client.currentLevel
-        const nextLevel = currentLevel + 1
+      {!loading && !error && (
+        <div className="clt-grid">
+          {clients.map((client) => {
+            const stepsByLevel = new Map<number, string>()
+            for (const s of client.steps) stepsByLevel.set(s.level, s.sentAt)
+            const currentLevel = client.currentLevel
+            const nextLevel = currentLevel + 1
+            const progressPct = Math.round((currentLevel / 7) * 100)
 
-        return (
-          <div className="clt-card" key={client.id}>
-            <div className="clt-row">
-              <div>
-                <div className="clt-name">{client.firstName} {client.lastName}</div>
-                <div className="clt-sub">
-                  {client.email ?? '—'}{client.phone ? ` · ${client.phone}` : ''}
-                  {client.city ? ` · ${client.city}` : ''}
-                </div>
-                <div className="clt-meta">
-                  <span className="clt-badge">{client.loanType}</span>
-                  <span className="clt-badge">{formatEuro(client.amount)}</span>
-                  {client.monthlyPayment != null && (
-                    <span className="clt-badge">{formatEuro(client.monthlyPayment)}/mois</span>
-                  )}
-                </div>
-              </div>
-              <div className="clt-current">
-                Niveau actuel&nbsp;: <b>{currentLevel}/7</b>
-              </div>
-            </div>
+            // Couleur avatar basée sur le nom
+            const colors = ['#2B8BDE', '#F97316', '#8B5CF6', '#22C55E', '#EC4899', '#14B8A6', '#EAB308']
+            const initials = `${client.firstName[0] ?? ''}${client.lastName[0] ?? ''}`.toUpperCase()
+            const colorIdx = (client.firstName.charCodeAt(0) + client.lastName.charCodeAt(0)) % colors.length
 
-            <div className="clt-levels">
-              {ALL_LEVELS.map((lvl) => {
-                const sentAt = stepsByLevel.get(lvl)
-                const isDone = !!sentAt
-                const isNext = lvl === nextLevel
-                if (isDone) {
-                  return (
-                    <div
-                      className="lvl-btn done"
-                      key={lvl}
-                      title={`Envoyé le ${formatDate(sentAt)}`}
-                    >
-                      <span className="lvl-num">Niveau {lvl} ✅</span>
-                      <span className="lvl-label">{LEVEL_NAMES[lvl]}</span>
-                      <span className="lvl-num">{formatDate(sentAt)}</span>
+            return (
+              <div className="clt-card2" key={client.id}>
+                {/* Header */}
+                <div className="clt2-header">
+                  <div className="clt2-h-left">
+                    <div className="clt2-avatar" style={{ background: colors[colorIdx] }}>
+                      {initials}
                     </div>
-                  )
-                }
-                return (
-                  <button
-                    type="button"
-                    className={`lvl-btn${isNext ? ' next' : ''}`}
-                    key={lvl}
-                    onClick={() => setSendTarget({ client, level: lvl })}
-                    disabled={sending && sendTarget?.client.id === client.id && sendTarget?.level === lvl}
-                  >
-                    <span className="lvl-num">Niveau {lvl}</span>
-                    <span className="lvl-label">{LEVEL_NAMES[lvl]}</span>
-                    <span className="lvl-num">Envoyer →</span>
-                  </button>
-                )
-              })}
-            </div>
+                    <div>
+                      <div className="clt2-name">{client.firstName} {client.lastName}</div>
+                      <div className="clt2-sub">
+                        {client.email ?? '—'}{client.phone ? ` · ${client.phone}` : ''}
+                        {client.city ? ` · ${client.city}` : ''}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="clt2-progress-ring">
+                    <span className="clt2-progress-num">{currentLevel}<span style={{ fontSize: 12, color: '#94a3b8' }}>/7</span></span>
+                    <span className="clt2-progress-label">niveaux</span>
+                  </div>
+                </div>
 
-            {feedback[client.id] && (
-              <p className={`clt-feedback ${feedback[client.id].type}`}>
-                {feedback[client.id].msg}
-              </p>
-            )}
-          </div>
-        )
-      })}
+                {/* Body : tags + progress bar */}
+                <div className="clt2-body">
+                  <div className="clt2-tags">
+                    <span className="clt2-tag type">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                      {client.loanType}
+                    </span>
+                    <span className="clt2-tag amount">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                      {formatEuro(client.amount)}
+                    </span>
+                    {client.monthlyPayment != null && (
+                      <span className="clt2-tag monthly">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        {formatEuro(client.monthlyPayment)}/mois
+                      </span>
+                    )}
+                  </div>
+                  <div className="clt2-bar-wrap">
+                    <div className="clt2-bar-track">
+                      <div className="clt2-bar-fill" style={{ width: `${progressPct}%` }} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Timeline des 7 niveaux */}
+                <div className="clt2-levels">
+                  {ALL_LEVELS.map((lvl) => {
+                    const sentAt = stepsByLevel.get(lvl)
+                    const isDone = !!sentAt
+                    const isNext = lvl === nextLevel && !isDone
+                    const isLocked = lvl > nextLevel
+
+                    if (isDone) {
+                      return (
+                        <div className="clt2-lvl done" key={lvl} title={`${LEVEL_NAMES[lvl]} — envoyé le ${formatDate(sentAt)}`}>
+                          <div className="clt2-lvl-num">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                          </div>
+                          <div className="clt2-lvl-label">{LEVEL_NAMES[lvl]}</div>
+                          <div className="clt2-lvl-date">{formatDate(sentAt)}</div>
+                        </div>
+                      )
+                    }
+
+                    if (isLocked) {
+                      return (
+                        <div className="clt2-lvl locked" key={lvl} title={LEVEL_NAMES[lvl]}>
+                          <div className="clt2-lvl-num">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                          </div>
+                          <div className="clt2-lvl-label">{LEVEL_NAMES[lvl]}</div>
+                        </div>
+                      )
+                    }
+
+                    return (
+                      <button
+                        type="button"
+                        className={`clt2-lvl${isNext ? ' next' : ''}`}
+                        key={lvl}
+                        onClick={() => setSendTarget({ client, level: lvl })}
+                        disabled={sending && sendTarget?.client.id === client.id && sendTarget?.level === lvl}
+                        title={LEVEL_NAMES[lvl]}
+                        style={{ all: 'unset', cursor: 'pointer' }}
+                      >
+                        <div className="clt2-lvl-num">{lvl}</div>
+                        <div className="clt2-lvl-label">{LEVEL_NAMES[lvl]}</div>
+                        {isNext && <div className="clt2-lvl-date" style={{ color: '#2B8BDE', fontWeight: 600 }}>Cliquer →</div>}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* Feedback */}
+                {feedback[client.id] && (
+                  <div className={`clt2-feedback ${feedback[client.id].type}`}>
+                    {feedback[client.id].type === 'ok' ? '✓ ' : '✗ '}
+                    {feedback[client.id].msg}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       <ConfirmDialog
         isOpen={!!sendTarget}
