@@ -709,89 +709,181 @@ export default function Campaigns() {
         onClose={() => setShowCreateModal(false)}
         title="Nouvelle campagne"
       >
-        <p className="field-hint">
-          Choisissez un modèle et un groupe de destinataires. L&apos;envoi sera espacé selon la
-          cadence anti-spam configurée (200/jour max, 30–90 s entre chaque email).
-        </p>
+        <style>{`
+          .nc-field { display: flex; flex-direction: column; gap: 6px; }
+          .nc-label {
+            font-size: 11px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.05em; color: #64748b;
+          }
+          .nc-input {
+            padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 10px;
+            font-size: 14px; color: #1e293b; background: #fff; width: 100%;
+            outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+            font-family: inherit; box-sizing: border-box;
+          }
+          .nc-input:focus { border-color: #2B8BDE; box-shadow: 0 0 0 3px rgba(43,139,222,0.1); }
+          .nc-input::placeholder { color: #cbd5e1; }
+          .nc-source {
+            display: flex; align-items: flex-start; gap: 12px;
+            padding: 12px 14px; border: 1px solid #e5e7eb; border-radius: 10px;
+            cursor: pointer; transition: all 0.15s; background: #fff;
+          }
+          .nc-source:hover { border-color: #cbd5e1; background: #fafbfc; }
+          .nc-source.active {
+            border-color: #2B8BDE; background: rgba(43,139,222,0.03);
+            box-shadow: 0 0 0 1px #2B8BDE;
+          }
+          .nc-source input { margin-top: 3px; accent-color: #2B8BDE; cursor: pointer; }
+          .nc-source-title { font-size: 14px; font-weight: 600; color: #1e293b; }
+          .nc-source-icon {
+            width: 34px; height: 34px; border-radius: 9px;
+            background: #f1f5f9; display: grid; place-items: center;
+            flex-shrink: 0; transition: all 0.15s;
+          }
+          .nc-source.active .nc-source-icon {
+            background: rgba(43,139,222,0.1); color: #2B8BDE;
+          }
+        `}</style>
 
-        <div className="modal-fg">
-          <label>Nom de la campagne</label>
-          <input
-            type="text"
-            placeholder="Ex : Offre spéciale rentrée"
-            value={newCampaign.name}
-            onChange={(e) => setNewCampaign({ ...newCampaign, name: e.target.value })}
-          />
-        </div>
-
-        <div className="modal-fg">
-          <label>Modèle d&apos;email</label>
-          <select
-            value={newCampaign.templateId}
-            onChange={(e) => setNewCampaign({ ...newCampaign, templateId: e.target.value })}
-          >
-            <option value="" disabled>Sélectionnez un modèle…</option>
-            {templates.map((t) => (
-              <option key={t.id} value={t.id}>{t.name}</option>
-            ))}
-          </select>
-        </div>
-
-        <div className="modal-fg">
-          <label>Destinataires</label>
-          {(Object.keys(SOURCE_LABELS) as RecipientSource[]).map((src) => (
-            <label
-              key={src}
-              className={`camp-source-radio${newCampaign.source === src ? ' active' : ''}`}
-            >
-              <input
-                type="radio"
-                name="source"
-                checked={newCampaign.source === src}
-                onChange={() => {
-                  setNewCampaign({ ...newCampaign, source: src })
-                  setPreviewCount(null)
-                }}
-              />
-              <span className="camp-source-radio-label">{SOURCE_LABELS[src]}</span>
-            </label>
-          ))}
-
-          {newCampaign.source === 'manual' && (
-            <div className="camp-manual-note">
-              La sélection manuelle sera disponible dans la prochaine étape.
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          {/* Header contextuel */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 12,
+            padding: '14px 16px', borderRadius: 12,
+            background: 'rgba(43,139,222,0.04)', border: '1px solid rgba(43,139,222,0.1)',
+          }}>
+            <div style={{
+              width: 38, height: 38, borderRadius: 10,
+              background: 'linear-gradient(135deg, rgba(43,139,222,0.15), rgba(43,139,222,0.05))',
+              display: 'grid', placeItems: 'center', flexShrink: 0,
+            }}>
+              <Icon name="mail" size={20} />
             </div>
-          )}
-
-          <div className="camp-preview-row">
-            <button
-              className="btn btn-ghost btn-sm"
-              onClick={handlePreview}
-              disabled={previewLoading}
-            >
-              {previewLoading ? 'Calcul…' : 'Prévisualiser'}
-            </button>
-            {previewCount === null ? (
-              <span style={{ fontSize: 13, color: 'var(--slate)' }}>
-                ? destinataires
-              </span>
-            ) : (
-              <span className="camp-preview-count">{previewCount} destinataires</span>
-            )}
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#1e293b' }}>Nouvelle campagne</div>
+              <div style={{ fontSize: 12, color: '#94a3b8' }}>
+                Envoi espacé anti-spam · 200/jour max · 30–90 s entre emails
+              </div>
+            </div>
           </div>
-        </div>
 
-        <div className="modal-actions">
-          <button className="btn btn-ghost" onClick={() => setShowCreateModal(false)}>
-            Annuler
-          </button>
-          <button
-            className="btn btn-primary"
-            onClick={handleCreate}
-            disabled={!newCampaign.name.trim() || !newCampaign.templateId || previewCount === null || creating}
-          >
-            {creating ? 'Création…' : 'Créer'}
-          </button>
+          {/* Nom */}
+          <div className="nc-field">
+            <label className="nc-label">Nom de la campagne</label>
+            <input
+              type="text"
+              className="nc-input"
+              placeholder="Ex : Offre spéciale rentrée"
+              value={newCampaign.name}
+              onChange={(e) => setNewCampaign({ ...newCampaign, name: e.target.value })}
+            />
+          </div>
+
+          {/* Modèle */}
+          <div className="nc-field">
+            <label className="nc-label">Modèle d'email</label>
+            <select
+              className="nc-input"
+              value={newCampaign.templateId}
+              onChange={(e) => setNewCampaign({ ...newCampaign, templateId: e.target.value })}
+              style={{ cursor: 'pointer' }}
+            >
+              <option value="" disabled>Sélectionnez un modèle…</option>
+              {templates.map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Destinataires */}
+          <div className="nc-field">
+            <label className="nc-label">Destinataires</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {(Object.keys(SOURCE_LABELS) as RecipientSource[]).map((src) => (
+                <label
+                  key={src}
+                  className={`nc-source${newCampaign.source === src ? ' active' : ''}`}
+                >
+                  <input
+                    type="radio"
+                    name="source"
+                    checked={newCampaign.source === src}
+                    onChange={() => {
+                      setNewCampaign({ ...newCampaign, source: src })
+                      setPreviewCount(null)
+                    }}
+                  />
+                  <div className="nc-source-icon">
+                    <Icon name={
+                      src === 'validated_today' ? 'check-circle' :
+                      src === 'validated_week' ? 'calendar' :
+                      src === 'all_active' ? 'users' : 'user-plus'
+                    } size={18} />
+                  </div>
+                  <div>
+                    <div className="nc-source-title">{SOURCE_LABELS[src]}</div>
+                  </div>
+                </label>
+              ))}
+            </div>
+
+            {/* Note manuel */}
+            {newCampaign.source === 'manual' && (
+              <div style={{
+                fontSize: 12, color: '#B45309', fontWeight: 500,
+                background: 'rgba(249,115,22,0.06)', border: '1px solid rgba(249,115,22,0.15)',
+                borderRadius: 8, padding: '10px 12px',
+              }}>
+                La sélection manuelle sera disponible dans la prochaine étape.
+              </div>
+            )}
+
+            {/* Preview count */}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              padding: '12px 14px', borderRadius: 10,
+              background: '#f8fafc', border: '1px solid #e5e7eb',
+            }}>
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={handlePreview}
+                disabled={previewLoading}
+                style={{ fontWeight: 600 }}
+              >
+                {previewLoading ? 'Calcul…' : 'Prévisualiser'}
+              </button>
+              {previewCount === null ? (
+                <span style={{ fontSize: 13, color: '#94a3b8' }}>
+                  ? destinataires
+                </span>
+              ) : (
+                <span style={{ fontSize: 18, fontWeight: 700, color: '#1E6FB8' }}>
+                  {previewCount}
+                  <span style={{ fontSize: 13, fontWeight: 400, color: '#64748b', marginLeft: 4 }}>
+                    destinataire{previewCount > 1 ? 's' : ''}
+                  </span>
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div style={{
+            display: 'flex', gap: 10, justifyContent: 'flex-end', alignItems: 'center',
+            paddingTop: 16, borderTop: '1px solid #f1f5f9',
+          }}>
+            <button className="btn btn-ghost" onClick={() => setShowCreateModal(false)}>
+              Annuler
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={handleCreate}
+              disabled={!newCampaign.name.trim() || !newCampaign.templateId || previewCount === null || creating}
+              style={{ padding: '10px 24px', borderRadius: 10, fontWeight: 700 }}
+            >
+              {creating ? 'Création…' : 'Créer la campagne'}
+            </button>
+          </div>
         </div>
       </Modal>
 
