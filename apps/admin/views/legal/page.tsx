@@ -213,20 +213,76 @@ export default function Legal() {
       )}
 
       <Modal isOpen={creating} onClose={() => setCreating(false)} title={editing ? 'Modifier la page' : 'Nouvelle page légale'}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <style>{`
+          .lg-field { display: flex; flex-direction: column; gap: 6px; }
+          .lg-label {
+            font-size: 11px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.05em; color: #64748b;
+          }
+          .lg-input {
+            padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 10px;
+            font-size: 14px; color: #1e293b; background: #fff; width: 100%;
+            outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+            font-family: inherit; box-sizing: border-box;
+          }
+          .lg-input:focus {
+            border-color: #2B8BDE; box-shadow: 0 0 0 3px rgba(43,139,222,0.1);
+          }
+          .lg-input::placeholder { color: #cbd5e1; }
+          .lg-suggestion {
+            padding: 8px 12px; border-radius: 8px; font-size: 12px; font-weight: 500;
+            cursor: pointer; border: 1px solid #e5e7eb; background: #fff;
+            transition: all 0.15s; color: #475569;
+          }
+          .lg-suggestion:hover {
+            border-color: #2B8BDE; background: rgba(43,139,222,0.04); color: #2B8BDE;
+          }
+          .lg-toggle {
+            display: flex; align-items: center; gap: 10px; cursor: pointer;
+            padding: 12px 14px; border: 1px solid #e5e7eb; border-radius: 10px;
+            background: #f8fafc; transition: background 0.15s;
+          }
+          .lg-toggle:hover { background: #f1f5f9; }
+          .lg-toggle input { width: 18px; height: 18px; cursor: pointer; }
+        `}</style>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          {/* Header contextuel */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 12,
+            padding: '14px 16px', borderRadius: 12,
+            background: 'rgba(43,139,222,0.04)', border: '1px solid rgba(43,139,222,0.1)',
+          }}>
+            <div style={{
+              width: 38, height: 38, borderRadius: 10,
+              background: 'linear-gradient(135deg, rgba(43,139,222,0.15), rgba(43,139,222,0.05))',
+              display: 'grid', placeItems: 'center', flexShrink: 0,
+            }}>
+              <Icon name="file-text" size={20} />
+            </div>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#1e293b' }}>
+                {editing ? form.title || 'Page sans titre' : 'Nouvelle page légale'}
+              </div>
+              <div style={{ fontSize: 12, color: '#94a3b8' }}>
+                URL : /legal/<b style={{ color: '#64748b' }}>{form.slug || 'slug'}</b>
+              </div>
+            </div>
+          </div>
+
           {/* Suggestions rapides (uniquement en création) */}
           {!editing && (
             <div>
-              <span className="form-label" style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
-                Modèles rapides :
+              <span className="lg-label" style={{ marginBottom: 8, display: 'block' }}>
+                Modèles rapides
               </span>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {SLUG_SUGGESTIONS.map((s) => (
                   <button
                     key={s.slug}
-                    className="btn btn-ghost btn-sm"
+                    className="lg-suggestion"
                     onClick={() => applySuggestion(s.slug, s.cat)}
-                    style={{ fontSize: 12, padding: '4px 10px' }}
+                    style={form.slug === s.slug ? { borderColor: '#2B8BDE', background: 'rgba(43,139,222,0.06)', color: '#2B8BDE' } : {}}
                   >
                     {s.label}
                   </button>
@@ -235,24 +291,26 @@ export default function Legal() {
             </div>
           )}
 
-          <div style={{ display: 'flex', gap: 14 }}>
-            <label className="form-field" style={{ flex: 2 }}>
-              <span className="form-label">Slug (URL) *</span>
+          {/* Ligne : Slug + Langue + Catégorie + Ordre */}
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <div className="lg-field" style={{ flex: '2 1 180px' }}>
+              <label className="lg-label">Slug (URL) *</label>
               <input
                 type="text"
+                className="lg-input"
                 value={form.slug}
                 onChange={(e) => setForm({ ...form, slug: e.target.value })}
                 placeholder="impressum"
-                className="form-input"
+                style={{ fontFamily: 'monospace', fontSize: 13 }}
               />
-              <small style={{ color: '#9ca3af', fontSize: 12 }}>Apparaît comme : /legal/<b>{form.slug || 'slug'}</b></small>
-            </label>
-            <label className="form-field" style={{ flex: 1 }}>
-              <span className="form-label">Langue</span>
+            </div>
+            <div className="lg-field" style={{ flex: '1 1 120px' }}>
+              <label className="lg-label">Langue</label>
               <select
+                className="lg-input"
                 value={form.locale}
                 onChange={(e) => setForm({ ...form, locale: e.target.value })}
-                className="form-input"
+                style={{ cursor: 'pointer' }}
               >
                 <option value="de">Deutsch</option>
                 <option value="fr">Français</option>
@@ -261,67 +319,93 @@ export default function Legal() {
                 <option value="it">Italiano</option>
                 <option value="pt">Português</option>
               </select>
-            </label>
-            <label className="form-field" style={{ flex: 1 }}>
-              <span className="form-label">Catégorie</span>
-              <input
-                type="text"
+            </div>
+            <div className="lg-field" style={{ flex: '1 1 120px' }}>
+              <label className="lg-label">Catégorie</label>
+              <select
+                className="lg-input"
                 value={form.category}
                 onChange={(e) => setForm({ ...form, category: e.target.value })}
-                className="form-input"
-              />
-            </label>
-            <label className="form-field" style={{ width: 90 }}>
-              <span className="form-label">Ordre</span>
+                style={{ cursor: 'pointer' }}
+              >
+                <option value="legal">legal</option>
+                <option value="terms">terms</option>
+                <option value="privacy">privacy</option>
+                <option value="cookies">cookies</option>
+              </select>
+            </div>
+            <div className="lg-field" style={{ width: 80, flexShrink: 0 }}>
+              <label className="lg-label">Ordre</label>
               <input
                 type="number"
+                className="lg-input"
                 value={form.order}
                 onChange={(e) => setForm({ ...form, order: Number(e.target.value) })}
-                className="form-input"
+                style={{ textAlign: 'center' }}
               />
-            </label>
+            </div>
           </div>
 
-          <label className="form-field">
-            <span className="form-label">Titre *</span>
+          {/* Titre */}
+          <div className="lg-field">
+            <label className="lg-label">Titre *</label>
             <input
               type="text"
+              className="lg-input"
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
               placeholder="Impressum"
-              className="form-input"
+              style={{ fontSize: 15, fontWeight: 600 }}
             />
-          </label>
+          </div>
 
-          <label className="form-field">
-            <span className="form-label">Contenu * <small style={{ fontWeight: 400, color: '#9ca3af' }}>(Markdown ou texte brut)</small></span>
+          {/* Contenu */}
+          <div className="lg-field">
+            <label className="lg-label">
+              Contenu *
+              <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, marginLeft: 6, color: '#94a3b8' }}>
+                (Markdown ou texte brut)
+              </span>
+            </label>
             <textarea
+              className="lg-input"
               value={form.content}
               onChange={(e) => setForm({ ...form, content: e.target.value })}
-              placeholder="# Impressum&#10;&#10;Angaben gemäß § 5 TMG:&#10;&#10;Kredix GmbH..."
+              placeholder={'# Impressum\n\nAngaben gemäß § 5 TMG:\n\nKredix GmbH...'}
               rows={14}
-              className="form-input"
-              style={{ resize: 'vertical', fontFamily: 'monospace', fontSize: 13, lineHeight: 1.6 }}
+              style={{ resize: 'vertical', fontFamily: 'monospace', fontSize: 13, lineHeight: 1.7 }}
             />
-          </label>
+          </div>
 
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+          {/* Toggle actif */}
+          <label className="lg-toggle">
             <input
               type="checkbox"
               checked={form.isActive}
               onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
             />
-            <span style={{ fontSize: 14 }}>Afficher dans le footer du site</span>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#1e293b' }}>Afficher dans le footer</div>
+              <div style={{ fontSize: 12, color: '#94a3b8' }}>La page sera visible publiquement sur le site</div>
+            </div>
           </label>
 
-          <div className="modal-actions" style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
+          {/* Actions */}
+          <div style={{
+            display: 'flex', gap: 10, justifyContent: 'flex-end', alignItems: 'center',
+            marginTop: 4, paddingTop: 16, borderTop: '1px solid #f1f5f9',
+          }}>
+            <span style={{ fontSize: 12, color: '#94a3b8', marginRight: 'auto' }}>
+              {editing ? `Dernière modification : ${new Date(editing.updatedAt).toLocaleDateString('fr-FR')}` : ''}
+            </span>
             <button className="btn btn-ghost" onClick={() => setCreating(false)}>Annuler</button>
             <button
               className="btn btn-primary"
               onClick={handleSave}
               disabled={saving || !form.slug.trim() || !form.title.trim() || !form.content.trim()}
+              style={{ padding: '10px 24px', borderRadius: 10, fontWeight: 700 }}
             >
-              {saving ? 'Enregistrement…' : editing ? 'Enregistrer' : 'Créer'}
+              {saving ? 'Enregistrement…' : editing ? 'Enregistrer' : 'Créer la page'}
             </button>
           </div>
         </div>

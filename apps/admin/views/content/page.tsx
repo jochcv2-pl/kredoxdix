@@ -133,29 +133,96 @@ export default function Content() {
 
   return (
     <div>
-      {/* Sélecteurs section + langue */}
-      <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', background: 'var(--bg, #f8fafc)', border: '1px solid var(--border, #e5e7eb)', borderRadius: 12, padding: '14px 16px' }}>
-        <div style={{ display: 'flex', gap: 6 }}>
+      <style>{`
+        .ct-tab {
+          padding: 8px 18px; border-radius: 8px; font-size: 13px; font-weight: 600;
+          cursor: pointer; border: none; transition: all 0.15s; white-space: nowrap;
+        }
+        .ct-tab.active {
+          background: linear-gradient(135deg, #2B8BDE, #1E6FB8); color: #fff;
+          box-shadow: 0 2px 8px rgba(43,139,222,0.25);
+        }
+        .ct-tab:not(.active) {
+          background: transparent; color: #64748b;
+        }
+        .ct-tab:not(.active):hover { background: rgba(43,139,222,0.06); color: #2B8BDE; }
+        .ct-locale {
+          padding: 5px 11px; border-radius: 6px; font-size: 12px; font-weight: 700;
+          cursor: pointer; border: none; transition: all 0.15s; min-width: 36px; text-align: center;
+        }
+        .ct-locale.active { background: #1e293b; color: #fff; }
+        .ct-locale:not(.active) { background: transparent; color: #94a3b8; }
+        .ct-locale:not(.active):hover { background: #f1f5f9; color: #475569; }
+        .ct-input {
+          padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 10px;
+          font-size: 14px; color: #1e293b; background: #fff; width: 100%;
+          transition: border-color 0.15s, box-shadow 0.15s; outline: none;
+          font-family: inherit;
+        }
+        .ct-input:focus {
+          border-color: #2B8BDE; box-shadow: 0 0 0 3px rgba(43,139,222,0.1);
+        }
+        .ct-input::placeholder { color: #cbd5e1; }
+        .ct-label {
+          font-size: 11px; font-weight: 700; text-transform: uppercase;
+          letter-spacing: 0.05em; color: #64748b; display: block; margin-bottom: 6px;
+        }
+        .ct-card {
+          background: #fff; border: 1px solid #e5e7eb; border-radius: 14px;
+          padding: 18px; transition: border-color 0.15s, box-shadow 0.15s;
+          position: relative;
+        }
+        .ct-card:hover { border-color: #cbd5e1; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .ct-card-num {
+          position: absolute; top: -10px; left: 16px;
+          width: 24px; height: 24px; border-radius: 7px;
+          background: linear-gradient(135deg, #2B8BDE, #1E6FB8); color: #fff;
+          font-size: 12px; font-weight: 700; display: grid; place-items: center;
+          box-shadow: 0 2px 6px rgba(43,139,222,0.3);
+        }
+        .ct-icon-btn {
+          width: 32px; height: 32px; border-radius: 8px; border: none;
+          display: grid; place-items: center; cursor: pointer;
+          transition: background 0.15s; background: transparent; color: #94a3b8;
+          font-size: 15px;
+        }
+        .ct-icon-btn:hover { background: #f1f5f9; color: #475569; }
+        .ct-icon-btn.danger:hover { background: rgba(239,68,68,0.08); color: #ef4444; }
+        .ct-icon-btn:disabled { opacity: 0.25; cursor: default; }
+        .ct-icon-btn:disabled:hover { background: transparent; color: #94a3b8; }
+      `}</style>
+
+      {/* ===== Toolbar : Section + Langue ===== */}
+      <div style={{
+        display: 'flex', gap: 16, alignItems: 'center', marginBottom: 24, flexWrap: 'wrap',
+        background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14,
+        padding: '12px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+      }}>
+        {/* Tabs sections */}
+        <div style={{ display: 'flex', gap: 4, background: '#f8fafc', borderRadius: 10, padding: 4 }}>
           {SECTIONS.map((s) => (
             <button
               key={s.key}
-              className={`btn btn-sm ${section === s.key ? 'btn-primary' : 'btn-ghost'}`}
+              className={`ct-tab ${section === s.key ? 'active' : ''}`}
               onClick={() => setSection(s.key)}
-              style={{ padding: '6px 14px', fontSize: 13, fontWeight: 600 }}
             >
               {s.label}
             </button>
           ))}
         </div>
-        <div style={{ width: 1, height: 28, background: 'var(--border, #e5e7eb)' }} />
-        <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-          <span style={{ fontSize: 11, color: 'var(--slate, #64748b)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em', marginRight: 4 }}>Langue</span>
+
+        <div style={{ width: 1, height: 32, background: '#e5e7eb' }} />
+
+        {/* Langues */}
+        <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          <span style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.08em', marginRight: 6 }}>
+            Langue
+          </span>
           {LOCALES.map((lc) => (
             <button
               key={lc}
-              className={`btn btn-sm ${locale === lc ? 'btn-primary' : 'btn-ghost'}`}
+              className={`ct-locale ${locale === lc ? 'active' : ''}`}
               onClick={() => setLocale(lc)}
-              style={{ padding: '4px 10px', fontSize: 12, fontWeight: 600, minWidth: 34, textAlign: 'center' }}
             >
               {lc.toUpperCase()}
             </button>
@@ -163,112 +230,211 @@ export default function Content() {
         </div>
       </div>
 
-      {error && <div className="alert alert-error" style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 8, background: 'rgba(239,68,68,0.08)', color: '#dc2626', fontSize: 13 }}>{error}</div>}
+      {/* ===== Alerts ===== */}
+      {error && (
+        <div style={{
+          marginBottom: 16, padding: '12px 16px', borderRadius: 10,
+          background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)',
+          color: '#dc2626', fontSize: 13, fontWeight: 500,
+        }}>
+          {error}
+        </div>
+      )}
       {savedAt && (
-        <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 8, background: 'rgba(34,197,94,0.08)', color: '#16a34a', fontSize: 13, fontWeight: 500 }}>
-          ✓ Sauvegardé à {savedAt.toLocaleTimeString()}
+        <div style={{
+          marginBottom: 16, padding: '12px 16px', borderRadius: 10,
+          background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)',
+          color: '#16a34a', fontSize: 13, fontWeight: 500,
+          display: 'flex', alignItems: 'center', gap: 8,
+        }}>
+          <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#22c55e', color: '#fff', display: 'grid', placeItems: 'center', fontSize: 11 }}>✓</span>
+          Sauvegardé à {savedAt.toLocaleTimeString()}
         </div>
       )}
 
       {loading ? (
-        <div style={{ padding: 40, textAlign: 'center', color: 'var(--slate, #64748b)' }}>Chargement…</div>
+        <div style={{ padding: 48, textAlign: 'center', color: '#94a3b8', fontSize: 14 }}>
+          Chargement…
+        </div>
       ) : (
-        <div style={{ maxWidth: 720 }}>
-          {/* Méta de section */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 28, background: 'var(--white, #fff)', border: '1px solid var(--border, #e5e7eb)', borderRadius: 12, padding: 20 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--slate, #64748b)' }}>Sur-titre (eyebrow)</label>
+        <div style={{ maxWidth: 760 }}>
+          {/* ===== Section meta : eyebrow / title / lead ===== */}
+          <div style={{
+            display: 'flex', flexDirection: 'column', gap: 18, marginBottom: 32,
+            background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14,
+            padding: 22, boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+          }}>
+            {/* Bandeau section header */}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              paddingBottom: 14, borderBottom: '1px solid #f1f5f9',
+            }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: 10,
+                background: 'linear-gradient(135deg, rgba(43,139,222,0.1), rgba(43,139,222,0.05))',
+                display: 'grid', placeItems: 'center',
+              }}>
+                <Icon name="layout" size={18} />
+              </div>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#1e293b' }}>
+                  {SECTIONS.find((s) => s.key === section)?.label}
+                </div>
+                <div style={{ fontSize: 11, color: '#94a3b8' }}>
+                  {locale.toUpperCase()} · {block ? 'Modifié' : 'Nouveau'}
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="ct-label">Sur-titre (eyebrow)</label>
               <input
                 type="text"
+                className="ct-input"
                 value={form.eyebrow}
                 onChange={(e) => setForm({ ...form, eyebrow: e.target.value })}
                 placeholder="Ex : Pourquoi nous choisir"
-                style={{ padding: '9px 12px', border: '1px solid var(--border, #e2e8f0)', borderRadius: 8, fontSize: 14, color: 'var(--ink, #1e293b)', background: 'var(--white, #fff)', transition: 'border-color 0.15s, box-shadow 0.15s' }}
               />
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--slate, #64748b)' }}>Titre principal</label>
+            <div>
+              <label className="ct-label">Titre principal</label>
               <input
                 type="text"
+                className="ct-input"
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
                 placeholder="Ex : Des engagements concrets"
-                style={{ padding: '9px 12px', border: '1px solid var(--border, #e2e8f0)', borderRadius: 8, fontSize: 15, fontWeight: 600, color: 'var(--ink, #1e293b)', background: 'var(--white, #fff)' }}
+                style={{ fontSize: 15, fontWeight: 600 }}
               />
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--slate, #64748b)' }}>Phrase d'introduction</label>
+            <div>
+              <label className="ct-label">Phrase d'introduction</label>
               <textarea
+                className="ct-input"
                 value={form.lead}
                 onChange={(e) => setForm({ ...form, lead: e.target.value })}
                 placeholder="Ex : Depuis 2015, nous accompagnons…"
                 rows={2}
-                style={{ resize: 'vertical', fontFamily: 'inherit', padding: '9px 12px', border: '1px solid var(--border, #e2e8f0)', borderRadius: 8, fontSize: 14, color: 'var(--ink, #1e293b)', background: 'var(--white, #fff)' }}
+                style={{ resize: 'vertical' }}
               />
             </div>
           </div>
 
-          {/* Items / cartes */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h4 style={{ margin: 0, fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--slate, #64748b)' }}>
-              Cartes ({form.items.length})
-            </h4>
-            <button className="btn btn-primary btn-sm" onClick={addItem} style={{ fontWeight: 600 }}>
-              + Ajouter une carte
+          {/* ===== Items header ===== */}
+          <div style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            marginBottom: 14,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <h4 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#1e293b' }}>
+                Cartes
+              </h4>
+              <span style={{
+                padding: '2px 8px', borderRadius: 6,
+                background: '#f1f5f9', fontSize: 12, fontWeight: 600, color: '#64748b',
+              }}>
+                {form.items.length}
+              </span>
+            </div>
+            <button
+              onClick={addItem}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '7px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+                border: '1px dashed #2B8BDE', background: 'rgba(43,139,222,0.04)',
+                color: '#2B8BDE', cursor: 'pointer', transition: 'all 0.15s',
+              }}
+            >
+              + Ajouter
             </button>
           </div>
 
+          {/* ===== Cards list ===== */}
           {form.items.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 32, color: 'var(--slate, #9ca3af)', border: '2px dashed var(--border, #e5e7eb)', borderRadius: 12, fontSize: 14 }}>
-              Aucune carte. Cliquez sur « Ajouter une carte ».
+            <div style={{
+              textAlign: 'center', padding: 48, borderRadius: 14,
+              border: '2px dashed #e5e7eb', background: '#fafbfc',
+            }}>
+              <div style={{ fontSize: 28, marginBottom: 8 }}>📋</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>
+                Aucune carte
+              </div>
+              <div style={{ fontSize: 13, color: '#94a3b8' }}>
+                Cliquez sur « Ajouter » pour créer votre première carte.
+              </div>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {form.items.map((item, idx) => (
-                <div key={idx} style={{ padding: 16, border: '1px solid var(--border, #e5e7eb)', borderRadius: 12, background: 'var(--white, #fff)', transition: 'box-shadow 0.15s', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
-                  <div style={{ display: 'flex', gap: 10, marginBottom: 10, alignItems: 'flex-start' }}>
+                <div key={idx} className="ct-card" style={{ paddingTop: 22 }}>
+                  {/* Numéro */}
+                  <div className="ct-card-num">{idx + 1}</div>
+
+                  {/* Actions en haut à droite */}
+                  <div style={{ position: 'absolute', top: 10, right: 12, display: 'flex', gap: 2 }}>
+                    <button className="ct-icon-btn" onClick={() => moveItem(idx, -1)} disabled={idx === 0} title="Monter">↑</button>
+                    <button className="ct-icon-btn" onClick={() => moveItem(idx, 1)} disabled={idx === form.items.length - 1} title="Descendre">↓</button>
+                    <button className="ct-icon-btn danger" onClick={() => removeItem(idx)} title="Supprimer">
+                      <Icon name="trash" size={15} />
+                    </button>
+                  </div>
+
+                  {/* Ligne 1 : icône + titre */}
+                  <div style={{ display: 'flex', gap: 10, marginBottom: 10, alignItems: 'center' }}>
                     <select
                       value={item.icon}
                       onChange={(e) => updateItem(idx, 'icon', e.target.value)}
-                      style={{ width: 'auto', minWidth: 120, padding: '8px 10px', border: '1px solid var(--border, #e2e8f0)', borderRadius: 8, fontSize: 13, background: 'var(--white, #fff)', color: 'var(--ink, #1e293b)' }}
+                      style={{
+                        width: 'auto', minWidth: 130, padding: '9px 12px',
+                        border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 13,
+                        background: '#fff', color: '#1e293b', cursor: 'pointer',
+                        outline: 'none', fontFamily: 'inherit',
+                      }}
                     >
                       {ICON_OPTIONS.map((ic) => <option key={ic} value={ic}>{ic}</option>)}
                     </select>
                     <input
                       type="text"
+                      className="ct-input"
                       value={item.title}
                       onChange={(e) => updateItem(idx, 'title', e.target.value)}
                       placeholder="Titre de la carte"
-                      style={{ flex: 1, fontWeight: 600, padding: '8px 12px', border: '1px solid var(--border, #e2e8f0)', borderRadius: 8, fontSize: 14, color: 'var(--ink, #1e293b)', background: 'var(--white, #fff)' }}
+                      style={{ flex: 1, fontWeight: 600 }}
                     />
-                    <div style={{ display: 'flex', gap: 2 }}>
-                      <button className="btn btn-ghost btn-sm" onClick={() => moveItem(idx, -1)} disabled={idx === 0} title="Monter" style={{ opacity: idx === 0 ? 0.3 : 1 }}>↑</button>
-                      <button className="btn btn-ghost btn-sm" onClick={() => moveItem(idx, 1)} disabled={idx === form.items.length - 1} title="Descendre" style={{ opacity: idx === form.items.length - 1 ? 0.3 : 1 }}>↓</button>
-                      <button className="btn btn-ghost btn-sm" onClick={() => removeItem(idx)} title="Supprimer" style={{ color: '#ef4444' }}>
-                        <Icon name="trash" size={16} />
-                      </button>
-                    </div>
                   </div>
+
+                  {/* Ligne 2 : description */}
                   <textarea
+                    className="ct-input"
                     value={item.description}
                     onChange={(e) => updateItem(idx, 'description', e.target.value)}
-                    placeholder="Description de la carte (1-2 phrases)"
+                    placeholder="Description (1-2 phrases)"
                     rows={2}
-                    style={{ resize: 'vertical', fontFamily: 'inherit', width: '100%', padding: '8px 12px', border: '1px solid var(--border, #e2e8f0)', borderRadius: 8, fontSize: 13, color: 'var(--slate, #64748b)', background: 'var(--bg, #f8fafc)' }}
+                    style={{ resize: 'vertical', fontSize: 13, background: '#f8fafc', color: '#64748b' }}
                   />
                 </div>
               ))}
             </div>
           )}
 
-          {/* Save bar */}
-          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--border, #e5e7eb)' }}>
+          {/* ===== Save bar ===== */}
+          <div style={{
+            display: 'flex', gap: 10, justifyContent: 'flex-end', alignItems: 'center',
+            marginTop: 28, paddingTop: 18, borderTop: '2px solid #f1f5f9',
+          }}>
+            <span style={{ fontSize: 12, color: '#94a3b8', marginRight: 'auto' }}>
+              {block ? 'Dernière mise à jour appliquée' : 'Nouveau contenu'}
+            </span>
             <button
               className="btn btn-primary"
               onClick={handleSave}
               disabled={saving || form.items.length === 0}
+              style={{
+                padding: '10px 24px', borderRadius: 10, fontSize: 14, fontWeight: 700,
+                display: 'flex', alignItems: 'center', gap: 8,
+              }}
             >
-              {saving ? 'Enregistrement…' : block ? 'Mettre à jour' : 'Publier cette section'}
+              {saving ? 'Enregistrement…' : block ? 'Mettre à jour' : 'Publier'}
             </button>
           </div>
         </div>
