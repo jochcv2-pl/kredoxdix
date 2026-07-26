@@ -88,7 +88,7 @@ services:
         NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_ADMIN_URL:-https://crm.kredix.fr}
     container_name: kredix-admin
     restart: unless-stopped
-    # Autorise l'accès aux services du host (Ollama natif, debug…)
+    # Autorise l'accès aux services du host (debug, API externes…)
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
@@ -125,14 +125,30 @@ services:
       - kredix-network
 
   # ---------------------------------------------------------------------------
-  # NOTE : Ollama n'est pas inclus dans ce compose — il tourne déjà sur le VPS.
-  # Pour que le container admin puisse le joindre par son nom DNS :
-  #   docker network connect kredix-network ollama
-  # Puis configurer l'endpoint dans le CRM : http://ollama:11434/v1
+  # ollama — LLM local (qwen2.5:7b par défaut). Modèles persistés dans un volume.
+  # Accessible depuis admin via http://ollama:11434/v1 (même réseau Docker).
+  # Pour télécharger un modèle : docker compose -f docker-compose.prod.yml exec ollama ollama pull qwen2.5:7b
   # ---------------------------------------------------------------------------
+  ollama:
+    image: ollama/ollama:latest
+    container_name: kredix-ollama
+    restart: unless-stopped
+    volumes:
+      - kredix_ollama:/root/.ollama
+    # Décommenter si GPU disponible sur le VPS :
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+    networks:
+      - kredix-network
 
   # tools — Image d'opérations (seed, scripts runtime, migrate-encryption-key).
-  # Ne démarre pas automatiquement. Utilisation :
+  # Ne démarre pas automatiquement avec `up -d` (pas de CMD long-running).
+  # Utilisation :
   #   docker compose -f docker-compose.prod.yml run --rm tools pnpm db:seed
   #   docker compose -f docker-compose.prod.yml run --rm tools tsx scripts/migrate-encryption-key.ts
   # ---------------------------------------------------------------------------
@@ -146,7 +162,7 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       AUTH_SECRET: ${AUTH_SECRET}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
-    profiles: ["tools"]
+    restart: "no"
     networks:
       - kredix-network
 
@@ -221,6 +237,8 @@ volumes:
     name: kredix_backups
   kredix_uploads:
     name: kredix_uploads
+  kredix_ollama:
+    name: kredix_ollama
 
 # =============================================================================
 # Réseau bridge partagé entre les services
