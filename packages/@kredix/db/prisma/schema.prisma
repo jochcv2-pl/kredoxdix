@@ -441,6 +441,8 @@ model CampaignRecipient {
   email       String
   firstName   String?
   lastName    String?
+  phone       String?
+  source      String                  @default("lead")  // "lead" | "import"
   status      CampaignRecipientStatus @default(pending)
   sentAt      DateTime?
   error       String?

@@ -14,14 +14,24 @@ const recipientSourceSchema = z.enum([
   'validated_week',
   'manual',
   'all_active',
+  'import_file',
 ]);
+
+// Destinataire importé depuis un fichier CSV (sans leadId — standalone).
+const importedRecipientSchema = z.object({
+  email: z.string().email(),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  phone: z.string().optional(),
+});
 
 // Schéma de création d'une campagne.
 const createCampaignSchema = z.object({
   name: z.string(),
   templateId: z.string(),
   recipientSource: recipientSourceSchema,
-  leadIds: z.array(z.string()).optional(), // requis uniquement pour "manual"
+  leadIds: z.array(z.string()).optional(),           // requis pour "manual"
+  recipients: z.array(importedRecipientSchema).optional(), // requis pour "import_file" ou "manual"
 });
 
 /**
@@ -98,11 +108,59 @@ export async function POST(req: NextRequest) {
       return errorResponse('Template introuvable', ERR.NOT_FOUND.code, undefined, 404);
     }
 
-    // Sélection des destinataires selon la source.
-    const leads = await prisma.lead.findMany({
-      where: buildRecipientWhere(data.recipientSource, data.leadIds),
-      select: { id: true, firstName: true, lastName: true, email: true },
-    });
+    // --- Construction des destinataires ---
+    let recipientsData: Array<{
+      leadId?: string | null;
+      email: string;
+      firstName?: string | null;
+      lastName?: string | null;
+      phone?: string | null;
+      source: string;
+    }> = [];
+
+    if (data.recipientSource === 'import_file') {
+      // Destinataires importés depuis un fichier — ne touche pas à la table Lead.
+      if (!data.recipients || data.recipients.length === 0) {
+        return errorResponse('Aucun destinataire à importer', ERR.VALIDATION.code, undefined, 422);
+      }
+      // Déduplication par email (le dernier gagne).
+      const seen = new Map<string, typeof data.recipients[number]>();
+      for (const r of data.recipients) seen.set(r.email.toLowerCase(), r);
+      recipientsData = Array.from(seen.values()).map((r) => ({
+        email: r.email,
+        firstName: r.firstName || null,
+        lastName: r.lastName || null,
+        phone: r.phone || null,
+        leadId: null,
+        source: 'import',
+      }));
+    } else if (data.recipientSource === 'manual' && data.recipients && data.recipients.length > 0) {
+      // Sélection manuelle avec données enrichies (depuis la recherche leads).
+      const seen = new Map<string, typeof data.recipients[number]>();
+      for (const r of data.recipients) seen.set(r.email.toLowerCase(), r);
+      recipientsData = Array.from(seen.values()).map((r) => ({
+        email: r.email,
+        firstName: r.firstName || null,
+        lastName: r.lastName || null,
+        phone: r.phone || null,
+        leadId: null,
+        source: 'lead',
+      }));
+    } else {
+      // Sources automatiques (validated_today, validated_week, all_active, manual avec leadIds).
+      const leads = await prisma.lead.findMany({
+        where: buildRecipientWhere(data.recipientSource, data.leadIds),
+        select: { id: true, firstName: true, lastName: true, email: true, phone: true },
+      });
+      recipientsData = leads.map((lead) => ({
+        leadId: lead.id,
+        email: lead.email as string,
+        firstName: lead.firstName,
+        lastName: lead.lastName,
+        phone: lead.phone,
+        source: 'lead',
+      }));
+    }
 
     // Création atomique campagne + destinataires.
     const campaign = await prisma.$transaction(async (tx) => {
@@ -111,14 +169,9 @@ export async function POST(req: NextRequest) {
           name: data.name,
           templateId: data.templateId,
           recipientSource: data.recipientSource,
-          totalRecipients: leads.length,
+          totalRecipients: recipientsData.length,
           recipients: {
-            create: leads.map((lead) => ({
-              leadId: lead.id,
-              email: lead.email as string,
-              firstName: lead.firstName,
-              lastName: lead.lastName,
-            })),
+            create: recipientsData,
           },
         },
         include: { template: { select: { name: true } } },

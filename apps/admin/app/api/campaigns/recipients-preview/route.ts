@@ -15,6 +15,7 @@ const previewSchema = z.object({
     'validated_week',
     'manual',
     'all_active',
+    'import_file',
   ]),
   leadIds: z.array(z.string()).optional(),
 });
@@ -51,6 +52,9 @@ function buildRecipientWhere(source: string, leadIds: string[] | undefined) {
       };
     case 'manual':
       return { id: { in: leadIds ?? [] }, email: { not: null } };
+    case 'import_file':
+      // Pas de preview côté DB — les destinataires viennent du fichier CSV.
+      return { id: '__none__' };
     default:
       return { id: '__none__' };
   }
