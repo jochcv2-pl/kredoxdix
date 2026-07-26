@@ -125,6 +125,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
 
+# Crée le dossier uploads pour le volume partagé (images CMS depuis admin).
+RUN mkdir -p /app/apps/web/public/uploads && chown nextjs:nodejs /app/apps/web/public/uploads
+
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000

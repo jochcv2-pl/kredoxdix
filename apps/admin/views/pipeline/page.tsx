@@ -138,32 +138,97 @@ export default function PipelineView() {
   return (
     <section className="view" id="pipeline">
       {/* ===== En-tête : État + Pause ===== */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 20,
+        background: 'var(--white, #fff)',
+        border: '1px solid var(--border, #e5e7eb)',
+        borderRadius: 14,
+        padding: '18px 22px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+      }}>
+        {/* Left: Status */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div className={`pipeline-status-dot ${state.paused ? 'paused' : 'active'}`} />
+          <div style={{
+            width: 12,
+            height: 12,
+            borderRadius: '50%',
+            background: state.paused ? 'var(--amber, #f59e0b)' : '#22c55e',
+            boxShadow: state.paused
+              ? '0 0 0 4px rgba(245,158,11,0.12)'
+              : '0 0 0 4px rgba(34,197,94,0.12)',
+            flexShrink: 0,
+            animation: state.paused ? 'none' : 'pipeline-pulse 2s ease-in-out infinite',
+          }} />
           <div>
-            <h2 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>
+            <h2 style={{ fontSize: 20, fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>
               Pipeline de relance
             </h2>
-            <p style={{ fontSize: 13, color: '#6b7280', margin: '2px 0 0' }}>
+            <p style={{ fontSize: 12, color: 'var(--slate, #64748b)', margin: '3px 0 0' }}>
               {state.paused ? (
-                <span style={{ color: 'var(--amber)', fontWeight: 600 }}>⏸ En pause — reprise au prochain cycle (≤ 60s)</span>
+                <span style={{ color: 'var(--amber, #d97706)', fontWeight: 600 }}>
+                  ⏸ En pause — reprise au prochain cycle (≤ 60s)
+                </span>
               ) : (
                 <>Actif · Provider : <b>{state.providerName || 'Aucun'}</b> · Auto-refresh 30s</>
               )}
             </p>
           </div>
         </div>
+
+        {/* Right: Pause/Resume toggle button */}
         <button
-          className={`btn ${state.paused ? 'btn-primary' : 'btn-danger'}`}
           onClick={togglePause}
           disabled={toggling}
-          style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '10px 20px',
+            borderRadius: 10,
+            fontSize: 14,
+            fontWeight: 700,
+            cursor: toggling ? 'wait' : 'pointer',
+            border: 'none',
+            transition: 'all 0.2s ease',
+            background: state.paused
+              ? 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)'
+              : 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
+            color: '#fff',
+            boxShadow: state.paused
+              ? '0 4px 12px rgba(34,197,94,0.25)'
+              : '0 4px 12px rgba(249,115,22,0.25)',
+            opacity: toggling ? 0.6 : 1,
+          }}
         >
-          {state.paused ? <Play size={16} /> : <Pause size={16} />}
+          {toggling ? (
+            <div style={{
+              width: 16, height: 16,
+              border: '2px solid rgba(255,255,255,0.3)',
+              borderTopColor: '#fff',
+              borderRadius: '50%',
+              animation: 'pipeline-spin 0.6s linear infinite',
+            }} />
+          ) : state.paused ? (
+            <Play size={16} fill="currentColor" strokeWidth={0} />
+          ) : (
+            <Pause size={16} fill="currentColor" strokeWidth={0} />
+          )}
           {state.paused ? 'Reprendre' : 'Mettre en pause'}
         </button>
       </div>
+
+      <style>{`
+        @keyframes pipeline-pulse {
+          0%, 100% { box-shadow: 0 0 0 4px rgba(34,197,94,0.12); }
+          50% { box-shadow: 0 0 0 7px rgba(34,197,94,0.06); }
+        }
+        @keyframes pipeline-spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
 
       {error && <div className="alert alert-error" style={{ marginBottom: 16 }}>{error}</div>}
 

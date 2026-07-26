@@ -63,7 +63,8 @@ export default function Documents() {
     try {
       const res = await fetch('/api/document-templates')
       const json = await res.json()
-      if (json.data) setDocuments(json.data)
+      const data = json.data ?? json
+      if (Array.isArray(data)) setDocuments(data)
     } catch (e) {
       console.error('fetchDocs:', e)
     } finally {
@@ -75,7 +76,8 @@ export default function Documents() {
     try {
       const res = await fetch('/api/leads?limit=100')
       const json = await res.json()
-      if (json.data) setLeads(json.data)
+      const data = json.data ?? json
+      if (Array.isArray(data)) setLeads(data)
     } catch {
       // L'API leads peut ne pas exister encore, ignorer
     }
