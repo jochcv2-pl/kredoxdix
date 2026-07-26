@@ -231,7 +231,13 @@ export default function Settings() {
       if (res.ok && data.connected) {
         setTestResult({ success: true, model: data.model, engine: data.engine, endpoint: data.endpoint, latencyMs: data.latencyMs })
       } else {
-        setTestResult({ success: false, error: data.error || data.message || 'Connexion échouée' })
+        setTestResult({
+          success: false,
+          error: data.error || data.message || 'Connexion échouée',
+          endpoint: data.details?.endpoint,
+          model: data.details?.model,
+          engine: data.details?.engine,
+        })
       }
     } catch (e) {
       setTestResult({ success: false, error: e instanceof Error ? e.message : 'Erreur réseau' })
@@ -972,9 +978,12 @@ export default function Settings() {
             <p style={{ fontFamily: 'monospace', background: '#fef2f2', padding: 12, borderRadius: 8 }}>
               {testResult.error}
             </p>
-            <p className="field-hint" style={{ marginTop: 12 }}>
-              Vérifiez : AI_API_KEY dans le .env, l'endpoint du serveur, et que le modèle est disponible.
-            </p>
+            {testResult.endpoint && (
+              <div style={{ marginTop: 12, fontSize: 12, color: '#64748b' }}>
+                <div><b>Endpoint testé :</b> <code>{testResult.endpoint}</code></div>
+                {testResult.model && <div><b>Modèle :</b> <code>{testResult.model}</code></div>}
+              </div>
+            )}
           </div>
         )}
 

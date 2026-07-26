@@ -28,7 +28,11 @@ export async function POST() {
     return errorResponse(
       result.error || 'Connexion échouée',
       ERR.VALIDATION.code,
-      undefined,
+      {
+        model: result.model,
+        engine: result.engine,
+        endpoint: result.endpoint,
+      },
       422,
     );
   } catch {
