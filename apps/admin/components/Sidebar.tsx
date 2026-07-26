@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import {
   LayoutDashboard, Users, UserCheck, FolderOpen, Percent,
@@ -64,6 +65,28 @@ interface SidebarProps {
 export function Sidebar({ currentView, onViewChange, open, brandName = 'Kredix', logoUrl, logoAlt }: SidebarProps) {
   const groups = Array.from(new Set(navigation.map((n) => n.group)));
 
+  // Modèle IA actif (chargé depuis les settings DB).
+  const [aiModel, setAiModel] = useState<string>('');
+  const [aiEngineLabel, setAiEngineLabel] = useState<string>('Modèle local');
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/ai/status');
+        if (!res.ok) return;
+        const json = await res.json();
+        const data = json.data ?? json;
+        if (cancelled || !data) return;
+        setAiModel(data.model || 'Non configuré');
+        setAiEngineLabel(data.engineLabel || 'Modèle local');
+      } catch {
+        // Silencieux : le sidebar garde les valeurs par défaut.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   return (
     <aside className={`sidebar${open ? " open" : ""}`}>
       <div className="sb-logo">
@@ -93,8 +116,8 @@ export function Sidebar({ currentView, onViewChange, open, brandName = 'Kredix',
         <div className="sb-model">
           <span className="sb-dot" />
           <div>
-            <b>Qwen3-8B</b>
-            Modèle local · actif
+            <b>{aiModel || 'Chargement…'}</b>
+            {aiEngineLabel} · actif
           </div>
         </div>
       </div>

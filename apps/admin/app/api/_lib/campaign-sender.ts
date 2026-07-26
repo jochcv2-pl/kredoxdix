@@ -119,13 +119,17 @@ export async function processCampaign(campaignId: string): Promise<void> {
     const template = campaign.template as EmailTemplate;
 
     // 4 — Destinataires en attente, ordre d'insertion (FIFO).
-    const recipients = await prisma.campaignRecipient.findMany({
+    //     On récupère seulement les IDs ; on re-vérifiera le statut de chaque
+    //     destinataire avant l'envoi pour éviter les race conditions
+    //     (cron de reprise + /send tournant en parallèle).
+    const pendingIds = await prisma.campaignRecipient.findMany({
       where: { campaignId, status: CampaignRecipientStatus.pending },
       orderBy: { id: 'asc' },
+      select: { id: true },
     });
 
-    for (const recipient of recipients) {
-      // 4a — Re-vérification du statut (annulation par l'admin pendant l'envoi).
+    for (const { id: recipientId } of pendingIds) {
+      // 4a — Re-vérification du statut campagne (annulation par l'admin).
       const current = await prisma.campaign.findUnique({
         where: { id: campaignId },
         select: { status: true },
@@ -133,6 +137,15 @@ export async function processCampaign(campaignId: string): Promise<void> {
       if (!current || current.status !== CampaignStatus.sending) {
         console.log(`[campaign ${campaignId}] Statut changé → arrêt du traitement`);
         break;
+      }
+
+      // 4a-bis — Re-vérification du destinataire (anti double-envoi).
+      //         Si un autre process l'a déjà traité (cron de reprise), on skip.
+      const recipient = await prisma.campaignRecipient.findUnique({
+        where: { id: recipientId },
+      });
+      if (!recipient || recipient.status !== CampaignRecipientStatus.pending) {
+        continue;
       }
 
       // 4b — Plafond journalier global (toutes campagnes confondues).
