@@ -125,22 +125,12 @@ services:
       - kredix-network
 
   # ---------------------------------------------------------------------------
-  # ollama — Serveur LLM local (OpenAI-compatible).
-  # Models stockés dans le volume kredix_ollama.
-  # Pull : docker compose -f docker-compose.prod.yml exec ollama ollama pull qwen2.5:7b
+  # NOTE : Ollama n'est pas inclus dans ce compose — il tourne déjà sur le VPS.
+  # Pour que le container admin puisse le joindre par son nom DNS :
+  #   docker network connect kredix-network ollama
+  # Puis configurer l'endpoint dans le CRM : http://ollama:11434/v1
   # ---------------------------------------------------------------------------
-  ollama:
-    image: ollama/ollama:latest
-    container_name: kredix-ollama
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:11434:11434"
-    volumes:
-      - kredix_ollama:/root/.ollama
-    networks:
-      - kredix-network
 
-  # ---------------------------------------------------------------------------
   # tools — Image d'opérations (seed, scripts runtime, migrate-encryption-key).
   # Ne démarre pas automatiquement. Utilisation :
   #   docker compose -f docker-compose.prod.yml run --rm tools pnpm db:seed
@@ -231,8 +221,6 @@ volumes:
     name: kredix_backups
   kredix_uploads:
     name: kredix_uploads
-  kredix_ollama:
-    name: kredix_ollama
 
 # =============================================================================
 # Réseau bridge partagé entre les services
