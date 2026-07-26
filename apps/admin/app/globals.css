@@ -242,6 +242,45 @@
 }
 .b-lost .badge-dot { background: var(--red); }
 
+/* ===== STEP BUTTONS (avancer / reculer dans le pipeline) ===== */
+.step-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--slate);
+  cursor: pointer;
+  transition: all 0.15s;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.step-btn:hover {
+  border-color: var(--blue);
+  color: var(--blue);
+  background: rgba(43, 139, 222, 0.05);
+}
+
+.step-btn:active {
+  transform: scale(0.92);
+}
+
+.step-back:hover {
+  border-color: var(--amber);
+  color: var(--amber);
+  background: rgba(245, 158, 11, 0.05);
+}
+
+.step-fwd:hover {
+  border-color: var(--green);
+  color: var(--green);
+  background: rgba(34, 197, 94, 0.05);
+}
+
 /* Legacy compat (anciens noms) */
 .badge-new { background: var(--orange-soft); color: var(--orange-ink); border: 1px solid var(--orange-border); }
 .badge-progress { background: #E6F1FB; color: var(--blue-dark); border: 1px solid #B5D4F4; }

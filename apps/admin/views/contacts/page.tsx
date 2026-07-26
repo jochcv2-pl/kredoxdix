@@ -431,27 +431,29 @@ export default function Contacts() {
                         </span>
                       </td>
                       <td style={{ textAlign: 'right' }}>
-                        <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end', alignItems: 'center' }}>
                           {isPending && (
                             <span style={{ fontSize: 11, color: 'var(--slate-light)' }}>…</span>
                           )}
                           {canGoBack && !isPending && (
                             <button
-                              className="btn btn-ghost btn-sm"
-                              title="Reculer"
+                              className="step-btn step-back"
+                              title="Reculer d'un statut"
                               onClick={() => advanceStatus(c.id, -1)}
-                              style={{ padding: '4px 8px', fontSize: 13 }}
-                            >←</button>
+                            >
+                              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+                            </button>
                           )}
                           {canAdvance ? (
                             !isPending && (
                               <>
                                 <button
-                                  className="btn btn-ghost btn-sm"
-                                  title="Avancer"
+                                  className="step-btn step-fwd"
+                                  title="Avancer d'un statut"
                                   onClick={() => advanceStatus(c.id, 1)}
-                                  style={{ padding: '4px 8px', fontSize: 13 }}
-                                >→</button>
+                                >
+                                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
+                                </button>
                                 {c.status !== 'client' && (
                                   <button
                                     className="btn btn-primary btn-sm"
