@@ -1099,9 +1099,12 @@ input[type=range]::-moz-range-thumb {
   border: 1px solid rgba(255,255,255,0.12);
   border-radius: 12px;
   padding: 16px 18px;
-  transition: background .15s;
+  transition: background .15s, border-color .15s;
+  text-align: left;
+  text-decoration: none;
 }
-.contact-btn:hover { background: rgba(255,255,255,0.09); }
+.contact-btn:hover { background: rgba(255,255,255,0.09); border-color: rgba(255,255,255,0.2); }
+.contact-btn > div:not(.cmark) { flex: 1; min-width: 0; }
 .contact-btn .ctitle { font-size: 13px; font-weight: 700; color: #fff; }
 .contact-btn .cdesc { font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 2px; }
 .contact-btn .cmark {
