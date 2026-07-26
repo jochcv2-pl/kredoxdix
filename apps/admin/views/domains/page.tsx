@@ -20,6 +20,10 @@ interface Domain {
   brandName: string | null
   logoUrl: string | null
   primaryColor: string | null
+  fromEmail: string | null
+  spfRecord: string | null
+  dkimRecord: string | null
+  dmarcRecord: string | null
   isActive: boolean
   isPrimary: boolean
   sslStatus: string
@@ -45,6 +49,10 @@ const EMPTY_FORM: DomainForm = {
   type: 'site',
   brandName: '',
   primaryColor: '',
+  fromEmail: '',
+  spfRecord: '',
+  dkimRecord: '',
+  dmarcRecord: '',
   isPrimary: false,
   isActive: true,
 }
@@ -54,6 +62,10 @@ interface DomainForm {
   type: DomainType
   brandName: string
   primaryColor: string
+  fromEmail: string
+  spfRecord: string
+  dkimRecord: string
+  dmarcRecord: string
   isPrimary: boolean
   isActive: boolean
 }
@@ -64,6 +76,7 @@ export default function Domains() {
   const [error, setError] = useState<string | null>(null)
 
   const [modalOpen, setModalOpen] = useState(false)
+  const [modalTab, setModalTab] = useState<'general' | 'brand' | 'email' | 'ssl'>('general')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<DomainForm>(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
@@ -106,6 +119,7 @@ export default function Domains() {
   const openCreate = () => {
     setEditingId(null)
     setForm(EMPTY_FORM)
+    setModalTab('general')
     setFormError(null)
     setModalOpen(true)
   }
@@ -117,10 +131,15 @@ export default function Domains() {
       type: d.type,
       brandName: d.brandName ?? '',
       primaryColor: d.primaryColor ?? '',
+      fromEmail: d.fromEmail ?? '',
+      spfRecord: d.spfRecord ?? '',
+      dkimRecord: d.dkimRecord ?? '',
+      dmarcRecord: d.dmarcRecord ?? '',
       isPrimary: d.isPrimary,
       isActive: d.isActive,
     })
     setFormError(null)
+    setModalTab('general')
     setModalOpen(true)
   }
 
@@ -137,6 +156,10 @@ export default function Domains() {
         type: form.type,
         brandName: form.brandName.trim() || undefined,
         primaryColor: form.primaryColor.trim() || undefined,
+        fromEmail: form.fromEmail.trim() || undefined,
+        spfRecord: form.spfRecord.trim() || undefined,
+        dkimRecord: form.dkimRecord.trim() || undefined,
+        dmarcRecord: form.dmarcRecord.trim() || undefined,
         isPrimary: form.isPrimary,
         isActive: form.isActive,
       }
@@ -371,6 +394,31 @@ export default function Domains() {
         }
         .check-row:hover { background: color-mix(in srgb, var(--blue, #2B8BDE) 5%, var(--bg, #f8fafc)); }
         .check-row input[type="checkbox"] { width: 16px; height: 16px; }
+
+        /* ---- Tabs modal ---- */
+        .dom-tabs {
+          display: flex; gap: 2px; border-bottom: 2px solid var(--border, #e5e7eb);
+          margin-bottom: 20px; overflow-x: auto;
+        }
+        .dom-tab {
+          padding: 10px 14px; font-size: 13px; font-weight: 600; color: var(--slate, #64748b);
+          border: none; background: none; cursor: pointer; border-bottom: 2px solid transparent;
+          margin-bottom: -2px; white-space: nowrap; transition: color 0.15s, border-color 0.15s;
+          display: flex; align-items: center; gap: 6px;
+        }
+        .dom-tab:hover { color: var(--text, #1e293b); }
+        .dom-tab.active { color: var(--blue, #2B8BDE); border-bottom-color: var(--blue, #2B8BDE); }
+        .dom-tab-section { display: flex; flex-direction: column; gap: 16px; }
+        .dom-tab-hint {
+          font-size: 12px; color: var(--slate, #94a3b8); padding: 10px 12px;
+          background: color-mix(in srgb, var(--blue, #2B8BDE) 4%, var(--bg, #f8fafc));
+          border-radius: 8px; border: 1px solid color-mix(in srgb, var(--blue, #2B8BDE) 12%, var(--border, #e5e7eb));
+        }
+        .dom-dns-record {
+          font-family: monospace; font-size: 11px; color: var(--slate, #64748b);
+          background: var(--bg, #f8fafc); border: 1px solid var(--border, #e5e7eb);
+          border-radius: 6px; padding: 8px 10px; word-break: break-all;
+        }
       `}</style>
 
       <div className="domains-head">
@@ -470,89 +518,207 @@ export default function Domains() {
         onClose={() => setModalOpen(false)}
         title={editingId ? 'Modifier le domaine' : 'Ajouter un domaine'}
       >
-        <div className="domain-form">
-          <div className="field">
-            <label className="field-label">Domaine</label>
-            <input
-              className="field-input"
-              type="text"
-              placeholder="exemple.fr"
-              value={form.domain}
-              onChange={(e) => setForm({ ...form, domain: e.target.value })}
-              autoFocus
-            />
-          </div>
+        {/* ---- Tabs ---- */}
+        <div className="dom-tabs">
+          <button className={`dom-tab${modalTab === 'general' ? ' active' : ''}`} onClick={() => setModalTab('general')}>
+            <Icon name="globe" size={14} /> Général
+          </button>
+          <button className={`dom-tab${modalTab === 'brand' ? ' active' : ''}`} onClick={() => setModalTab('brand')}>
+            <Icon name="palette" size={14} /> Identité
+          </button>
+          {form.type === 'mail' && (
+            <button className={`dom-tab${modalTab === 'email' ? ' active' : ''}`} onClick={() => setModalTab('email')}>
+              <Icon name="mail" size={14} /> Envoi emails
+            </button>
+          )}
+          {editingId && (
+            <button className={`dom-tab${modalTab === 'ssl' ? ' active' : ''}`} onClick={() => setModalTab('ssl')}>
+              <Icon name="shield" size={14} /> SSL & DNS
+            </button>
+          )}
+        </div>
 
-          <div className="field">
-            <label className="field-label">Type</label>
-            <select
-              className="field-select"
-              value={form.type}
-              onChange={(e) => setForm({ ...form, type: e.target.value as DomainType })}
-            >
-              {(Object.keys(TYPE_CONFIG) as DomainType[]).map((t) => (
-                <option key={t} value={t}>{TYPE_CONFIG[t].label}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="field">
-            <label className="field-label">Nom de marque (optionnel)</label>
-            <input
-              className="field-input"
-              type="text"
-              placeholder="Ex : Kredix"
-              value={form.brandName}
-              onChange={(e) => setForm({ ...form, brandName: e.target.value })}
-            />
-          </div>
-
-          <div className="field">
-            <label className="field-label">Couleur principale (optionnel)</label>
-            <div className="color-row">
-              <input
-                type="color"
-                value={form.primaryColor || '#1e3a8a'}
-                onChange={(e) => setForm({ ...form, primaryColor: e.target.value })}
-              />
+        {/* ---- Tab: Général ---- */}
+        {modalTab === 'general' && (
+          <div className="dom-tab-section">
+            <div className="field">
+              <label className="field-label">Domaine</label>
               <input
                 className="field-input"
                 type="text"
-                placeholder="#1e3a8a"
-                value={form.primaryColor}
-                onChange={(e) => setForm({ ...form, primaryColor: e.target.value })}
+                placeholder="exemple.fr"
+                value={form.domain}
+                onChange={(e) => setForm({ ...form, domain: e.target.value })}
+                autoFocus
+              />
+            </div>
+            <div className="field">
+              <label className="field-label">Type</label>
+              <select
+                className="field-select"
+                value={form.type}
+                onChange={(e) => setForm({ ...form, type: e.target.value as DomainType })}
+              >
+                {(Object.keys(TYPE_CONFIG) as DomainType[]).map((t) => (
+                  <option key={t} value={t}>{TYPE_CONFIG[t].label}</option>
+                ))}
+              </select>
+            </div>
+            <label className="check-row">
+              <input type="checkbox" checked={form.isPrimary} onChange={(e) => setForm({ ...form, isPrimary: e.target.checked })} />
+              Domaine primaire pour ce type
+            </label>
+            <label className="check-row">
+              <input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} />
+              Actif
+            </label>
+          </div>
+        )}
+
+        {/* ---- Tab: Identité de marque ---- */}
+        {modalTab === 'brand' && (
+          <div className="dom-tab-section">
+            <div className="dom-tab-hint">
+              Personnalisez l'apparence de ce domaine pour vos visiteurs et vos emails.
+            </div>
+            <div className="field">
+              <label className="field-label">Nom de marque (optionnel)</label>
+              <input
+                className="field-input"
+                type="text"
+                placeholder="Ex : Kredix"
+                value={form.brandName}
+                onChange={(e) => setForm({ ...form, brandName: e.target.value })}
+              />
+            </div>
+            <div className="field">
+              <label className="field-label">Couleur principale (optionnel)</label>
+              <div className="color-row">
+                <input
+                  type="color"
+                  value={form.primaryColor || '#1e3a8a'}
+                  onChange={(e) => setForm({ ...form, primaryColor: e.target.value })}
+                />
+                <input
+                  className="field-input"
+                  type="text"
+                  placeholder="#1e3a8a"
+                  value={form.primaryColor}
+                  onChange={(e) => setForm({ ...form, primaryColor: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ---- Tab: Envoi d'emails (SPF/DKIM/DMARC) ---- */}
+        {modalTab === 'email' && form.type === 'mail' && (
+          <div className="dom-tab-section">
+            <div className="dom-tab-hint">
+              Configurez l'authentification email pour garantir la délivrabilité de vos campagnes.
+              Ces enregistrements DNS doivent être publiés chez votre hébergeur de nom de domaine.
+            </div>
+            <div className="field">
+              <label className="field-label">Adresse d'envoi (From)</label>
+              <input
+                className="field-input"
+                type="text"
+                placeholder="contact@votredomaine.fr"
+                value={form.fromEmail}
+                onChange={(e) => setForm({ ...form, fromEmail: e.target.value })}
+              />
+            </div>
+            <div className="field">
+              <label className="field-label">Enregistrement SPF</label>
+              <textarea
+                className="field-input"
+                rows={2}
+                placeholder="v=spf1 include:_spf.votresmpp.fr ~all"
+                value={form.spfRecord}
+                onChange={(e) => setForm({ ...form, spfRecord: e.target.value })}
+                style={{ fontFamily: 'monospace', fontSize: 12 }}
+              />
+            </div>
+            <div className="field">
+              <label className="field-label">Enregistrement DKIM</label>
+              <textarea
+                className="field-input"
+                rows={2}
+                placeholder="v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3..."
+                value={form.dkimRecord}
+                onChange={(e) => setForm({ ...form, dkimRecord: e.target.value })}
+                style={{ fontFamily: 'monospace', fontSize: 12 }}
+              />
+            </div>
+            <div className="field">
+              <label className="field-label">Enregistrement DMARC</label>
+              <textarea
+                className="field-input"
+                rows={2}
+                placeholder="v=DMARC1; p=quarantine; rua=mailto:dmarc@votredomaine.fr"
+                value={form.dmarcRecord}
+                onChange={(e) => setForm({ ...form, dmarcRecord: e.target.value })}
+                style={{ fontFamily: 'monospace', fontSize: 12 }}
               />
             </div>
           </div>
+        )}
 
-          <label className="check-row">
-            <input
-              type="checkbox"
-              checked={form.isPrimary}
-              onChange={(e) => setForm({ ...form, isPrimary: e.target.checked })}
-            />
-            Domaine primaire pour ce type
-          </label>
-
-          <label className="check-row">
-            <input
-              type="checkbox"
-              checked={form.isActive}
-              onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
-            />
-            Actif
-          </label>
-
-          {formError && <div className="domains-err">{formError}</div>}
-
-          <div className="modal-actions">
-            <button className="btn btn-ghost" onClick={() => setModalOpen(false)} disabled={saving}>
-              Annuler
-            </button>
-            <button className="btn btn-primary" onClick={handleSave} disabled={saving || !form.domain.trim()}>
-              {saving ? 'Enregistrement…' : 'Enregistrer'}
-            </button>
+        {/* ---- Tab: SSL & DNS (lecture seule, via test) ---- */}
+        {modalTab === 'ssl' && editingId && (
+          <div className="dom-tab-section">
+            <div className="dom-tab-hint">
+              Vérifiez la résolution DNS, le certificat SSL et l'accessibilité HTTPS de ce domaine.
+            </div>
+            {(() => {
+              const d = domains.find((x) => x.id === editingId)
+              if (!d) return null
+              const ssl = SSL_CONFIG[d.sslStatus as SslStatus] ?? SSL_CONFIG.pending
+              return (
+                <>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <span className={`badge ${ssl.cls}`}><span className="badge-dot"></span>{ssl.label}</span>
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => handleTest(d)}
+                      disabled={testingId === d.id}
+                    >
+                      {testingId === d.id ? 'Test en cours…' : 'Lancer un test DNS / SSL'}
+                    </button>
+                  </div>
+                  {d.spfRecord && (
+                    <div className="field">
+                      <label className="field-label">SPF actuel</label>
+                      <div className="dom-dns-record">{d.spfRecord}</div>
+                    </div>
+                  )}
+                  {d.dkimRecord && (
+                    <div className="field">
+                      <label className="field-label">DKIM actuel</label>
+                      <div className="dom-dns-record">{d.dkimRecord}</div>
+                    </div>
+                  )}
+                  {d.dmarcRecord && (
+                    <div className="field">
+                      <label className="field-label">DMARC actuel</label>
+                      <div className="dom-dns-record">{d.dmarcRecord}</div>
+                    </div>
+                  )}
+                </>
+              )
+            })()}
           </div>
+        )}
+
+        {formError && <div className="domains-err" style={{ marginTop: 16 }}>{formError}</div>}
+
+        <div className="modal-actions" style={{ marginTop: 20 }}>
+          <button className="btn btn-ghost" onClick={() => setModalOpen(false)} disabled={saving}>
+            Annuler
+          </button>
+          <button className="btn btn-primary" onClick={handleSave} disabled={saving || !form.domain.trim()}>
+            {saving ? 'Enregistrement…' : 'Enregistrer'}
+          </button>
         </div>
       </Modal>
 

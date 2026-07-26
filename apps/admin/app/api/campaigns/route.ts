@@ -29,6 +29,7 @@ const importedRecipientSchema = z.object({
 const createCampaignSchema = z.object({
   name: z.string(),
   templateId: z.string(),
+  domainId: z.string().nullable().optional(),             // domaine d'envoi (null = global)
   recipientSource: recipientSourceSchema,
   leadIds: z.array(z.string()).optional(),           // requis pour "manual"
   recipients: z.array(importedRecipientSchema).optional(), // requis pour "import_file" ou "manual"
@@ -83,7 +84,10 @@ export async function GET() {
   try {
     const campaigns = await prisma.campaign.findMany({
       orderBy: { createdAt: 'desc' },
-      include: { template: { select: { name: true } } },
+      include: {
+        template: { select: { name: true } },
+        domain: { select: { domain: true, fromEmail: true } },
+      },
     });
     return successResponse(campaigns);
   } catch {
@@ -168,13 +172,14 @@ export async function POST(req: NextRequest) {
         data: {
           name: data.name,
           templateId: data.templateId,
+          domainId: data.domainId || null,
           recipientSource: data.recipientSource,
           totalRecipients: recipientsData.length,
           recipients: {
             create: recipientsData,
           },
         },
-        include: { template: { select: { name: true } } },
+        include: { template: { select: { name: true } }, domain: { select: { domain: true, fromEmail: true } } },
       });
     });
 

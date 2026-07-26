@@ -7,6 +7,7 @@ type Testimonial = {
   authorName: string;
   authorRole: string | null;
   authorLocation: string | null;
+  authorAvatar: string | null;
   rating: number;
   content: string;
 };
@@ -38,7 +39,15 @@ export default function TestimonialsCarousel({
             <p className="tst-content">&ldquo;{tst.content}&rdquo;</p>
             <div className="tst-author">
               <div className="tst-avatar">
-                {tst.authorName.charAt(0).toUpperCase()}
+                {tst.authorAvatar ? (
+                  <img
+                    src={tst.authorAvatar}
+                    alt={tst.authorName}
+                    className="tst-avatar-img"
+                  />
+                ) : (
+                  tst.authorName.charAt(0).toUpperCase()
+                )}
               </div>
               <div>
                 <div className="tst-name">{tst.authorName}</div>

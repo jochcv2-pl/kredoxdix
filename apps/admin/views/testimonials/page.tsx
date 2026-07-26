@@ -14,6 +14,7 @@ interface Testimonial {
   authorName: string
   authorRole: string | null
   authorLocation: string | null
+  authorAvatar: string | null
   rating: number
   content: string
   locale: string
@@ -25,6 +26,7 @@ interface FormState {
   authorName: string
   authorRole: string
   authorLocation: string
+  authorAvatar: string
   rating: number
   content: string
   locale: string
@@ -33,7 +35,7 @@ interface FormState {
 }
 
 const EMPTY: FormState = {
-  authorName: '', authorRole: '', authorLocation: '',
+  authorName: '', authorRole: '', authorLocation: '', authorAvatar: '',
   rating: 5, content: '', locale: 'de', isVisible: true, order: 0,
 }
 
@@ -78,6 +80,7 @@ export default function Testimonials() {
       authorName: t.authorName,
       authorRole: t.authorRole ?? '',
       authorLocation: t.authorLocation ?? '',
+      authorAvatar: t.authorAvatar ?? '',
       rating: t.rating,
       content: t.content,
       locale: t.locale,
@@ -102,6 +105,7 @@ export default function Testimonials() {
           authorName: form.authorName.trim(),
           authorRole: form.authorRole.trim() || null,
           authorLocation: form.authorLocation.trim() || null,
+          authorAvatar: form.authorAvatar.trim() || null,
           rating: form.rating,
           content: form.content.trim(),
           locale: form.locale,
@@ -250,6 +254,16 @@ export default function Testimonials() {
               />
             </label>
           </div>
+          <label className="form-field">
+            <span className="form-label">Photo / Avatar (URL, optionnel)</span>
+            <input
+              type="url"
+              value={form.authorAvatar}
+              onChange={(e) => setForm({ ...form, authorAvatar: e.target.value })}
+              placeholder="https://exemple.com/avatar.jpg"
+              className="form-input"
+            />
+          </label>
           <div style={{ display: 'flex', gap: 14 }}>
             <label className="form-field" style={{ flex: 1 }}>
               <span className="form-label">Note (1-5)</span>

@@ -1,6 +1,9 @@
 // Barrel export du package @kredix/db
 export { prisma } from '../prisma/client';
 
+// Crypto — chiffrement AES-256-GCM pour secrets au repos (partagé)
+export { encryptSecret, decryptSecret } from './crypto';
+
 // Helpers métier (queries réutilisables côté server)
 export {
   getActiveRates,

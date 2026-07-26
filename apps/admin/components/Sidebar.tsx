@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import {
   LayoutDashboard, Users, UserCheck, FolderOpen, Percent,
   Mail, Megaphone, History, Globe, LayoutTemplate,
-  Star, LayoutGrid, FileText, Search, Bot, Settings, User, Activity,
+  Star, LayoutGrid, FileText, Search, Bot, Settings, User, Activity, Building2,
 } from "lucide-react";
 
 const ICON_PROPS = { className: "sb-ico", size: 18, strokeWidth: 1.8 } as const;
@@ -23,6 +23,7 @@ const ICONS: Record<string, ReactNode> = {
   domains: <Globe {...ICON_PROPS} />,
   cms: <LayoutTemplate {...ICON_PROPS} />,
   testimonials: <Star {...ICON_PROPS} />,
+  partners: <Building2 {...ICON_PROPS} />,
   content: <LayoutGrid {...ICON_PROPS} />,
   legal: <FileText {...ICON_PROPS} />,
   seo: <Search {...ICON_PROPS} />,
@@ -44,6 +45,7 @@ const navigation = [
   { id: "history", label: "Historique emails", group: "Pilotage" },
   { id: "cms", label: "Contenu du site (CMS)", group: "Site web" },
   { id: "testimonials", label: "Avis & témoignages", group: "Site web" },
+  { id: "partners", label: "Banques partenaires", group: "Site web" },
   { id: "content", label: "Sections du site", group: "Site web" },
   { id: "legal", label: "Pages légales", group: "Site web" },
   { id: "seo", label: "SEO", group: "Site web" },

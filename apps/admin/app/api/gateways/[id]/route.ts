@@ -5,7 +5,7 @@
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
-import { prisma } from '@kredix/db';
+import { prisma, encryptSecret } from '@kredix/db';
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses';
 import { isValidId } from '@/app/api/_lib/id-validation';
 import { requireAuth } from '../../_lib/auth-server';
@@ -62,6 +62,15 @@ export async function PATCH(
       return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);
     }
 
+    // Chiffrer la clé API si elle est modifiée (et non masquée/••••).
+    const updateData: Record<string, unknown> = { ...data };
+    if (data.apiKey && !data.apiKey.startsWith('••••')) {
+      updateData.apiKey = encryptSecret(data.apiKey);
+    } else if (data.apiKey && data.apiKey.startsWith('••••')) {
+      // Valeur masquée renvoyée par le GET — ne pas écraser la clé existante.
+      delete updateData.apiKey;
+    }
+
     // Règle métier : une seule passerelle active à la fois (transaction).
     const activating = data.isActive === true;
     const gateway = await prisma.$transaction(async (tx) => {
@@ -71,7 +80,7 @@ export async function PATCH(
           data: { isActive: false },
         });
       }
-      return tx.emailGateway.update({ where: { id }, data });
+      return tx.emailGateway.update({ where: { id }, data: updateData });
     });
 
     return successResponse({ ...gateway, apiKey: maskApiKey(gateway.apiKey) });

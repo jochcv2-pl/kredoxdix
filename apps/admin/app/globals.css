@@ -1298,6 +1298,42 @@ body {
   outline: none;
 }
 
+/* ===== SETTINGS — Section headers ===== */
+.set-section {
+  margin-bottom: 28px;
+}
+
+.set-section-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.set-section-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.set-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.set-section-desc {
+  font-size: 12px;
+  color: var(--slate);
+  margin-top: 1px;
+}
+
 /* ===== SETTINGS GRID ===== */
 .set-grid {
   display: grid;

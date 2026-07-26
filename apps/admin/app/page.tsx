@@ -23,6 +23,7 @@ import Legal from '@/views/legal/page'
 import SEO from '@/views/seo/page'
 import Domains from '@/views/domains/page'
 import Agents from '@/views/agents/page'
+import Partners from '@/views/partners/page'
 import Settings from '@/views/settings/page'
 import Profil from '@/views/profil/page'
 
@@ -39,6 +40,7 @@ const pageTitles: Record<string, [string, string]> = {
   history: ['Historique emails', 'Tous les emails envoyés à vos prospects'],
   cms: ['Contenu du site (CMS)', 'Modifiez le site public depuis le CRM'],
   testimonials: ['Avis & témoignages', 'Témoignages clients affichés sur la landing'],
+  partners: ['Banques partenaires', 'Logos et informations des banques partenaires'],
   content: ['Sections du site', 'Éditez « Nos engagements » et « Nos services »'],
   legal: ['Pages légales', 'Mentions légales, Impressum, Datenschutz, CGV'],
   seo: ['SEO', 'Audit et référencement du site'],
@@ -121,11 +123,12 @@ export default function AdminPage() {
       case 'taux': return <ViewErrorBoundary viewName="Taux"><Taux /></ViewErrorBoundary>
       case 'emails': return <ViewErrorBoundary viewName="Modèles d'emails"><Emails /></ViewErrorBoundary>
       case 'documents': return <ViewErrorBoundary viewName="Documents"><Documents /></ViewErrorBoundary>
-      case 'campaigns': return <ViewErrorBoundary viewName="Campagnes"><Campaigns /></ViewErrorBoundary>
+      case 'campaigns': return <ViewErrorBoundary viewName="Campagnes"><Campaigns onNavigate={setViewId} /></ViewErrorBoundary>
       case 'pipeline': return <ViewErrorBoundary viewName="Pipeline"><Pipeline /></ViewErrorBoundary>
       case 'history': return <ViewErrorBoundary viewName="Historique"><EmailHistory /></ViewErrorBoundary>
       case 'cms': return <ViewErrorBoundary viewName="CMS"><CMS /></ViewErrorBoundary>
       case 'testimonials': return <ViewErrorBoundary viewName="Témoignages"><Testimonials /></ViewErrorBoundary>
+      case 'partners': return <ViewErrorBoundary viewName="Banques partenaires"><Partners /></ViewErrorBoundary>
       case 'content': return <ViewErrorBoundary viewName="Sections"><Content /></ViewErrorBoundary>
       case 'legal': return <ViewErrorBoundary viewName="Pages légales"><Legal /></ViewErrorBoundary>
       case 'seo': return <ViewErrorBoundary viewName="SEO"><SEO /></ViewErrorBoundary>

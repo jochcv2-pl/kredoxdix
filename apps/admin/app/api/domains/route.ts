@@ -22,6 +22,10 @@ const createDomainSchema = z.object({
   type: z.nativeEnum(DomainType),
   brandName: z.string().trim().optional(),
   primaryColor: z.string().trim().optional(),
+  fromEmail: z.string().trim().optional(),
+  spfRecord: z.string().trim().optional(),
+  dkimRecord: z.string().trim().optional(),
+  dmarcRecord: z.string().trim().optional(),
   isPrimary: z.boolean().optional(),
 });
 
@@ -74,6 +78,10 @@ export async function POST(req: NextRequest) {
           type: data.type,
           brandName: data.brandName ?? null,
           primaryColor: data.primaryColor ?? null,
+          fromEmail: data.fromEmail ?? null,
+          spfRecord: data.spfRecord ?? null,
+          dkimRecord: data.dkimRecord ?? null,
+          dmarcRecord: data.dmarcRecord ?? null,
           isPrimary: data.isPrimary ?? false,
         },
       });

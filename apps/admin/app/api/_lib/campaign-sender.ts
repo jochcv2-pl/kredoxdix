@@ -94,10 +94,15 @@ export async function processCampaign(campaignId: string): Promise<void> {
     // 1 — Charger la campagne et vérifier qu'elle est en cours d'envoi.
     const campaign = await prisma.campaign.findUnique({
       where: { id: campaignId },
-      include: { template: true },
+      include: { template: true, domain: true },
     });
     if (!campaign) return;
     if (campaign.status !== CampaignStatus.sending) return;
+
+    // 1b — Résoudre l'adresse d'expédition depuis le domaine de la campagne.
+    //      Si la campagne a un domaine avec fromEmail, on l'utilise.
+    //      Sinon, sendEmail() utilisera le from_email global (fallback).
+    const fromAddress = campaign.domain?.fromEmail || undefined;
 
     // 2 — Gateway actif (échec fatal si aucun).
     const gateway = (await getActiveGateway()) as EmailGateway | null;
@@ -118,12 +123,18 @@ export async function processCampaign(campaignId: string): Promise<void> {
 
     const template = campaign.template as EmailTemplate;
 
-    // 4 — Destinataires en attente, ordre d'insertion (FIFO).
+    // 4 — Destinataires en attente ou bloqués en "sending" (process crashé).
+    //     Ordre d'insertion (FIFO).
     //     On récupère seulement les IDs ; on re-vérifiera le statut de chaque
     //     destinataire avant l'envoi pour éviter les race conditions
     //     (cron de reprise + /send tournant en parallèle).
     const pendingIds = await prisma.campaignRecipient.findMany({
-      where: { campaignId, status: CampaignRecipientStatus.pending },
+      where: {
+        campaignId,
+        status: {
+          in: [CampaignRecipientStatus.pending, CampaignRecipientStatus.sending],
+        },
+      },
       orderBy: { id: 'asc' },
       select: { id: true },
     });
@@ -139,14 +150,22 @@ export async function processCampaign(campaignId: string): Promise<void> {
         break;
       }
 
-      // 4a-bis — Re-vérification du destinataire (anti double-envoi).
-      //         Si un autre process l'a déjà traité (cron de reprise), on skip.
+      // 4a-bis — Anti double-envoi atomique : on tente de "locking" le destinataire
+      //         en passant son statut de pending/sending → sending. Si updateMany
+      //         retourne 0, c'est qu'un autre process l'a déjà traité (sent/failed/skipped).
+      const locked = await prisma.campaignRecipient.updateMany({
+        where: {
+          id: recipientId,
+          status: { in: [CampaignRecipientStatus.pending, CampaignRecipientStatus.sending] },
+        },
+        data: { status: CampaignRecipientStatus.sending },
+      });
+      if (locked.count === 0) continue;
+
       const recipient = await prisma.campaignRecipient.findUnique({
         where: { id: recipientId },
       });
-      if (!recipient || recipient.status !== CampaignRecipientStatus.pending) {
-        continue;
-      }
+      if (!recipient) continue;
 
       // 4b — Plafond journalier global (toutes campagnes confondues).
       const startOfToday = new Date();
@@ -224,6 +243,7 @@ export async function processCampaign(campaignId: string): Promise<void> {
 
       const result = await sendEmail(gateway, {
         to: recipient.email,
+        from: fromAddress,
         subject,
         html,
         text: textBody,

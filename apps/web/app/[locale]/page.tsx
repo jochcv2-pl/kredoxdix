@@ -112,6 +112,21 @@ export default async function HomePage({
               <div className="hstat"><b>{t("stat3Value")}</b><span>{t("stat3Label")}</span></div>
               <div className="hstat"><b>{t("stat4Value")}</b><span>{t("stat4Label")}</span></div>
             </div>
+            {/* Trust strip — badges visuels sous les stats */}
+            <div className="hero-trust">
+              <div className="hero-trust-item">
+                <Shield size={18} strokeWidth={1.8} />
+                <span>100% sécurisé</span>
+              </div>
+              <div className="hero-trust-item">
+                <CheckCircle size={18} strokeWidth={1.8} />
+                <span>Sans engagement</span>
+              </div>
+              <div className="hero-trust-item">
+                <Award size={18} strokeWidth={1.8} />
+                <span>Courtier certifié</span>
+              </div>
+            </div>
           </div>
         </div>
       </section>

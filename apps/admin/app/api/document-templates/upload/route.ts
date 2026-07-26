@@ -15,11 +15,10 @@ import { detectPdfFields } from '../../_lib/pdf-filler';
 // Taille maximale d'un PDF : 10 Mo.
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
-// Types MIME acceptés pour les PDF.
-const ALLOWED_MIME_TYPES = new Set([
-  'application/pdf',
-  'application/octet-stream',
-]);
+    // Types MIME acceptés pour les PDF.
+    const ALLOWED_MIME_TYPES = new Set([
+      'application/pdf',
+    ]);
 
 // POST /api/document-templates/upload — enregistre le PDF, détecte les champs, crée le template.
 export async function POST(req: NextRequest) {
@@ -85,6 +84,17 @@ export async function POST(req: NextRequest) {
 
     // Génération du nom de fichier unique + chemin relatif public.
     const bytes = Buffer.from(await file.arrayBuffer());
+
+    // Vérification magic bytes : un vrai PDF commence par %PDF (anti-upload binaire déguisé).
+    if (bytes.length < 5 || bytes.slice(0, 5).toString('ascii') !== '%PDF-') {
+      return errorResponse(
+        'Le fichier n\'est pas un PDF valide (magic bytes manquants)',
+        ERR.VALIDATION.code,
+        undefined,
+        422,
+      );
+    }
+
     const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
     const fileName = `doc-${Date.now()}-${safeName}`;
     const filePath = `uploads/docs/${fileName}`;

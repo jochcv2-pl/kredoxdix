@@ -3,6 +3,7 @@
 // =============================================================================
 
 import { createHash, timingSafeEqual } from 'crypto'
+import { decryptSecret } from '@kredix/db'
 
 /**
  * Masque une clé API/secrete pour l'affichage côté client.
@@ -14,9 +15,20 @@ import { createHash, timingSafeEqual } from 'crypto'
  */
 export function maskApiKey(key: string | null | undefined): string | null {
   if (!key) return null;
-  if (key.length < 8) return '••••';
-  const last4 = key.slice(-4);
-  const masked = '•'.repeat(Math.min(key.length - 4, 20));
+
+  // Si la clé est chiffrée (préfixe "enc:"), on la déchiffre d'abord pour masquer les 4 derniers caractères.
+  let plaintext = key;
+  if (key.startsWith('enc:')) {
+    try {
+      plaintext = decryptSecret(key) || key;
+    } catch {
+      return '••••';
+    }
+  }
+
+  if (plaintext.length < 8) return '••••';
+  const last4 = plaintext.slice(-4);
+  const masked = '•'.repeat(Math.min(plaintext.length - 4, 20));
   return `${masked}${last4}`;
 }
 

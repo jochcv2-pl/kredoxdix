@@ -417,6 +417,8 @@ model Campaign {
   name            String                          // "Offre spéciale été"
   templateId      String
   template        EmailTemplate  @relation(fields: [templateId], references: [id])
+  domainId        String?                         // domaine d'envoi (FK Domain type=mail), null = global from_email
+  domain          Domain?        @relation(fields: [domainId], references: [id])
   status          CampaignStatus @default(draft)
   recipientSource String                          // "validated_today" | "validated_week" | "manual" | "all_active"
   totalRecipients Int            @default(0)
@@ -425,7 +427,7 @@ model Campaign {
   startedAt       DateTime?
   completedAt     DateTime?
   createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  updatedAt       DateTime @updatedAt
 
   recipients      CampaignRecipient[]
 
@@ -460,6 +462,7 @@ enum CampaignStatus {
 
 enum CampaignRecipientStatus {
   pending   // en attente d'envoi
+  sending   // verrouillé par un worker (anti double-envoi atomique)
   sent      // envoyé avec succès
   failed    // échec d'envoi (erreur gateway)
   skipped   // ignoré (suppression list, pas d'email)
@@ -499,11 +502,17 @@ model Domain {
   brandName   String?                           // nom de marque affiché (null = utiliser site_name)
   logoUrl     String?                           // logo spécifique à ce domaine
   primaryColor String?                          // couleur principale (hex), null = défaut
+  fromEmail   String?                           // adresse d'envoi pour ce domaine (ex: "noreply@kredix.fr")
+  spfRecord   String?                           // enregistrement SPF configuré (informatif)
+  dkimRecord  String?                           // enregistrement DKIM configuré (informatif)
+  dmarcRecord String?                           // enregistrement DMARC configuré (informatif)
   isActive    Boolean  @default(true)
   isPrimary   Boolean  @default(false)          // un seul primaire par type
   sslStatus   String   @default("pending")      // "pending" | "active" | "error"
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  campaigns   Campaign[]
 
   @@index([type, isActive])
 }
@@ -591,6 +600,7 @@ model Testimonial {
   authorName     String                     // "Marie Dupont"
   authorRole     String?                    // "Salariée CDI"
   authorLocation String?                    // "Lyon"
+  authorAvatar   String?                    // URL photo/avatar (optionnel)
   rating         Int      @default(5)       // 1-5 étoiles
   content        String   @db.Text          // texte du témoignage
   locale         String   @default("de")    // langue du témoignage

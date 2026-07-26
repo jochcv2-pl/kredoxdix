@@ -26,6 +26,7 @@ export async function GET(
       where: { id },
       include: {
         template: true,
+        domain: { select: { domain: true, fromEmail: true } },
         recipients: { select: { status: true } },
       },
     });

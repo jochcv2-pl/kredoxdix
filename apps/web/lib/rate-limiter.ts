@@ -61,11 +61,17 @@ export function checkRateLimit(
 }
 
 export function getClientIp(headers: Headers): string {
-  const forwarded = headers.get('x-forwarded-for');
-  if (forwarded) {
-    return forwarded.split(',')[0].trim();
+  // Ne faire confiance aux headers proxy QUE si TRUST_PROXY=true.
+  // Sans cette vérification, un attaquant peut spoofé X-Forwarded-For
+  // pour contourner le rate limiting.
+  const trustProxy = process.env.TRUST_PROXY === 'true';
+  if (trustProxy) {
+    const forwarded = headers.get('x-forwarded-for');
+    if (forwarded) {
+      return forwarded.split(',')[0].trim();
+    }
+    const realIp = headers.get('x-real-ip');
+    if (realIp) return realIp.trim();
   }
-  const realIp = headers.get('x-real-ip');
-  if (realIp) return realIp.trim();
   return 'unknown';
 }

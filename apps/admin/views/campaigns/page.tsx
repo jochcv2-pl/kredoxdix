@@ -18,6 +18,12 @@ interface Template {
   name: string
 }
 
+interface MailDomain {
+  id: string
+  domain: string
+  fromEmail: string | null
+}
+
 interface SearchLead {
   id: string
   firstName: string
@@ -39,6 +45,7 @@ interface Campaign {
   name: string
   templateId: string
   templateName: string
+  domainName: string | null
   status: CampaignStatus
   recipientSource: RecipientSource
   totalRecipients: number
@@ -84,6 +91,7 @@ const RECIPIENT_STATUS_LABEL: Record<string, { label: string; cls: string }> = {
 const EMPTY_FORM = {
   name: '',
   templateId: '',
+  domainId: '' as string,
   source: 'validated_today' as RecipientSource,
 }
 
@@ -131,6 +139,7 @@ function mapCampaign(raw: any): Campaign {
     name: raw.name,
     templateId: raw.templateId,
     templateName: raw.template?.name ?? 'Modèle supprimé',
+    domainName: raw.domain?.domain ?? null,
     status: raw.status,
     recipientSource: raw.recipientSource,
     totalRecipients: raw.totalRecipients,
@@ -146,10 +155,11 @@ function mapCampaign(raw: any): Campaign {
 // Composant principal
 // =============================================================================
 
-export default function Campaigns() {
+export default function Campaigns({ onNavigate }: { onNavigate?: (view: string) => void }) {
   const [activeTab, setActiveTab] = useState<'campaigns' | 'history'>('campaigns')
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [templates, setTemplates] = useState<Template[]>([])
+  const [mailDomains, setMailDomains] = useState<MailDomain[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [detailCampaign, setDetailCampaign] = useState<CampaignDetail | null>(null)
@@ -210,11 +220,26 @@ export default function Campaigns() {
     }
   }, [])
 
+  // ---- Fetch domaines d'envoi (type mail) ----
+  const fetchMailDomains = useCallback(async () => {
+    try {
+      const res = await fetch('/api/domains')
+      const json = await res.json()
+      const all = json.data ?? json
+      if (Array.isArray(all)) {
+        setMailDomains(all.filter((d: any) => d.type === 'mail' && d.isActive))
+      }
+    } catch (e) {
+      console.error('fetchMailDomains:', e)
+    }
+  }, [])
+
   // ---- Chargement initial ----
   useEffect(() => {
     fetchCampaigns()
     fetchTemplates()
-  }, [fetchCampaigns, fetchTemplates])
+    fetchMailDomains()
+  }, [fetchCampaigns, fetchTemplates, fetchMailDomains])
 
   // ---- Polling quand une campagne est "sending" ----
   useEffect(() => {
@@ -283,6 +308,7 @@ export default function Campaigns() {
       const body: Record<string, unknown> = {
         name: newCampaign.name || 'Campagne sans nom',
         templateId: newCampaign.templateId,
+        domainId: newCampaign.domainId || null,
         recipientSource: newCampaign.source,
       }
 
@@ -1017,6 +1043,40 @@ export default function Campaigns() {
                   <option key={t.id} value={t.id}>{t.name}</option>
                 ))}
               </select>
+            </div>
+
+            {/* Domaine d'envoi */}
+            <div className="nc-field">
+              <label className="nc-label">Domaine d'envoi</label>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                <select
+                  className="nc-input"
+                  value={newCampaign.domainId}
+                  onChange={(e) => setNewCampaign({ ...newCampaign, domainId: e.target.value })}
+                  style={{ cursor: 'pointer', flex: 1 }}
+                >
+                  <option value="">Adresse globale (from_email)</option>
+                  {mailDomains.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.domain}{d.fromEmail ? ` — ${d.fromEmail}` : ''}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  style={{ fontSize: 12, padding: '8px 12px', whiteSpace: 'nowrap', flexShrink: 0 }}
+                  onClick={() => {
+                    setShowCreateModal(false)
+                    if (onNavigate) onNavigate('domains')
+                  }}
+                  title="Configurer un nouveau domaine d'envoi"
+                >
+                  + Nouveau
+                </button>
+              </div>
+              <small style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, display: 'block' }}>
+                Sélectionnez le domaine qui apparaîtra comme expéditeur. Si vide, l'adresse globale configurée dans les paramètres est utilisée.
+              </small>
             </div>
 
             {/* Destinataires */}

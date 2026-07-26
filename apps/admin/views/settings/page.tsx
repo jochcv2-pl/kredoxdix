@@ -168,6 +168,27 @@ export default function Settings() {
     setAiApiKeyInput('')
   }
 
+  // Déconnexion du modèle IA — efface la clé API en DB.
+  const disconnectAI = async () => {
+    setSectionSaving('ai-disconnect')
+    setError(null)
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: AI_KEYS.apiKey, value: '', category: 'ai.model' }),
+      })
+      if (!res.ok) throw new Error('Échec déconnexion')
+      setSettings((prev) => ({ ...prev, [AI_KEYS.apiKey]: '' }))
+      setAiApiKeyEditing(false)
+      setAiApiKeyInput('')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erreur inconnue')
+    } finally {
+      setSectionSaving(null)
+    }
+  }
+
   // Sauvegarde section Cadence
   const saveCadence = () => saveSection('cadence', [
     { key: CADENCE_KEYS.dailyCap, value: settings[CADENCE_KEYS.dailyCap] ?? '', category: 'cadence' },
@@ -348,595 +369,663 @@ export default function Settings() {
         </div>
       )}
 
-      <div className="set-grid">
-        {/* 0. Comptes administrateurs — gestion multi-admin (Phase 5 étape 3) */}
-        <AdminUsersPanel />
-
-        {/* 1. Modèle d'IA */}
-        <div className="panel">
-          <div className="panel-head">
-            <h3>Modèle d&apos;IA</h3>
+      {/* ======================================================================
+          SECTION 1 — Sécurité & Accès
+          ====================================================================== */}
+      <div className="set-section">
+        <div className="set-section-head">
+          <div className="set-section-icon" style={{ background: '#eff6ff', color: '#2563eb' }}>
+            <Icon name="shield" size={18} />
           </div>
-          <div className="panel-body" style={{ paddingTop: '16px' }}>
-            <p className="field-hint">
-              Configuration Ollama par défaut. Le CRM parle au modèle via une API compatible OpenAI. Pour Ollama, la clé API n'est pas nécessaire — laissez vide.
-            </p>
-            <div className="frow">
-              <div className="fg">
-                <label>Modèle actif</label>
-                <input
-                  value={settings[AI_KEYS.modelName] ?? ''}
-                  onChange={(e) => setSetting(AI_KEYS.modelName, e.target.value)}
-                  placeholder="Ollama : qwen2.5:7b, llama3.2 — OpenAI : gpt-4o-mini"
-                />
+          <div>
+            <div className="set-section-title">Sécurité &amp; Accès</div>
+            <div className="set-section-desc">Gestion des comptes administrateurs et accès au CRM</div>
+          </div>
+        </div>
+        <div className="set-grid">
+          {/* 0. Comptes administrateurs — gestion multi-admin (Phase 5 étape 3) */}
+          <AdminUsersPanel />
+
+          {/* Réponses des prospects — lecture seule (règle produit) */}
+          <div className="panel">
+            <div className="panel-head">
+              <h3>Réponses des prospects</h3>
+            </div>
+            <div className="panel-body" style={{ paddingTop: '14px' }}>
+              <div className="info-band" style={{ margin: '0 0 14px', background: 'var(--bg)', color: 'var(--slate)' }}>
+                <div className="imark" style={{ background: 'var(--line)', color: 'var(--slate)' }}>i</div>
+                <div>
+                  Les agents IA ne font que la <b>prospection sortante</b>. Ils ne lisent pas et ne répondent pas aux emails des prospects.
+                </div>
               </div>
-              <div className="fg">
-                <label>Clé API</label>
-                {aiApiKeyEditing ? (
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <input
-                      type="password"
-                      value={aiApiKeyInput}
-                      onChange={(e) => setAiApiKeyInput(e.target.value)}
-                      placeholder="sk-..."
-                      autoFocus
-                      style={{ flex: 1 }}
-                    />
-                    <button
-                      className="btn btn-ghost btn-sm"
-                      onClick={() => { setAiApiKeyEditing(false); setAiApiKeyInput('') }}
-                      title="Annuler"
-                    >{<Icon name="x" size={15} />}</button>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                    <span style={{
-                      flex: 1, padding: '8px 12px', border: '1px solid var(--border, #e2e8f0)',
-                      borderRadius: 8, fontSize: 13, fontFamily: 'monospace',
-                      color: settings[AI_KEYS.apiKey] ? 'var(--ink, #1e293b)' : 'var(--slate, #9ca3af)',
-                      background: 'var(--bg, #f8fafc)',
-                    }}>
-                      {settings[AI_KEYS.apiKey] || 'Non configurée'}
-                    </span>
-                    <button
-                      className="btn btn-ghost btn-sm"
-                      onClick={() => { setAiApiKeyEditing(true); setAiApiKeyInput('') }}
-                    >
-                      {settings[AI_KEYS.apiKey] ? 'Changer' : 'Configurer'}
-                    </button>
-                  </div>
-                )}
+              <div className="set-row">
+                <div className="set-label">
+                  <b>Réponses reçues</b>
+                  <small>Destination des réponses</small>
+                </div>
+                <span className="set-val">Boîte du conseiller</span>
               </div>
-              <div className="fg">
-                <label>Moteur</label>
-                <input
-                  value={settings[AI_KEYS.engine] ?? ''}
-                  onChange={(e) => setSetting(AI_KEYS.engine, e.target.value)}
-                  placeholder="Ollama, vLLM, OpenAI…"
-                />
+              <div className="set-row">
+                <div className="set-label">
+                  <b>Lecture par l&apos;IA</b>
+                  <small>Emails entrants</small>
+                </div>
+                <span className="pill-off">Désactivé</span>
               </div>
-              <div className="fg">
-                <label>Adresse du serveur (endpoint)</label>
-                <input
-                  value={settings[AI_KEYS.endpoint] ?? ''}
-                  onChange={(e) => setSetting(AI_KEYS.endpoint, e.target.value)}
-                  placeholder="http://localhost:11434/v1"
-                />
-              </div>
-              <div className="fg">
-                <label>Température</label>
-                <input
-                  value={settings[AI_KEYS.temperature] ?? ''}
-                  onChange={(e) => setSetting(AI_KEYS.temperature, e.target.value)}
-                  placeholder="0.3"
-                />
-              </div>
-              <div className="fg">
-                <label>Jetons max</label>
-                <input
-                  value={settings[AI_KEYS.maxTokens] ?? ''}
-                  onChange={(e) => setSetting(AI_KEYS.maxTokens, e.target.value)}
-                  placeholder="2048"
-                />
+              <div className="set-row">
+                <div className="set-label">
+                  <b>Réponse automatique IA</b>
+                  <small>Sur emails entrants</small>
+                </div>
+                <span className="pill-off">Désactivé</span>
               </div>
             </div>
-            <div className="set-row">
-              <div className="set-label">
-                <b>État</b>
-                <small>La clé API est prioritaire sur la variable d&apos;environnement serveur.</small>
-              </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ======================================================================
+          SECTION 2 — Intelligence Artificielle
+          ====================================================================== */}
+      <div className="set-section">
+        <div className="set-section-head">
+          <div className="set-section-icon" style={{ background: '#f0fdf4', color: '#16a34a' }}>
+            <Icon name="bot" size={18} />
+          </div>
+          <div>
+            <div className="set-section-title">Intelligence Artificielle</div>
+            <div className="set-section-desc">Modèle, sécurité des agents et bridage</div>
+          </div>
+        </div>
+        <div className="set-grid">
+          {/* 1. Modèle d'IA */}
+          <div className="panel">
+            <div className="panel-head">
+              <h3>Modèle d&apos;IA</h3>
               <span className={`pill ${settings[AI_KEYS.apiKey] ? 'pill-on' : 'pill-off'}`}>
-                {settings[AI_KEYS.apiKey] ? 'Configurée' : 'À configurer'}
+                {settings[AI_KEYS.apiKey] ? 'Connecté' : 'Non configuré'}
               </span>
             </div>
-            <div style={{ display: 'flex', gap: '8px', marginTop: '12px', alignItems: 'center' }}>
-              <button className="btn btn-primary" onClick={saveAI} disabled={sectionSaving === 'ai'}>
-                {sectionSaving === 'ai' ? 'Enregistrement…' : sectionSaved === 'ai' ? 'Enregistré' : 'Enregistrer'}
-              </button>
-              <button className="btn btn-ghost" onClick={() => { setTestModalOpen(true); setTestResult(null) }}>
-                Tester la connexion
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* 2. Sécurité des agents — verrouillée (lecture seule) */}
-        <div className="panel">
-          <div className="panel-head">
-            <h3>Sécurité des agents</h3>
-          </div>
-          <div className="panel-body" style={{ paddingTop: '14px' }}>
-            <p className="field-hint">
-              Règles appliquées à <b>tous</b> les agents, non désactivables. Elles s&apos;ajoutent au bridage de chaque rôle.
-            </p>
-            <div className="set-row">
-              <div className="set-label">
-                <b>Rester dans le rôle et le contexte</b>
-                <small>Aucune sortie du périmètre défini</small>
-              </div>
-              <span className="pill-on">Verrouillé</span>
-            </div>
-            <div className="set-row">
-              <div className="set-label">
-                <b>Confidentialité des données</b>
-                <small>Ne jamais transmettre de données clients/admin</small>
-              </div>
-              <span className="pill-on">Verrouillé</span>
-            </div>
-            <div className="set-row">
-              <div className="set-label">
-                <b>Refus des jeux / détournements</b>
-                <small>Avec un inconnu comme avec un admin</small>
-              </div>
-              <span className="pill-on">Verrouillé</span>
-            </div>
-            <div className="set-row">
-              <div className="set-label">
-                <b>Respect des limites</b>
-                <small>Jamais de dépassement des garde-fous</small>
-              </div>
-              <span className="pill-on">Verrouillé</span>
-            </div>
-            <div className="set-row">
-              <div className="set-label">
-                <b>Filtre entrée / sortie</b>
-                <small>Contrôle avant et après le modèle</small>
-              </div>
-              <span className="pill-on">Activé</span>
-            </div>
-          </div>
-        </div>
-
-        {/* 3. Couche de bridage — lecture seule */}
-        <div className="panel">
-          <div className="panel-head">
-            <h3>Couche de bridage</h3>
-          </div>
-          <div className="panel-body" style={{ paddingTop: '14px' }}>
-            <div className="set-row">
-              <div className="set-label">
-                <b>System prompt verrouillé</b>
-                <small>Rôles protégés</small>
-              </div>
-              <span className="pill-on">Activé</span>
-            </div>
-            <div className="set-row">
-              <div className="set-label">
-                <b>Sorties structurées</b>
-                <small>Format JSON imposé</small>
-              </div>
-              <span className="pill-on">Activé</span>
-            </div>
-            <div className="set-row">
-              <div className="set-label">
-                <b>Liste blanche d&apos;outils</b>
-                <small>Par agent</small>
-              </div>
-              <span className="pill-on">Activé</span>
-            </div>
-          </div>
-        </div>
-
-        {/* 4. Cadence d'envoi */}
-        <div className="panel">
-          <div className="panel-head">
-            <h3>Cadence d&apos;envoi (anti-spam)</h3>
-          </div>
-          <div className="panel-body" style={{ paddingTop: '14px' }}>
-            <p className="field-hint">
-              Le CRM planifie les envois avec des limites strictes pour protéger la réputation du domaine. L&apos;IA propose une cadence, le système l&apos;applique dans ces bornes.
-            </p>
-            <div className="set-row">
-              <div className="set-label">
-                <b>Montée en charge (warm-up)</b>
-                <small>Volume progressif les premières semaines</small>
-              </div>
-              <input
-                type="number"
-                className="set-input"
-                value={settings[CADENCE_KEYS.warmupWeeks] ?? ''}
-                onChange={(e) => setSetting(CADENCE_KEYS.warmupWeeks, e.target.value)}
-              />
-            </div>
-            <div className="set-row">
-              <div className="set-label">
-                <b>Plafond quotidien</b>
-                <small>Emails max par jour</small>
-              </div>
-              <input
-                type="number"
-                className="set-input"
-                value={settings[CADENCE_KEYS.dailyCap] ?? ''}
-                onChange={(e) => setSetting(CADENCE_KEYS.dailyCap, e.target.value)}
-              />
-            </div>
-            <div className="set-row">
-              <div className="set-label">
-                <b>Intervalle entre envois</b>
-                <small>Espacement aléatoire</small>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <input
-                  type="number"
-                  className="set-input set-input-sm"
-                  value={settings[CADENCE_KEYS.intervalMin] ?? ''}
-                  onChange={(e) => setSetting(CADENCE_KEYS.intervalMin, e.target.value)}
-                />
-                à
-                <input
-                  type="number"
-                  className="set-input set-input-sm"
-                  value={settings[CADENCE_KEYS.intervalMax] ?? ''}
-                  onChange={(e) => setSetting(CADENCE_KEYS.intervalMax, e.target.value)}
-                />
-                s
-              </div>
-            </div>
-            <div className="set-row">
-              <div className="set-label">
-                <b>Type d&apos;IP</b>
-                <small>shared (ESP partagée), dedicated (ESP dédiée), vps (VPS + IP dédiée)</small>
-              </div>
-              <select
-                className="set-select"
-                value={settings[CADENCE_KEYS.ipType] ?? 'shared'}
-                onChange={(e) => setSetting(CADENCE_KEYS.ipType, e.target.value)}
-              >
-                <option value="shared">IP partagée (ESP)</option>
-                <option value="dedicated">IP dédiée (ESP)</option>
-                <option value="vps">VPS + IP dédiée</option>
-              </select>
-            </div>
-            <div className="set-row">
-              <div className="set-label">
-                <b>Adresse IP du VPS (si dédiée)</b>
-                <small>Laisser vide si IP partagée</small>
-              </div>
-              <input
-                type="text"
-                className="set-input"
-                placeholder="Ex: 51.91.123.45"
-                value={settings[CADENCE_KEYS.dedicatedIp] ?? ''}
-                onChange={(e) => setSetting(CADENCE_KEYS.dedicatedIp, e.target.value)}
-              />
-            </div>
-            <div className="set-row">
-              <div className="set-label">
-                <b>Domaine d&apos;envoi</b>
-                <small>Doit être configuré chez le fournisseur (SPF/DKIM/DMARC)</small>
-              </div>
-              <input
-                type="text"
-                className="set-input"
-                placeholder="votredomaine.com"
-                value={settings[CADENCE_KEYS.sendingDomain] ?? ''}
-                onChange={(e) => setSetting(CADENCE_KEYS.sendingDomain, e.target.value)}
-              />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
-              <button className="btn btn-primary" onClick={saveCadence} disabled={sectionSaving === 'cadence'}>
-                {sectionSaving === 'cadence' ? 'Enregistrement…' : sectionSaved === 'cadence' ? 'Enregistré' : 'Enregistrer'}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* 5. Tracking & Analytics */}
-        <div className="panel">
-          <div className="panel-head">
-            <h3>Tracking &amp; Analytics</h3>
-          </div>
-          <div className="panel-body" style={{ paddingTop: '14px' }}>
-            <p className="field-hint" style={{ marginBottom: 16 }}>
-              Renseignez vos IDs pour activer le tracking sur le site public. Laissez vide pour désactiver.
-              Les modifications sont appliquées immédiatement après sauvegarde.
-            </p>
-            <div className="set-row">
-              <div className="set-label">
-                <b>Facebook Pixel ID</b>
-                <small>Ex: 123456789012345 — trouvé dans Meta Events Manager</small>
-              </div>
-              <input
-                type="text"
-                className="set-input"
-                placeholder="123456789012345"
-                value={settings[TRACKING_KEYS.fbPixel] ?? ''}
-                onChange={(e) => setSetting(TRACKING_KEYS.fbPixel, e.target.value)}
-              />
-            </div>
-            {trackingTest?.key === 'fb_pixel' && trackingTest.result && (
-              <div style={{ fontSize: 12, marginTop: '-8px', marginBottom: '8px', color: trackingTest.result.success ? 'var(--green)' : 'var(--red, #dc2626)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                <Icon name={trackingTest.result.success ? 'check-circle' : 'x-circle'} size={14} /> {trackingTest.result.message}
-              </div>
-            )}
-            <div className="set-row">
-              <div className="set-label">
-                <b>Google Analytics 4</b>
-                <small>Measurement ID — Ex: G-XXXXXXXXXX</small>
-              </div>
-              <input
-                type="text"
-                className="set-input"
-                placeholder="G-XXXXXXXXXX"
-                value={settings[TRACKING_KEYS.gaTracking] ?? ''}
-                onChange={(e) => setSetting(TRACKING_KEYS.gaTracking, e.target.value)}
-              />
-            </div>
-            {trackingTest?.key === 'ga4' && trackingTest.result && (
-              <div style={{ fontSize: 12, marginTop: '-8px', marginBottom: '8px', color: trackingTest.result.success ? 'var(--green)' : 'var(--red, #dc2626)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                <Icon name={trackingTest.result.success ? 'check-circle' : 'x-circle'} size={14} /> {trackingTest.result.message}
-              </div>
-            )}
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '12px' }}>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  className="btn btn-ghost btn-sm"
-                  onClick={() => testTracking('fb_pixel')}
-                  disabled={trackingTest?.key === 'fb_pixel' && trackingTest.loading}
-                >
-                  {trackingTest?.key === 'fb_pixel' && trackingTest.loading ? 'Test…' : 'Tester Pixel'}
-                </button>
-                <button
-                  className="btn btn-ghost btn-sm"
-                  onClick={() => testTracking('ga4')}
-                  disabled={trackingTest?.key === 'ga4' && trackingTest.loading}
-                >
-                  {trackingTest?.key === 'ga4' && trackingTest.loading ? 'Test…' : 'Tester GA4'}
-                </button>
-              </div>
-              <button className="btn btn-primary" onClick={saveTracking} disabled={sectionSaving === 'tracking'}>
-                {sectionSaving === 'tracking' ? 'Enregistrement…' : sectionSaved === 'tracking' ? 'Enregistré' : 'Enregistrer'}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* 6. Passerelles d'envoi */}
-        <div className="panel">
-          <div className="panel-head">
-            <h3>Passerelles d&apos;envoi</h3>
-            <span className="link" onClick={() => setNewGatewayModalOpen(true)}>+ Ajouter</span>
-          </div>
-          <div className="panel-body" style={{ paddingTop: '14px' }}>
-            {/* Adresse d'expédition globale */}
-            <div className="fg" style={{ marginBottom: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                <label>Adresse d&apos;expédition (from_email)</label>
-                <button
-                  className="btn btn-primary btn-sm"
-                  style={{ fontSize: 12, padding: '4px 12px' }}
-                  onClick={saveEmail}
-                  disabled={sectionSaving === 'email'}
-                >
-                  {sectionSaving === 'email' ? 'Enregistrement…' : sectionSaved === 'email' ? 'Enregistré' : 'Enregistrer'}
-                </button>
-              </div>
-              <input
-                value={settings['from_email'] ?? ''}
-                onChange={(e) => setSettings((prev) => ({ ...prev, from_email: e.target.value }))}
-                placeholder="Marque <noreply@domaine.fr>"
-              />
-              <small className="field-hint">
-                Utilisé pour tous les emails transactionnels. Si vide, fallback sur la config du gateway actif ou l&apos;adresse par défaut.
-              </small>
-            </div>
-
-            <p className="field-hint">
-              Configurez plusieurs fournisseurs. L&apos;admin remplit la clé API de chacun ; seul le fournisseur <b>coché « Actif »</b> est utilisé pour l&apos;envoi.
-            </p>
-
-            {gateways.length === 0 && (
-              <p className="field-hint" style={{ padding: '12px 0', fontStyle: 'italic' }}>
-                Aucune passerelle configurée. Cliquez sur « + Ajouter » pour en créer une.
+            <div className="panel-body" style={{ paddingTop: '16px' }}>
+              <p className="field-hint">
+                Le CRM communique avec le modèle via une API compatible OpenAI. Pour Ollama (local), la clé API n&apos;est pas nécessaire.
               </p>
-            )}
-
-            {gateways.map((g) => (
-              <div key={g.id} className={g.isActive ? 'prov active-prov' : 'prov'}>
-                <div className="prov-head">
-                  <label className="prov-radio">
-                    <input
-                      type="radio"
-                      name="prov"
-                      checked={g.isActive}
-                      onChange={() => activateGateway(g.id)}
-                    />
-                    <b>{g.label}</b>
-                  </label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <button
-                      className="btn btn-ghost btn-sm"
-                      style={{ fontSize: 12, padding: '4px 10px' }}
-                      onClick={async () => {
-                        setError(null)
-                        try {
-                          const res = await fetch(`/api/gateways/${g.id}/test`, { method: 'POST' })
-                          const body = await res.json()
-                          if (body.success || body.data?.success) {
-                            alert(`Email de test envoyé avec succès via ${g.label}`)
-                          } else {
-                            alert(`Échec : ${body.data?.error || body.error || 'Erreur inconnue'}`)
-                          }
-                        } catch {
-                          alert('Impossible de tester la passerelle')
-                        }
-                      }}
-                    >
-                      Tester
-                    </button>
-                    {g.isActive ? (
-                      <span className="prov-badge">Actif</span>
-                    ) : (
-                      <span className="prov-badge-off">Inactif</span>
-                    )}
-                  </div>
+              <div className="frow">
+                <div className="fg">
+                  <label>Modèle actif</label>
+                  <input
+                    value={settings[AI_KEYS.modelName] ?? ''}
+                    onChange={(e) => setSetting(AI_KEYS.modelName, e.target.value)}
+                    placeholder="qwen2.5:7b, gpt-4o-mini…"
+                  />
                 </div>
-                <div className="frow" style={{ marginBottom: '0', marginTop: '12px' }}>
-                  <div className="fg">
-                    <label>{g.provider === 'smtp' ? 'Mot de passe SMTP' : 'Clé API'}</label>
-                    <input
-                      type="password"
-                      placeholder={g.provider === 'brevo' ? 'xkeysib-…' : g.provider === 'resend' ? 're_…' : 'Mot de passe SMTP'}
-                      defaultValue={g.apiKey ?? ''}
-                      onBlur={(e) => {
-                        if (e.target.value !== (g.apiKey ?? '')) {
-                          updateGateway(g.id, { apiKey: e.target.value })
-                        }
-                      }}
-                    />
-                  </div>
-                  <div className="fg">
-                    <label>Libellé</label>
-                    <input
-                      defaultValue={g.label}
-                      onBlur={(e) => {
-                        if (e.target.value !== g.label) {
-                          updateGateway(g.id, { label: e.target.value })
-                        }
-                      }}
-                    />
-                  </div>
+                <div className="fg">
+                  <label>Moteur</label>
+                  <input
+                    value={settings[AI_KEYS.engine] ?? ''}
+                    onChange={(e) => setSetting(AI_KEYS.engine, e.target.value)}
+                    placeholder="Ollama, vLLM, OpenAI…"
+                  />
                 </div>
-                {/* Champs SMTP supplémentaires */}
-                {g.provider === 'smtp' && (
-                  <div className="frow" style={{ marginBottom: '0', marginTop: '8px' }}>
-                    <div className="fg" style={{ flex: 2 }}>
-                      <label>Hôte SMTP</label>
+                <div className="fg">
+                  <label>Adresse du serveur (endpoint)</label>
+                  <input
+                    value={settings[AI_KEYS.endpoint] ?? ''}
+                    onChange={(e) => setSetting(AI_KEYS.endpoint, e.target.value)}
+                    placeholder="http://localhost:11434/v1"
+                  />
+                </div>
+                <div className="fg">
+                  <label>Clé API</label>
+                  {aiApiKeyEditing ? (
+                    <div style={{ display: 'flex', gap: 6 }}>
                       <input
-                        type="text"
-                        placeholder="smtp.votrefournisseur.com"
-                        defaultValue={(g.config?.host as string) || ''}
-                        onBlur={(e) => {
-                          const val = e.target.value
-                          if (val !== (g.config?.host as string)) {
-                            updateGateway(g.id, { config: { ...g.config, host: val } })
-                          }
-                        }}
+                        type="password"
+                        value={aiApiKeyInput}
+                        onChange={(e) => setAiApiKeyInput(e.target.value)}
+                        placeholder="sk-..."
+                        autoFocus
+                        style={{ flex: 1 }}
                       />
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => { setAiApiKeyEditing(false); setAiApiKeyInput('') }}
+                        title="Annuler"
+                      >{<Icon name="x" size={15} />}</button>
                     </div>
-                    <div className="fg" style={{ flex: 1 }}>
-                      <label>Port</label>
-                      <input
-                        type="number"
-                        placeholder="465"
-                        defaultValue={(g.config?.port as number) || ''}
-                        onBlur={(e) => {
-                          const val = Number(e.target.value)
-                          if (val !== (g.config?.port as number)) {
-                            updateGateway(g.id, { config: { ...g.config, port: val } })
-                          }
-                        }}
-                      />
-                    </div>
-                    <div className="fg" style={{ flex: 1 }}>
-                      <label>Chiffrement</label>
-                      <select
-                        defaultValue={(g.config?.encryption as string) || (Number(g.config?.port) === 465 ? 'ssl' : 'starttls')}
-                        onChange={(e) => {
-                          const enc = e.target.value
-                          const newPort = enc === 'ssl' ? 465 : 587
-                          updateGateway(g.id, { config: { ...g.config, encryption: enc, port: newPort } })
-                        }}
+                  ) : (
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <span style={{
+                        flex: 1, padding: '8px 12px', border: '1px solid var(--border, #e2e8f0)',
+                        borderRadius: 8, fontSize: 13, fontFamily: 'monospace',
+                        color: settings[AI_KEYS.apiKey] ? 'var(--ink, #1e293b)' : 'var(--slate, #9ca3af)',
+                        background: 'var(--bg, #f8fafc)',
+                      }}>
+                        {settings[AI_KEYS.apiKey] || 'Non configurée'}
+                      </span>
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => { setAiApiKeyEditing(true); setAiApiKeyInput('') }}
                       >
-                        <option value="ssl">SSL/TLS (465)</option>
-                        <option value="starttls">STARTTLS (587)</option>
-                        <option value="none">Aucun</option>
-                      </select>
+                        {settings[AI_KEYS.apiKey] ? 'Changer' : 'Configurer'}
+                      </button>
                     </div>
-                  </div>
-                )}
-                {g.provider === 'smtp' && (
-                  <div className="frow" style={{ marginBottom: '0', marginTop: '8px' }}>
-                    <div className="fg">
-                      <label>Nom d'utilisateur (email)</label>
-                      <input
-                        type="text"
-                        placeholder="contact@votredomaine.com"
-                        defaultValue={(g.config?.username as string) || ''}
-                        onBlur={(e) => {
-                          const val = e.target.value
-                          if (val !== (g.config?.username as string)) {
-                            updateGateway(g.id, { config: { ...g.config, username: val } })
-                          }
-                        }}
-                      />
-                    </div>
-                  </div>
-                )}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
-                  <button
-                    className="btn btn-ghost"
-                    style={{ fontSize: 12, padding: '6px 10px', color: 'var(--red)' }}
-                    onClick={() => setDeleteGatewayTarget(g)}
-                  >
-                    Supprimer
+                  )}
+                </div>
+                <div className="fg">
+                  <label>Température</label>
+                  <input
+                    value={settings[AI_KEYS.temperature] ?? ''}
+                    onChange={(e) => setSetting(AI_KEYS.temperature, e.target.value)}
+                    placeholder="0.3"
+                  />
+                </div>
+                <div className="fg">
+                  <label>Jetons max</label>
+                  <input
+                    value={settings[AI_KEYS.maxTokens] ?? ''}
+                    onChange={(e) => setSetting(AI_KEYS.maxTokens, e.target.value)}
+                    placeholder="2048"
+                  />
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', marginTop: '14px', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button className="btn btn-primary" onClick={saveAI} disabled={sectionSaving === 'ai'}>
+                    {sectionSaving === 'ai' ? 'Enregistrement…' : sectionSaved === 'ai' ? 'Enregistré' : 'Enregistrer'}
+                  </button>
+                  <button className="btn btn-ghost" onClick={() => { setTestModalOpen(true); setTestResult(null) }}>
+                    Tester la connexion
                   </button>
                 </div>
+                {settings[AI_KEYS.apiKey] && (
+                  <button
+                    className="btn btn-ghost"
+                    style={{ color: 'var(--red, #dc2626)', fontSize: 12, padding: '6px 12px' }}
+                    onClick={disconnectAI}
+                    disabled={sectionSaving === 'ai-disconnect'}
+                    title="Effacer la clé API et déconnecter le modèle"
+                  >
+                    {sectionSaving === 'ai-disconnect' ? 'Déconnexion…' : 'Déconnecter'}
+                  </button>
+                )}
               </div>
-            ))}
+            </div>
+          </div>
 
-            <div className="set-row" style={{ marginTop: '8px' }}>
-              <div className="set-label">
-                <b>SPF / DKIM / DMARC</b>
-                <small>Authentification du domaine actif (config DNS externe)</small>
+          {/* 2. Sécurité des agents — verrouillée (lecture seule) */}
+          <div className="panel">
+            <div className="panel-head">
+              <h3>Sécurité des agents</h3>
+            </div>
+            <div className="panel-body" style={{ paddingTop: '14px' }}>
+              <p className="field-hint">
+                Règles appliquées à <b>tous</b> les agents, non désactivables. Elles s&apos;ajoutent au bridage de chaque rôle.
+              </p>
+              <div className="set-row">
+                <div className="set-label">
+                  <b>Rester dans le rôle et le contexte</b>
+                  <small>Aucune sortie du périmètre défini</small>
+                </div>
+                <span className="pill-on">Verrouillé</span>
               </div>
-              <span className="pill-on">À configurer côté DNS</span>
+              <div className="set-row">
+                <div className="set-label">
+                  <b>Confidentialité des données</b>
+                  <small>Ne jamais transmettre de données clients/admin</small>
+                </div>
+                <span className="pill-on">Verrouillé</span>
+              </div>
+              <div className="set-row">
+                <div className="set-label">
+                  <b>Refus des jeux / détournements</b>
+                  <small>Avec un inconnu comme avec un admin</small>
+                </div>
+                <span className="pill-on">Verrouillé</span>
+              </div>
+              <div className="set-row">
+                <div className="set-label">
+                  <b>Respect des limites</b>
+                  <small>Jamais de dépassement des garde-fous</small>
+                </div>
+                <span className="pill-on">Verrouillé</span>
+              </div>
+              <div className="set-row">
+                <div className="set-label">
+                  <b>Filtre entrée / sortie</b>
+                  <small>Contrôle avant et après le modèle</small>
+                </div>
+                <span className="pill-on">Activé</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 3. Couche de bridage — lecture seule */}
+          <div className="panel">
+            <div className="panel-head">
+              <h3>Couche de bridage</h3>
+            </div>
+            <div className="panel-body" style={{ paddingTop: '14px' }}>
+              <div className="set-row">
+                <div className="set-label">
+                  <b>System prompt verrouillé</b>
+                  <small>Rôles protégés</small>
+                </div>
+                <span className="pill-on">Activé</span>
+              </div>
+              <div className="set-row">
+                <div className="set-label">
+                  <b>Sorties structurées</b>
+                  <small>Format JSON imposé</small>
+                </div>
+                <span className="pill-on">Activé</span>
+              </div>
+              <div className="set-row">
+                <div className="set-label">
+                  <b>Liste blanche d&apos;outils</b>
+                  <small>Par agent</small>
+                </div>
+                <span className="pill-on">Activé</span>
+              </div>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* 6. Réponses des prospects — lecture seule (règle produit) */}
-        <div className="panel">
-          <div className="panel-head">
-            <h3>Réponses des prospects</h3>
+      {/* ======================================================================
+          SECTION 3 — Emails & Envoi
+          ====================================================================== */}
+      <div className="set-section">
+        <div className="set-section-head">
+          <div className="set-section-icon" style={{ background: '#fff7ed', color: '#ea580c' }}>
+            <Icon name="mail" size={18} />
           </div>
-          <div className="panel-body" style={{ paddingTop: '14px' }}>
-            <div className="info-band" style={{ margin: '0 0 14px', background: 'var(--bg)', color: 'var(--slate)' }}>
-              <div className="imark" style={{ background: 'var(--line)', color: 'var(--slate)' }}>i</div>
-              <div>
-                Les agents IA ne font que la <b>prospection sortante</b>. Ils ne lisent pas et ne répondent pas aux emails des prospects.
+          <div>
+            <div className="set-section-title">Emails &amp; Envoi</div>
+            <div className="set-section-desc">Passerelles, cadence anti-spam et authentification</div>
+          </div>
+        </div>
+        <div className="set-grid">
+          {/* Passerelles d'envoi */}
+          <div className="panel">
+            <div className="panel-head">
+              <h3>Passerelles d&apos;envoi</h3>
+              <span className="link" onClick={() => setNewGatewayModalOpen(true)}>+ Ajouter</span>
+            </div>
+            <div className="panel-body" style={{ paddingTop: '14px' }}>
+              {/* Adresse d'expédition globale */}
+              <div className="fg" style={{ marginBottom: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                  <label>Adresse d&apos;expédition (from_email)</label>
+                  <button
+                    className="btn btn-primary btn-sm"
+                    style={{ fontSize: 12, padding: '4px 12px' }}
+                    onClick={saveEmail}
+                    disabled={sectionSaving === 'email'}
+                  >
+                    {sectionSaving === 'email' ? 'Enregistrement…' : sectionSaved === 'email' ? 'Enregistré' : 'Enregistrer'}
+                  </button>
+                </div>
+                <input
+                  value={settings['from_email'] ?? ''}
+                  onChange={(e) => setSettings((prev) => ({ ...prev, from_email: e.target.value }))}
+                  placeholder="Marque <noreply@domaine.fr>"
+                />
+                <small className="field-hint">
+                  Utilisé pour tous les emails transactionnels. Si vide, fallback sur la config du gateway actif ou l&apos;adresse par défaut.
+                </small>
+              </div>
+
+              <p className="field-hint">
+                Configurez plusieurs fournisseurs. L&apos;admin remplit la clé API de chacun ; seul le fournisseur <b>coché « Actif »</b> est utilisé pour l&apos;envoi.
+              </p>
+
+              {gateways.length === 0 && (
+                <p className="field-hint" style={{ padding: '12px 0', fontStyle: 'italic' }}>
+                  Aucune passerelle configurée. Cliquez sur « + Ajouter » pour en créer une.
+                </p>
+              )}
+
+              {gateways.map((g) => (
+                <div key={g.id} className={g.isActive ? 'prov active-prov' : 'prov'}>
+                  <div className="prov-head">
+                    <label className="prov-radio">
+                      <input
+                        type="radio"
+                        name="prov"
+                        checked={g.isActive}
+                        onChange={() => activateGateway(g.id)}
+                      />
+                      <b>{g.label}</b>
+                    </label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        style={{ fontSize: 12, padding: '4px 10px' }}
+                        onClick={async () => {
+                          setError(null)
+                          try {
+                            const res = await fetch(`/api/gateways/${g.id}/test`, { method: 'POST' })
+                            const body = await res.json()
+                            if (body.success || body.data?.success) {
+                              alert(`Email de test envoyé avec succès via ${g.label}`)
+                            } else {
+                              alert(`Échec : ${body.data?.error || body.error || 'Erreur inconnue'}`)
+                            }
+                          } catch {
+                            alert('Impossible de tester la passerelle')
+                          }
+                        }}
+                      >
+                        Tester
+                      </button>
+                      {g.isActive ? (
+                        <span className="prov-badge">Actif</span>
+                      ) : (
+                        <span className="prov-badge-off">Inactif</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="frow" style={{ marginBottom: '0', marginTop: '12px' }}>
+                    <div className="fg">
+                      <label>{g.provider === 'smtp' ? 'Mot de passe SMTP' : 'Clé API'}</label>
+                      <input
+                        type="password"
+                        placeholder={g.provider === 'brevo' ? 'xkeysib-…' : g.provider === 'resend' ? 're_…' : 'Mot de passe SMTP'}
+                        defaultValue={g.apiKey ?? ''}
+                        onBlur={(e) => {
+                          if (e.target.value !== (g.apiKey ?? '')) {
+                            updateGateway(g.id, { apiKey: e.target.value })
+                          }
+                        }}
+                      />
+                    </div>
+                    <div className="fg">
+                      <label>Libellé</label>
+                      <input
+                        defaultValue={g.label}
+                        onBlur={(e) => {
+                          if (e.target.value !== g.label) {
+                            updateGateway(g.id, { label: e.target.value })
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+                  {/* Champs SMTP supplémentaires */}
+                  {g.provider === 'smtp' && (
+                    <div className="frow" style={{ marginBottom: '0', marginTop: '8px' }}>
+                      <div className="fg" style={{ flex: 2 }}>
+                        <label>Hôte SMTP</label>
+                        <input
+                          type="text"
+                          placeholder="smtp.votrefournisseur.com"
+                          defaultValue={(g.config?.host as string) || ''}
+                          onBlur={(e) => {
+                            const val = e.target.value
+                            if (val !== (g.config?.host as string)) {
+                              updateGateway(g.id, { config: { ...g.config, host: val } })
+                            }
+                          }}
+                        />
+                      </div>
+                      <div className="fg" style={{ flex: 1 }}>
+                        <label>Port</label>
+                        <input
+                          type="number"
+                          placeholder="465"
+                          defaultValue={(g.config?.port as number) || ''}
+                          onBlur={(e) => {
+                            const val = Number(e.target.value)
+                            if (val !== (g.config?.port as number)) {
+                              updateGateway(g.id, { config: { ...g.config, port: val } })
+                            }
+                          }}
+                        />
+                      </div>
+                      <div className="fg" style={{ flex: 1 }}>
+                        <label>Chiffrement</label>
+                        <select
+                          defaultValue={(g.config?.encryption as string) || (Number(g.config?.port) === 465 ? 'ssl' : 'starttls')}
+                          onChange={(e) => {
+                            const enc = e.target.value
+                            const newPort = enc === 'ssl' ? 465 : 587
+                            updateGateway(g.id, { config: { ...g.config, encryption: enc, port: newPort } })
+                          }}
+                        >
+                          <option value="ssl">SSL/TLS (465)</option>
+                          <option value="starttls">STARTTLS (587)</option>
+                          <option value="none">Aucun</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
+                  {g.provider === 'smtp' && (
+                    <div className="frow" style={{ marginBottom: '0', marginTop: '8px' }}>
+                      <div className="fg">
+                        <label>Nom d&apos;utilisateur (email)</label>
+                        <input
+                          type="text"
+                          placeholder="contact@votredomaine.com"
+                          defaultValue={(g.config?.username as string) || ''}
+                          onBlur={(e) => {
+                            const val = e.target.value
+                            if (val !== (g.config?.username as string)) {
+                              updateGateway(g.id, { config: { ...g.config, username: val } })
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+                    <button
+                      className="btn btn-ghost"
+                      style={{ fontSize: 12, padding: '6px 10px', color: 'var(--red)' }}
+                      onClick={() => setDeleteGatewayTarget(g)}
+                    >
+                      Supprimer
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              <div className="set-row" style={{ marginTop: '8px' }}>
+                <div className="set-label">
+                  <b>SPF / DKIM / DMARC</b>
+                  <small>Authentification du domaine actif (config DNS externe)</small>
+                </div>
+                <span className="pill-on">À configurer côté DNS</span>
               </div>
             </div>
-            <div className="set-row">
-              <div className="set-label">
-                <b>Réponses reçues</b>
-                <small>Destination des réponses</small>
-              </div>
-              <span className="set-val">Boîte du conseiller</span>
+          </div>
+
+          {/* Cadence d'envoi */}
+          <div className="panel">
+            <div className="panel-head">
+              <h3>Cadence d&apos;envoi (anti-spam)</h3>
             </div>
-            <div className="set-row">
-              <div className="set-label">
-                <b>Lecture par l&apos;IA</b>
-                <small>Emails entrants</small>
+            <div className="panel-body" style={{ paddingTop: '14px' }}>
+              <p className="field-hint">
+                Le CRM planifie les envois avec des limites strictes pour protéger la réputation du domaine.
+              </p>
+              <div className="set-row">
+                <div className="set-label">
+                  <b>Montée en charge (warm-up)</b>
+                  <small>Volume progressif les premières semaines</small>
+                </div>
+                <input
+                  type="number"
+                  className="set-input"
+                  value={settings[CADENCE_KEYS.warmupWeeks] ?? ''}
+                  onChange={(e) => setSetting(CADENCE_KEYS.warmupWeeks, e.target.value)}
+                />
               </div>
-              <span className="pill-off">Désactivé</span>
+              <div className="set-row">
+                <div className="set-label">
+                  <b>Plafond quotidien</b>
+                  <small>Emails max par jour</small>
+                </div>
+                <input
+                  type="number"
+                  className="set-input"
+                  value={settings[CADENCE_KEYS.dailyCap] ?? ''}
+                  onChange={(e) => setSetting(CADENCE_KEYS.dailyCap, e.target.value)}
+                />
+              </div>
+              <div className="set-row">
+                <div className="set-label">
+                  <b>Intervalle entre envois</b>
+                  <small>Espacement aléatoire</small>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <input
+                    type="number"
+                    className="set-input set-input-sm"
+                    value={settings[CADENCE_KEYS.intervalMin] ?? ''}
+                    onChange={(e) => setSetting(CADENCE_KEYS.intervalMin, e.target.value)}
+                  />
+                  à
+                  <input
+                    type="number"
+                    className="set-input set-input-sm"
+                    value={settings[CADENCE_KEYS.intervalMax] ?? ''}
+                    onChange={(e) => setSetting(CADENCE_KEYS.intervalMax, e.target.value)}
+                  />
+                  s
+                </div>
+              </div>
+              <div className="set-row">
+                <div className="set-label">
+                  <b>Type d&apos;IP</b>
+                  <small>shared, dedicated ou vps</small>
+                </div>
+                <select
+                  className="set-select"
+                  value={settings[CADENCE_KEYS.ipType] ?? 'shared'}
+                  onChange={(e) => setSetting(CADENCE_KEYS.ipType, e.target.value)}
+                >
+                  <option value="shared">IP partagée (ESP)</option>
+                  <option value="dedicated">IP dédiée (ESP)</option>
+                  <option value="vps">VPS + IP dédiée</option>
+                </select>
+              </div>
+              <div className="set-row">
+                <div className="set-label">
+                  <b>Adresse IP du VPS (si dédiée)</b>
+                  <small>Laisser vide si IP partagée</small>
+                </div>
+                <input
+                  type="text"
+                  className="set-input"
+                  placeholder="Ex: 51.91.123.45"
+                  value={settings[CADENCE_KEYS.dedicatedIp] ?? ''}
+                  onChange={(e) => setSetting(CADENCE_KEYS.dedicatedIp, e.target.value)}
+                />
+              </div>
+              <div className="set-row">
+                <div className="set-label">
+                  <b>Domaine d&apos;envoi</b>
+                  <small>Doit être configuré chez le fournisseur (SPF/DKIM/DMARC)</small>
+                </div>
+                <input
+                  type="text"
+                  className="set-input"
+                  placeholder="votredomaine.com"
+                  value={settings[CADENCE_KEYS.sendingDomain] ?? ''}
+                  onChange={(e) => setSetting(CADENCE_KEYS.sendingDomain, e.target.value)}
+                />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
+                <button className="btn btn-primary" onClick={saveCadence} disabled={sectionSaving === 'cadence'}>
+                  {sectionSaving === 'cadence' ? 'Enregistrement…' : sectionSaved === 'cadence' ? 'Enregistré' : 'Enregistrer'}
+                </button>
+              </div>
             </div>
-            <div className="set-row">
-              <div className="set-label">
-                <b>Réponse automatique IA</b>
-                <small>Sur emails entrants</small>
+          </div>
+        </div>
+      </div>
+
+      {/* ======================================================================
+          SECTION 4 — Marketing & Tracking
+          ====================================================================== */}
+      <div className="set-section">
+        <div className="set-section-head">
+          <div className="set-section-icon" style={{ background: '#faf5ff', color: '#9333ea' }}>
+            <Icon name="bar-chart" size={18} />
+          </div>
+          <div>
+            <div className="set-section-title">Marketing &amp; Tracking</div>
+            <div className="set-section-desc">Pixels publicitaires et analytics</div>
+          </div>
+        </div>
+        <div className="set-grid">
+          {/* Tracking & Analytics */}
+          <div className="panel">
+            <div className="panel-head">
+              <h3>Tracking &amp; Analytics</h3>
+            </div>
+            <div className="panel-body" style={{ paddingTop: '14px' }}>
+              <p className="field-hint" style={{ marginBottom: 16 }}>
+                Renseignez vos IDs pour activer le tracking sur le site public. Laissez vide pour désactiver.
+              </p>
+              <div className="set-row">
+                <div className="set-label">
+                  <b>Facebook Pixel ID</b>
+                  <small>Ex: 123456789012345 — trouvé dans Meta Events Manager</small>
+                </div>
+                <input
+                  type="text"
+                  className="set-input"
+                  placeholder="123456789012345"
+                  value={settings[TRACKING_KEYS.fbPixel] ?? ''}
+                  onChange={(e) => setSetting(TRACKING_KEYS.fbPixel, e.target.value)}
+                />
               </div>
-              <span className="pill-off">Désactivé</span>
+              {trackingTest?.key === 'fb_pixel' && trackingTest.result && (
+                <div style={{ fontSize: 12, marginTop: '-8px', marginBottom: '8px', color: trackingTest.result.success ? 'var(--green)' : 'var(--red, #dc2626)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <Icon name={trackingTest.result.success ? 'check-circle' : 'x-circle'} size={14} /> {trackingTest.result.message}
+                </div>
+              )}
+              <div className="set-row">
+                <div className="set-label">
+                  <b>Google Analytics 4</b>
+                  <small>Measurement ID — Ex: G-XXXXXXXXXX</small>
+                </div>
+                <input
+                  type="text"
+                  className="set-input"
+                  placeholder="G-XXXXXXXXXX"
+                  value={settings[TRACKING_KEYS.gaTracking] ?? ''}
+                  onChange={(e) => setSetting(TRACKING_KEYS.gaTracking, e.target.value)}
+                />
+              </div>
+              {trackingTest?.key === 'ga4' && trackingTest.result && (
+                <div style={{ fontSize: 12, marginTop: '-8px', marginBottom: '8px', color: trackingTest.result.success ? 'var(--green)' : 'var(--red, #dc2626)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <Icon name={trackingTest.result.success ? 'check-circle' : 'x-circle'} size={14} /> {trackingTest.result.message}
+                </div>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '12px' }}>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => testTracking('fb_pixel')}
+                    disabled={trackingTest?.key === 'fb_pixel' && trackingTest.loading}
+                  >
+                    {trackingTest?.key === 'fb_pixel' && trackingTest.loading ? 'Test…' : 'Tester Pixel'}
+                  </button>
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => testTracking('ga4')}
+                    disabled={trackingTest?.key === 'ga4' && trackingTest.loading}
+                  >
+                    {trackingTest?.key === 'ga4' && trackingTest.loading ? 'Test…' : 'Tester GA4'}
+                  </button>
+                </div>
+                <button className="btn btn-primary" onClick={saveTracking} disabled={sectionSaving === 'tracking'}>
+                  {sectionSaving === 'tracking' ? 'Enregistrement…' : sectionSaved === 'tracking' ? 'Enregistré' : 'Enregistrer'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

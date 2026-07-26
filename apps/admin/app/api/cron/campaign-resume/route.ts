@@ -25,12 +25,17 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // Campagnes "sending" qui ont encore des destinataires en attente.
+    // Campagnes "sending" qui ont encore des destinataires en attente ou bloqués
+    // en "sending" (process crashé en plein milieu d'envoi).
     const sendingCampaigns = await prisma.campaign.findMany({
       where: {
         status: CampaignStatus.sending,
         recipients: {
-          some: { status: CampaignRecipientStatus.pending },
+          some: {
+            status: {
+              in: [CampaignRecipientStatus.pending, CampaignRecipientStatus.sending],
+            },
+          },
         },
       },
       select: { id: true, name: true },
@@ -53,6 +58,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     console.error('[cron campaign-resume] Erreur:', err);
-    return successResponse({ checked: 0, resumed: 0, error: 'Internal error' });
+    return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500);
   }
 }

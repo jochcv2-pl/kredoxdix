@@ -1,4 +1,4 @@
-import { GatewayProvider, type EmailGateway } from '@kredix/db';
+import { GatewayProvider, decryptSecret, type EmailGateway } from '@kredix/db';
 import { getSetting } from './settings';
 
 // =============================================================================
@@ -77,7 +77,9 @@ export async function sendEmail(
     };
   }
 
-  const apiKey = gateway.apiKey;
+  // Déchiffre la clé API si elle est stockée chiffrée (préfixe "enc:").
+  // decryptSecret gère aussi le legacy plaintext (retourne tel quel si non chiffré).
+  const apiKey = gateway.apiKey ? decryptSecret(gateway.apiKey) : null;
 
   if (!apiKey && gateway.provider !== GatewayProvider.smtp) {
     return { success: false, error: `Aucune clé API configurée pour ${gateway.label}` };

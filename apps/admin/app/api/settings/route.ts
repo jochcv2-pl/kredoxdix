@@ -5,7 +5,7 @@
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
-import { prisma } from '@kredix/db';
+import { prisma, encryptSecret, decryptSecret } from '@kredix/db';
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses';
 import { requireAuth } from '../_lib/auth-server';
 
@@ -34,8 +34,13 @@ export async function GET(req: NextRequest) {
     // Masquer la clé API IA dans la réponse (sécurité — ne jamais exposer en clair côté client).
     const masked = settings.map((s) => {
       if (s.key === 'ai_api_key' && s.value) {
-        const last4 = s.value.slice(-4);
-        return { ...s, value: `••••${last4}` };
+        try {
+          const decrypted = decryptSecret(s.value) || '';
+          const last4 = decrypted.slice(-4);
+          return { ...s, value: `••••${last4}` };
+        } catch {
+          return { ...s, value: '••••' };
+        }
       }
       return s;
     });
@@ -55,16 +60,23 @@ export async function POST(req: NextRequest) {
     const [data, error] = await parseBody(req, upsertSettingSchema);
     if (error) return error;
 
+    // Chiffrer la clé API IA avant stockage (AES-256-GCM).
+    // Si la valeur est vide (déconnexion) ou déjà masquée (••••), on ne chiffre pas.
+    let storeValue = data.value;
+    if (data.key === 'ai_api_key' && data.value && !data.value.startsWith('••••')) {
+      storeValue = encryptSecret(data.value);
+    }
+
     const setting = await prisma.setting.upsert({
       where: { key: data.key },
       update: {
-        value: data.value,
+        value: storeValue,
         category: data.category,
         description: data.description,
       },
       create: {
         key: data.key,
-        value: data.value,
+        value: storeValue,
         category: data.category,
         description: data.description,
       },

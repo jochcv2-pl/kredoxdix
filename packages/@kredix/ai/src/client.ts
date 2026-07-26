@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { prisma } from '@kredix/db';
+import { prisma, decryptSecret } from '@kredix/db';
 
 // =============================================================================
 // client.ts — Factory du client LLM (OpenAI-compatible).
@@ -39,7 +39,10 @@ async function loadConfig(): Promise<LLMConfig & { apiKey: string }> {
   const map = new Map(settings.map((s: { key: string; value: string }) => [s.key, s.value]));
 
   // Clé API : priorité DB > env > 'ollama' (fallback pour usage local)
-  const dbApiKey = map.get('ai_api_key') || '';
+  // Déchiffre la clé si elle est stockée chiffrée (préfixe "enc:").
+  // decryptSecret gère aussi le legacy plaintext (retourne tel quel si non chiffré).
+  const rawApiKey = map.get('ai_api_key') || '';
+  const dbApiKey = rawApiKey ? (decryptSecret(rawApiKey) || '') : '';
 
   return {
     model: map.get('ai_model_name') || 'gpt-4o-mini',

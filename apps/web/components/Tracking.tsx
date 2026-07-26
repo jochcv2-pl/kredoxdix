@@ -25,9 +25,16 @@ export async function TrackingHead() {
     // DB indispo → zéro tracking (safe default)
   }
 
+  // Validation stricte des IDs avant interpolation dans <script> (anti XSS).
+  // FB Pixel : 15-16 chiffres. GA4 : G- suivi de 10+ alphanumériques.
+  const FB_PIXEL_RE = /^\d{15,16}$/;
+  const GA_ID_RE = /^G-[A-Z0-9]{8,20}$/;
+  const safeFbPixelId = FB_PIXEL_RE.test(fbPixelId) ? fbPixelId : '';
+  const safeGaId = GA_ID_RE.test(gaId) ? gaId : '';
+
   return (
     <>
-      {fbPixelId && (
+      {safeFbPixelId && (
         <>
           {/* Facebook Pixel Code */}
           <script
@@ -40,7 +47,7 @@ n.queue=[];t=b.createElement(e);t.async=!0;
 t.src=v;s=b.getElementsByTagName(e)[0];
 s.parentNode.insertBefore(t,s)}(window,document,'script',
 'https://connect.facebook.net/en_US/fbevents.js');
-fbq('init', '${fbPixelId}');
+fbq('init', '${safeFbPixelId}');
 fbq('track', 'PageView');`,
             }}
           />
@@ -49,26 +56,26 @@ fbq('track', 'PageView');`,
               height="1"
               width="1"
               style={{ display: 'none' }}
-              src={`https://www.facebook.com/tr?id=${fbPixelId}&ev=PageView&noscript=1`}
+              src={`https://www.facebook.com/tr?id=${safeFbPixelId}&ev=PageView&noscript=1`}
               alt=""
             />
           </noscript>
         </>
       )}
 
-      {gaId && (
+      {safeGaId && (
         <>
           {/* Google Analytics 4 */}
           <script
             async
-            src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`}
+            src={`https://www.googletagmanager.com/gtag/js?id=${safeGaId}`}
           />
           <script
             dangerouslySetInnerHTML={{
               __html: `window.dataLayer = window.dataLayer || [];
 function gtag(){dataLayer.push(arguments);}
 gtag('js', new Date());
-gtag('config', '${gaId}');`,
+gtag('config', '${safeGaId}');`,
             }}
           />
         </>

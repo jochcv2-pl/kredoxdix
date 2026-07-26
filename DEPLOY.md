@@ -93,20 +93,38 @@ Cela crée : l'utilisateur admin par défaut, les 5 agents IA, les templates ema
 
 ⚠️ **Changer le mot de passe admin immédiatement** après le premier login.
 
-### 6. Configurer le cron de relance (optionnel mais recommandé)
+### 6. Configurer les crons (obligatoire)
+
+Les crons sont **indispensables** au fonctionnement métier : sans eux, aucune relance automatique n'est envoyée et les campagnes en masse interrompues ne reprennent jamais.
 
 ```bash
 sudo crontab -e
 ```
 
-Ajouter la ligne :
+Ajouter les deux lignes suivantes :
 
 ```cron
-# Tous les jours à 09h00 — relance les leads en séquence
+# Tous les jours à 09h00 — relance les leads en séquence (J+3 / J+6 / J+9)
 0 9 * * * curl -fsS -X POST -H "Authorization: Bearer VOTRE_CRON_SECRET" https://crm.kredix.fr/api/cron/relance >> /var/log/kredix-cron.log 2>&1
+
+# Toutes les 5 minutes — reprend les campagnes en masse interrompues (envoi anti-spam)
+*/5 * * * * curl -fsS -X POST -H "Authorization: Bearer VOTRE_CRON_SECRET" https://crm.kredix.fr/api/cron/campaign-resume >> /var/log/kredix-cron.log 2>&1
 ```
 
 Remplacer `VOTRE_CRON_SECRET` par la valeur du `.env`.
+
+Vérifier que les crons tournent :
+```bash
+# Vérifier que crontab est configuré
+sudo crontab -l
+
+# Vérifier les logs
+tail -f /var/log/kredix-cron.log
+
+# Test manuel d'un cron
+curl -s -X POST -H "Authorization: Bearer VOTRE_CRON_SECRET" https://crm.kredix.fr/api/cron/relance
+curl -s -X POST -H "Authorization: Bearer VOTRE_CRON_SECRET" https://crm.kredix.fr/api/cron/campaign-resume
+```
 
 ## Changer le nom de domaine
 
@@ -237,7 +255,20 @@ docker compose -f docker-compose.prod.yml up -d     # Démarrer
 - Vérifier `AUTH_SECRET` et `ENCRYPTION_KEY` sont identiques dans `.env`
 - Vérifier que le migrator a terminé avec succès
 
-### Le cron relance ne fonctionne pas
+### Les crons ne fonctionnent pas
 
 - Vérifier le `CRON_SECRET` dans la crontab correspond au `.env`
-- Tester manuellement : `curl -X POST -H "Authorization: Bearer SECRET" https://crm.kredix.fr/api/cron/relance`
+- Tester manuellement :
+  ```bash
+  curl -X POST -H "Authorization: Bearer SECRET" https://crm.kredix.fr/api/cron/relance
+  curl -X POST -H "Authorization: Bearer SECRET" https://crm.kredix.fr/api/cron/campaign-resume
+  ```
+- Vérifier que `curl` est installé : `which curl`
+- Vérifier les logs : `tail -50 /var/log/kredix-cron.log`
+- Vérifier que crontab tourne : `sudo systemctl status cron` (Debian/Ubuntu) ou `sudo systemctl status crond` (CentOS/RHEL)
+
+### Une campagne reste bloquée en "sending"
+
+- Le cron `campaign-resume` (toutes les 5 min) doit la reprendre automatiquement
+- Vérifier que le cron tourne (cf. ci-dessus)
+- Forcer manuellement : `curl -X POST -H "Authorization: Bearer SECRET" https://crm.kredix.fr/api/cron/campaign-resume`
