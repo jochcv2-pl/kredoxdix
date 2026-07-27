@@ -374,7 +374,7 @@ function PropsPanel({
   const renderImageProps = () => (
     <>
       <div className="eb-prop-row eb-prop-row-full">
-        <label>URL de l'image</label>
+        <label>URL de l&apos;image</label>
         <input type="text" value={p.src || ''} onChange={(e) => set('src', e.target.value)} placeholder="https://" />
       </div>
       <div className="eb-prop-row eb-prop-row-full">
@@ -554,7 +554,7 @@ export function EmailBlockEditor({ blocks, onChange, bannerEnabled }: EmailBlock
             className="eb-preview-close"
             onClick={() => setShowPreview(false)}
           >
-            Retour à l'éditeur
+            Retour &agrave; l&apos;&eacute;diteur
           </button>
         </div>
         <div className={`eb-preview-container ${previewMode === 'mobile' ? 'eb-preview-mobile' : ''}`}>
