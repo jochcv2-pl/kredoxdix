@@ -336,7 +336,8 @@ model EmailTemplate {
   status        TemplateStatus @default(draft)  // active / draft
   subject       String         @db.Text         // objet avec variables {{Prénom}}
   bodyText      String         @db.Text         // éditeur visuel (texte + variables)
-  htmlContent   String?        @db.Text         // mode import HTML (optionnel)
+  htmlContent   String?        @db.Text         // HTML sérialisé (éditeur blocs ou import)
+  blocksJson    String?        @db.Text         // JSON des blocs éditeur visuel (pour réédition)
   bannerEnabled Boolean        @default(true)   // bannière Kredix en en-tête
   isConfidential Boolean       @default(false)  // verrouillé : l'IA ne peut ni lire, ni modifier, ni supprimer
   createdAt     DateTime       @default(now())

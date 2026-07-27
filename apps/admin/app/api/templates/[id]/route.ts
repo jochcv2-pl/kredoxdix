@@ -19,6 +19,7 @@ const updateTemplateSchema = z.object({
   subject: z.string().optional(),
   bodyText: z.string().optional(),
   htmlContent: z.string().nullable().optional(),
+  blocksJson: z.string().nullable().optional(),
   bannerEnabled: z.boolean().optional(),
   isConfidential: z.boolean().optional(),
 });

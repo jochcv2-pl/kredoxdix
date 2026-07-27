@@ -6,6 +6,8 @@ import { Icon } from '@/components/Icon';
 import { EmailFooter, type EmailFooterData, DEFAULT_FOOTER } from '@/components/EmailFooter';
 import { EmailHeader } from '@/components/EmailHeader';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { EmailBlockEditor } from '@/components/email-editor/EmailBlockEditor';
+import { EmailBlock, createBlock, blocksToFullHtml, blocksToText } from '@/lib/email-blocks';
 
 // =============================================================================
 // Types & constantes
@@ -130,6 +132,7 @@ interface Template {
   subject: string;
   bodyText: string;
   htmlContent: string | null;
+  blocksJson: string | null;
   bannerEnabled: boolean;
   isConfidential: boolean;
   createdAt: string;
@@ -162,6 +165,14 @@ export default function Emails() {
   const [bodyInput, setBodyInput] = useState(DEFAULT_BODY);
   const [bannerVisible, setBannerVisible] = useState(true);
 
+  // Blocs pour l'éditeur visuel par glisser-déposer.
+  const [blocks, setBlocks] = useState<EmailBlock[]>([]);
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+
+  // IA — génération assistée.
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiAgentRole, setAiAgentRole] = useState<string>('accueil');
+
   // Mode import HTML.
   const [htmlArea, setHtmlArea] = useState('');
   const [importName, setImportName] = useState('');
@@ -170,8 +181,8 @@ export default function Emails() {
   const [dzFile, setDzFile] = useState('');
   const [dragging, setDragging] = useState(false);
 
-  // Footer (toujours éditable, mais stocké séparément — pas encore persisté en DB).
-  const [footerData, setFooterData] = useState<EmailFooterData>(DEFAULT_FOOTER);
+  // Footer (utilisé pour l'aperçu des templates existants en mode liste).
+  const [footerData] = useState<EmailFooterData>(DEFAULT_FOOTER);
 
   // Liste des templates.
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -212,21 +223,73 @@ export default function Emails() {
   }, []);
 
   // ---------------------------------------------------------------------------
-  // Helpers UI
+  // Actions UI
   // ---------------------------------------------------------------------------
 
-  function insertVar(v: string) {
-    const ta = bodyRef.current;
-    if (!ta) return;
-    const s = ta.selectionStart;
-    const e = ta.selectionEnd;
-    const next = bodyInput.slice(0, s) + v + bodyInput.slice(e);
-    setBodyInput(next);
-    requestAnimationFrame(() => {
-      ta.focus();
-      ta.selectionStart = ta.selectionEnd = s + v.length;
-    });
-  }
+  // Génère un brouillon d'email via l'IA et l'injecte dans l'éditeur par blocs.
+  const generateWithAI = async () => {
+    setAiGenerating(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/ai/generate-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agentRole: aiAgentRole,
+          trigger: triggerInput,
+          leadContext: {
+            firstName: 'Marie',
+            lastName: 'Lefèvre',
+            loanType: 'prêt immobilier',
+            amount: 210000,
+            durationYears: 20,
+            monthlyPayment: 1062,
+            annualRate: 2.0,
+            preferredLanguage: languageInput,
+          },
+          fallbackSubject: subjInput,
+          fallbackBody: bodyInput,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        throw new Error(err?.error ?? `Échec génération IA (${res.status})`);
+      }
+      const json = await res.json();
+      const data = json.data ?? json;
+
+      // Injecte le sujet généré.
+      if (data.subject) setSubjInput(data.subject);
+
+      // Convertit le texte généré en blocs éditables.
+      if (data.bodyText) {
+        const paragraphs = data.bodyText.split(/\n\n+/).filter(Boolean);
+        const newBlocks: EmailBlock[] = paragraphs.map((para: string, idx: number) => {
+          if (idx === 0) {
+            // Premier paragraphe — si court, c'est potentiellement un titre.
+            if (para.length < 60 && !para.includes('\n')) {
+              return createBlock('heading');
+            }
+          }
+          const b = createBlock('text');
+          b.props.text = para;
+          return b;
+        });
+        // Si le premier bloc est un heading mais le texte est long, le passer en text.
+        if (newBlocks[0]?.type === 'heading' && paragraphs[0]?.length >= 60) {
+          newBlocks[0] = { ...newBlocks[0], type: 'text' };
+        } else if (newBlocks[0]?.type === 'heading') {
+          newBlocks[0].props.text = paragraphs[0];
+        }
+        setBlocks(newBlocks);
+        setBodyInput(data.bodyText);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erreur inconnue');
+    } finally {
+      setAiGenerating(false);
+    }
+  };
 
   function handleFile(file: File | undefined) {
     if (!file) return;
@@ -266,14 +329,31 @@ export default function Emails() {
 
   // Charge un template existant dans l'éditeur visuel pour modification.
   const editTemplate = (tpl: Template) => {
+    setEditingTemplateId(tpl.id);
     setNameInput(tpl.name);
     setTriggerInput(tpl.trigger);
     setLanguageInput(tpl.language);
     setSubjInput(tpl.subject);
     setBodyInput(tpl.bodyText);
     setBannerVisible(tpl.bannerEnabled);
+
+    // Si le template a été créé avec l'éditeur par blocs, charge les blocs.
+    if (tpl.blocksJson) {
+      try {
+        const parsed = JSON.parse(tpl.blocksJson);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setBlocks(parsed);
+          setActiveMode('visuel');
+          setActiveSub('generer');
+          return;
+        }
+      } catch {
+        // JSON corrompu — fallback ci-dessous.
+      }
+    }
+
     // Si le template a du HTML importé, bascule en mode import.
-    if (tpl.htmlContent) {
+    if (tpl.htmlContent && !tpl.blocksJson) {
       setHtmlArea(tpl.htmlContent);
       setImportName(tpl.name);
       setImportTrigger(tpl.trigger);
@@ -290,32 +370,56 @@ export default function Emails() {
   // Actions API
   // ---------------------------------------------------------------------------
 
-  // Crée un template (POST /api/templates) depuis le mode visuel.
+  // Crée ou met à jour un template (POST/PATCH /api/templates) depuis le mode visuel.
   const saveTemplate = async () => {
     setSaving(true);
     setError(null);
     try {
+      // Sérialise les blocs : HTML complet + JSON pour réédition + texte brut.
+      const hasBlocks = blocks.length > 0;
+      const html = hasBlocks ? blocksToFullHtml(blocks, { subject: subjInput, bannerEnabled: bannerVisible }) : null;
+      const blocksJson = hasBlocks ? JSON.stringify(blocks) : null;
+      const textBody = hasBlocks ? blocksToText(blocks) : bodyInput;
+
       const payload = {
         name: nameInput.trim() || 'Nouveau modèle',
         trigger: triggerInput,
         language: languageInput,
         status: 'active' as const,
         subject: subjInput,
-        bodyText: bodyInput,
-        htmlContent: null,
+        bodyText: textBody,
+        htmlContent: html,
+        blocksJson,
         bannerEnabled: bannerVisible,
       };
-      const res = await fetch('/api/templates', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+
+      let res: Response;
+      if (editingTemplateId) {
+        // Mise à jour d'un template existant.
+        res = await fetch(`/api/templates/${editingTemplateId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } else {
+        res = await fetch('/api/templates', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      }
       if (!res.ok) {
         const err = await res.json().catch(() => null);
         throw new Error(err?.error ?? `Échec création (${res.status})`);
       }
-      const created: Template = (await res.json()).data ?? (await res.json());
-      setTemplates((prev) => [created, ...prev]);
+      const result = await res.json();
+      const saved: Template = result.data ?? result;
+      setTemplates((prev) => {
+        const exists = prev.some((t) => t.id === saved.id);
+        if (exists) return prev.map((t) => (t.id === saved.id ? saved : t));
+        return [saved, ...prev];
+      });
+      setEditingTemplateId(null);
       setSaveModalOpen(false);
       setActiveSub('liste');
     } catch (e) {
@@ -461,14 +565,14 @@ export default function Emails() {
           <div className="info-band">
             <div className="imark">i</div>
             <div>
-              Créez un modèle une fois avec des <b>variables</b> comme <code>{'{{Prénom}}'}</code>. À chaque envoi,
-              l&apos;agent les remplace par les données réelles du client. Vous pouvez aussi importer un fichier HTML
-              existant.
+              Composez votre email avec des <b>blocs glisser-déposer</b> (texte, boutons, CTA WhatsApp/Messenger).
+              Utilisez des <b>variables</b> comme <code>{'{{Prénom}}'}</code> qui seront remplacées automatiquement à chaque envoi.
+              Vous pouvez aussi <b>générer le contenu avec l&apos;IA</b> ou <b>importer un HTML existant</b>.
             </div>
           </div>
           <div className="mode-switch">
             <button className={`mode-btn${activeMode === 'visuel' ? ' active' : ''}`} onClick={() => setActiveMode('visuel')}>
-              Éditeur visuel
+              Éditeur par blocs
             </button>
             <button className={`mode-btn${activeMode === 'import' ? ' active' : ''}`} onClick={() => setActiveMode('import')}>
               Importer un fichier HTML
@@ -477,99 +581,105 @@ export default function Emails() {
 
           {/* ===== MODE VISUEL ===== */}
           {activeMode === 'visuel' && (
-            <div className="editor-grid" id="modeVisuel">
-              <div>
-                <div className="sub-panel">
-                  <h4>Paramètres du modèle</h4>
-                  <div className="frow">
-                    <div className="fg">
-                      <label>Nom du modèle</label>
-                      <input value={nameInput} onChange={(e) => setNameInput(e.target.value)} />
-                    </div>
-                    <div className="fg">
-                      <label>Déclencheur</label>
-                      <select value={triggerInput} onChange={(e) => setTriggerInput(e.target.value)}>
-                        {TRIGGERS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                      </select>
-                    </div>
-                    <div className="fg">
-                      <label>Langue</label>
-                      <select value={languageInput} onChange={(e) => setLanguageInput(e.target.value)}>
-                        {LANGUAGES.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
-                      </select>
-                    </div>
-                    <div className="fg full">
-                      <label>Objet de l&apos;email</label>
-                      <input value={subjInput} onChange={(e) => setSubjInput(e.target.value)} />
-                    </div>
+            <div className="editor-grid-v2" id="modeVisuel">
+              {/* Barre d'outils supérieure */}
+              <div className="eb-toolbar-top">
+                <div className="eb-toolbar-left">
+                  <div className="eb-field">
+                    <label>Nom</label>
+                    <input value={nameInput} onChange={(e) => setNameInput(e.target.value)} placeholder="Nom du modèle" />
+                  </div>
+                  <div className="eb-field">
+                    <label>Déclencheur</label>
+                    <select value={triggerInput} onChange={(e) => setTriggerInput(e.target.value)}>
+                      {TRIGGERS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                    </select>
+                  </div>
+                  <div className="eb-field">
+                    <label>Langue</label>
+                    <select value={languageInput} onChange={(e) => setLanguageInput(e.target.value)}>
+                      {LANGUAGES.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
+                    </select>
+                  </div>
+                  <div className="eb-field eb-field-wide">
+                    <label>Objet</label>
+                    <input value={subjInput} onChange={(e) => setSubjInput(e.target.value)} />
                   </div>
                 </div>
-                <div className="sub-panel">
-                  <h4>Corps du message</h4>
-                  <textarea className="body-editor" ref={bodyRef} value={bodyInput} onChange={(e) => setBodyInput(e.target.value)} />
-                  <p className="var-hint" style={{ marginTop: 10, marginBottom: 0 }}>
-                    <b>Pied de page prédéfini :</b> un bloc signature Kredix (coordonnées, mentions légales ORIAS, liens
-                    de désinscription) est <b>ajouté automatiquement</b> à chaque envoi. Vous n&apos;avez pas à le saisir.
-                  </p>
-                  <div className="email-banner-toggle-row">
-                    <label>
-                      <input type="checkbox" checked={bannerVisible} onChange={(e) => setBannerVisible(e.target.checked)} />
-                      Bannière d&apos;en-tête Kredix (image)
-                    </label>
-                  </div>
-                </div>
-                <div className="sub-panel">
-                  <h4>Pied de page (aperçu uniquement)</h4>
-                  <p className="var-hint">Ces informations apparaissent en bas de chaque email envoyé. Modifiez-les librement pour l&apos;aperçu (la persistance du pied de page global est à venir).</p>
-                  <div className="frow">
-                    <div className="fg"><label>Nom de la marque</label><input value={footerData.brand} onChange={(e) => setFooterData({ ...footerData, brand: e.target.value })} /></div>
-                    <div className="fg"><label>Accent de couleur (lettre)</label><input value={footerData.brandAccent} onChange={(e) => setFooterData({ ...footerData, brandAccent: e.target.value })} /></div>
-                    <div className="fg"><label>Téléphone</label><input value={footerData.phone} onChange={(e) => setFooterData({ ...footerData, phone: e.target.value })} /></div>
-                    <div className="fg"><label>Email</label><input value={footerData.email} onChange={(e) => setFooterData({ ...footerData, email: e.target.value })} /></div>
-                    <div className="fg"><label>ORIAS / Agrément</label><input value={footerData.orias} onChange={(e) => setFooterData({ ...footerData, orias: e.target.value })} /></div>
-                    <div className="fg"><label>Lien 1</label><input value={footerData.link1} onChange={(e) => setFooterData({ ...footerData, link1: e.target.value })} /></div>
-                    <div className="fg"><label>Lien 2</label><input value={footerData.link2} onChange={(e) => setFooterData({ ...footerData, link2: e.target.value })} /></div>
-                    <div className="fg"><label>Lien 3</label><input value={footerData.link3} onChange={(e) => setFooterData({ ...footerData, link3: e.target.value })} /></div>
-                  </div>
-                  <div className="fg" style={{ marginTop: 10 }}>
-                    <label>Mentions légales</label>
-                    <textarea className="body-editor" style={{ minHeight: 80 }} value={footerData.legal} onChange={(e) => setFooterData({ ...footerData, legal: e.target.value })} />
-                  </div>
-                </div>
-                <div className="sub-panel">
-                  <h4>Insérer une variable</h4>
-                  <p className="var-hint">Cliquez pour insérer dans le corps. L&apos;agent remplacera par la donnée réelle à l&apos;envoi.</p>
-                  <div className="var-chips">
-                    {VARS.map((v) => <span className="chip" key={v} onClick={() => insertVar(v)}>{v}</span>)}
-                  </div>
-                </div>
-                <button className="btn btn-primary" onClick={() => setSaveModalOpen(true)} disabled={saving}>
-                  Enregistrer le modèle
-                </button>
               </div>
 
-              {/* PREVIEW avec bouton œil */}
-              <div className="preview">
-                <div className="pv-head">
-                  <div className="pv-head-info">
-                    <div className="pv-from">De : expediteur@votredomaine.com</div>
-                    <div className="pv-subj">{renderFilled(subjInput, previewMode)}</div>
-                  </div>
-                  <button className="pv-expand-btn" title="Aperçu plein écran" onClick={() => setFullPreviewOpen(true)}>
-                    <Icon name="search" size={18} />
+              {/* Boutons d'action */}
+              <div className="eb-actions-bar">
+                <button
+                  type="button"
+                  className="eb-btn-ai"
+                  onClick={generateWithAI}
+                  disabled={aiGenerating || saving}
+                >
+                  <Icon name="sparkles" size={16} />
+                  {aiGenerating ? 'Génération en cours…' : 'Générer avec l\'IA'}
+                </button>
+                <div className="eb-ai-role">
+                  <select value={aiAgentRole} onChange={(e) => setAiAgentRole(e.target.value)} disabled={aiGenerating}>
+                    <option value="accueil">Agent Accueil</option>
+                    <option value="offre">Agent Offre</option>
+                    <option value="relance">Agent Relance</option>
+                  </select>
+                </div>
+                <div className="eb-actions-right">
+                  <label className="eb-banner-toggle">
+                    <input type="checkbox" checked={bannerVisible} onChange={(e) => setBannerVisible(e.target.checked)} />
+                    Bannière
+                  </label>
+                  <button className="btn btn-primary" onClick={() => setSaveModalOpen(true)} disabled={saving}>
+                    {saving ? 'Enregistrement…' : editingTemplateId ? 'Mettre à jour' : 'Enregistrer'}
                   </button>
                 </div>
-                <div className="pv-body">
-                  <EmailHeader bannerVisible={bannerVisible} onRemoveBanner={() => setBannerVisible(false)} />
-                  {renderFilled(bodyInput, previewMode)}
-                  <EmailFooter data={footerData} />
-                </div>
-                <div className="pv-toggle">
-                  <span>Aperçu :</span>
-                  <span className={`pv-lang${previewMode === 'data' ? ' active' : ''}`} onClick={() => setPreviewMode('data')}>Données réelles</span>
-                  <span className={`pv-lang${previewMode === 'raw' ? ' active' : ''}`} onClick={() => setPreviewMode('raw')}>Variables</span>
-                </div>
               </div>
+
+              {/* Variables rapides */}
+              <div className="eb-var-bar">
+                <span className="eb-var-label">Variables :</span>
+                {VARS.map((v) => (
+                  <span
+                    className="eb-var-chip"
+                    key={v}
+                    onClick={() => {
+                      // Copie dans le presse-papier pour coller dans les blocs.
+                      navigator.clipboard?.writeText(v);
+                    }}
+                    title="Cliquer pour copier"
+                  >
+                    {v}
+                  </span>
+                ))}
+              </div>
+
+              {/* Éditeur par blocs */}
+              <EmailBlockEditor
+                blocks={blocks}
+                onChange={setBlocks}
+                bannerEnabled={bannerVisible}
+              />
+
+              {/* Fallback textarea (visible si pas de blocs) */}
+              {blocks.length === 0 && (
+                <div className="eb-textarea-fallback">
+                  <div className="sub-panel">
+                    <h4>Éditeur texte (fallback)</h4>
+                    <textarea
+                      className="body-editor"
+                      ref={bodyRef}
+                      value={bodyInput}
+                      onChange={(e) => setBodyInput(e.target.value)}
+                    />
+                    <p className="var-hint" style={{ marginTop: 10, marginBottom: 0 }}>
+                      Astuce : utilisez les blocs ci-dessus ou l&apos;IA pour une mise en page professionnelle.
+                      Le texte ici sera utilisé si aucun bloc n&apos;est ajouté.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -744,9 +854,11 @@ export default function Emails() {
       )}
 
       {/* ===== MODAL SAVE ===== */}
-      <Modal isOpen={saveModalOpen} onClose={() => setSaveModalOpen(false)} title="Enregistrer le modèle">
+      <Modal isOpen={saveModalOpen} onClose={() => setSaveModalOpen(false)} title={editingTemplateId ? 'Mettre à jour le modèle' : 'Enregistrer le modèle'}>
         <p className="field-hint">
-          Le modèle sera sauvegardé et activé. S&apos;il existe déjà un template actif pour le même déclencheur, il sera passé en brouillon.
+          {editingTemplateId
+            ? 'Le modèle sera mis à jour et activé. S\'il existe déjà un template actif pour le même déclencheur, il sera passé en brouillon.'
+            : 'Le modèle sera sauvegardé et activé. S\'il existe déjà un template actif pour le même déclencheur, il sera passé en brouillon.'}
         </p>
         <p style={{ fontSize: 13, color: 'var(--ink)', lineHeight: 1.6 }}>
           <b>Modèle :</b> {nameInput}<br />
@@ -756,7 +868,7 @@ export default function Emails() {
         <div className="modal-actions">
           <button className="btn btn-ghost" onClick={() => setSaveModalOpen(false)} disabled={saving}>Annuler</button>
           <button className="btn btn-primary" onClick={saveTemplate} disabled={saving}>
-            {saving ? 'Enregistrement…' : 'Confirmer l\'enregistrement'}
+            {saving ? 'Enregistrement…' : editingTemplateId ? 'Confirmer la mise à jour' : 'Confirmer l\'enregistrement'}
           </button>
         </div>
       </Modal>
