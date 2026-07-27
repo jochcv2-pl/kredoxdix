@@ -7,7 +7,6 @@ import { Icon } from '@/components/Icon'
 
 // =============================================================================
 // Partners — CRUD des banques partenaires affichées sur la landing publique.
-// Logo (URL), nom, slug, ordre d'affichage, statut actif.
 // =============================================================================
 
 interface BankPartner {
@@ -144,7 +143,7 @@ export default function Partners() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <p style={{ color: '#6b7280', fontSize: 14, margin: 0 }}>
-          Les logos des banques partenaires défilent sur la page d'accueil du site public.
+          Les logos des banques partenaires défilent sur la page d&apos;accueil du site public.
         </p>
         <button className="btn btn-primary" onClick={openCreate}>
           <Icon name="plus" size={16} /> Ajouter une banque
@@ -162,48 +161,37 @@ export default function Partners() {
           Aucune banque partenaire. Cliquez sur « Ajouter une banque ».
         </div>
       ) : (
-        <div className="card-grid">
+        <div className="bnk-grid">
           {list.map((p) => (
-            <div key={p.id} className="card" style={{ opacity: p.isActive ? 1 : 0.5 }}>
-              <div className="card-head">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  {p.logoUrl ? (
-                    <img
-                      src={p.logoUrl}
-                      alt={p.name}
-                      style={{ width: 48, height: 48, objectFit: 'contain', borderRadius: 8, background: '#f8fafc' }}
-                    />
-                  ) : (
-                    <div style={{
-                      width: 48, height: 48, borderRadius: 8, background: '#f1f5f9',
-                      display: 'grid', placeItems: 'center', fontSize: 18, fontWeight: 700, color: '#64748b',
-                    }}>
-                      {p.name.charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                  <div>
-                    <div className="card-title">{p.name}</div>
-                    <div className="card-meta">
-                      /{p.slug}
-                      {p._count && p._count.rates > 0 ? ` · ${p._count.rates} taux` : ''}
-                    </div>
+            <div key={p.id} className="bnk-card" style={{ opacity: p.isActive ? 1 : 0.55 }}>
+              <div className="bnk-card-top">
+                {p.logoUrl ? (
+                  <img className="bnk-logo" src={p.logoUrl} alt={p.name} />
+                ) : (
+                  <div className="bnk-logo-placeholder">
+                    {p.name.charAt(0).toUpperCase()}
                   </div>
+                )}
+                <div style={{ minWidth: 0 }}>
+                  <div className="bnk-name">{p.name}</div>
+                  <div className="bnk-slug">/{p.slug}</div>
                 </div>
               </div>
-              {(p.contactEmail || p.contactPhone) && (
-                <p className="card-body" style={{ fontSize: 12, color: '#94a3b8' }}>
-                  {p.contactEmail && <>{p.contactEmail}<br /></>}
-                  {p.contactPhone}
-                </p>
+
+              {(p.contactEmail || p.contactPhone || (p._count && p._count.rates > 0)) && (
+                <div className="bnk-info">
+                  {p._count && p._count.rates > 0 && <div>{p._count.rates} taux associés</div>}
+                  {p.contactEmail && <div>{p.contactEmail}</div>}
+                  {p.contactPhone && <div>{p.contactPhone}</div>}
+                </div>
               )}
-              <div className="card-actions">
-                <span className={`badge ${p.isActive ? 'b-client' : 'b-lost'}`} style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20 }}>
+
+              <div className="bnk-footer">
+                <span className={`bnk-status ${p.isActive ? 'bnk-status-active' : 'bnk-status-inactive'}`}>
                   {p.isActive ? 'Actif' : 'Inactif'}
                 </span>
-                <span className="badge b-offer" style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20 }}>
-                  Ordre #{p.displayOrder}
-                </span>
-                <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
+                <span className="bnk-order">Ordre #{p.displayOrder}</span>
+                <div className="bnk-actions">
                   <button className="btn btn-ghost btn-sm" onClick={() => toggleActive(p)} title={p.isActive ? 'Désactiver' : 'Activer'}>
                     <Icon name={p.isActive ? 'check-circle' : 'x'} size={16} />
                   </button>
@@ -227,14 +215,24 @@ export default function Partners() {
             <input
               type="text"
               value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              onChange={(e) => {
+                const name = e.target.value
+                setForm((prev) => ({
+                  ...prev,
+                  name,
+                  slug: editing ? prev.slug : name.toLowerCase()
+                    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/(^-|-$)/g, ''),
+                }))
+              }}
               placeholder="Ex : Sparkasse"
               className="form-input"
               autoFocus
             />
           </label>
           <label className="form-field">
-            <span className="form-label">Slug (URL, auto si vide)</span>
+            <span className="form-label">Slug (URL, auto-généré depuis le nom)</span>
             <input
               type="text"
               value={form.slug}
@@ -253,11 +251,13 @@ export default function Partners() {
               placeholder="https://exemple.com/logo.png"
               className="form-input"
             />
-            {form.logoUrl && (
-              <div style={{ marginTop: 8, padding: 12, background: '#f8fafc', borderRadius: 8, textAlign: 'center' }}>
-                <img src={form.logoUrl} alt="Aperçu logo" style={{ maxHeight: 60, objectFit: 'contain' }} />
-              </div>
-            )}
+            <div className="bnk-preview">
+              {form.logoUrl ? (
+                <img src={form.logoUrl} alt="Aperçu logo" />
+              ) : (
+                <span className="bnk-preview-empty">Aperçu du logo apparaîtra ici</span>
+              )}
+            </div>
           </label>
           <div style={{ display: 'flex', gap: 14 }}>
             <label className="form-field" style={{ flex: 1 }}>
@@ -282,8 +282,8 @@ export default function Partners() {
             </label>
           </div>
           <div style={{ display: 'flex', gap: 14 }}>
-            <label className="form-field" style={{ width: 100 }}>
-              <span className="form-label">Ordre d'affichage</span>
+            <label className="form-field" style={{ width: 120 }}>
+              <span className="form-label">Ordre d&apos;affichage</span>
               <input
                 type="number"
                 value={form.displayOrder}

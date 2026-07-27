@@ -185,7 +185,7 @@ export default async function HomePage({
       </section>
 
       {/* ===== SIMULATEUR + FORMULAIRE (wrapper client) ===== */}
-      <SimulatorAndForm rates={rates} />
+      <SimulatorAndForm rates={rates} whatsappNumber={whatsapp} />
 
       {/* ===== NOS SERVICES (CMS-driven, fallback i18n) ===== */}
       <section

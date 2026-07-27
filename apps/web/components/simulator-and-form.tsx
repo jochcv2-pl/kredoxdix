@@ -16,8 +16,10 @@ type SimLoanType = Exclude<LoanType, "autre">;
  */
 export default function SimulatorAndForm({
   rates,
+  whatsappNumber,
 }: {
   rates?: readonly ApplicableRate[];
+  whatsappNumber?: string;
 }) {
   const tSim = useTranslations("Simulator");
   const tForm = useTranslations("LeadForm");
@@ -86,7 +88,7 @@ export default function SimulatorAndForm({
             </div>
 
             {/* Formulaire à droite */}
-            <LeadForm prefill={prefill} />
+            <LeadForm prefill={prefill} whatsappNumber={whatsappNumber} />
           </div>
         </div>
       </section>

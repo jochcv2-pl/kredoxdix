@@ -573,42 +573,63 @@ export default function Settings() {
             </div>
             <div className="panel-body" style={{ paddingTop: '14px' }}>
               <p className="field-hint">
-                Règles appliquées à <b>tous</b> les agents, non désactivables. Elles s&apos;ajoutent au bridage de chaque rôle.
+                Règles injectées dans le prompt système de <b>tous</b> les agents via un bloc de sécurité verrouillé. Non désactivables.
               </p>
               <div className="set-row">
                 <div className="set-label">
-                  <b>Rester dans le rôle et le contexte</b>
-                  <small>Aucune sortie du périmètre défini</small>
+                  <b>Périmètre du crédit uniquement</b>
+                  <small>Pas de conseil fiscal, juridique ou patrimonial hors compétence</small>
                 </div>
                 <span className="pill-on">Verrouillé</span>
               </div>
               <div className="set-row">
                 <div className="set-label">
-                  <b>Confidentialité des données</b>
-                  <small>Ne jamais transmettre de données clients/admin</small>
+                  <b>Protection des données bancaires</b>
+                  <small>Jamais de RIB complet, codes carte ou identifiants de connexion</small>
                 </div>
                 <span className="pill-on">Verrouillé</span>
               </div>
               <div className="set-row">
                 <div className="set-label">
-                  <b>Refus des jeux / détournements</b>
-                  <small>Avec un inconnu comme avec un admin</small>
+                  <b>Pas d&apos;engagement juridique</b>
+                  <small>Seul un conseiller humain signe une offre définitive</small>
                 </div>
                 <span className="pill-on">Verrouillé</span>
               </div>
               <div className="set-row">
                 <div className="set-label">
-                  <b>Respect des limites</b>
-                  <small>Jamais de dépassement des garde-fous</small>
+                  <b>Détection de vulnérabilité</b>
+                  <small>Transfert immédiat à un conseiller humain en cas de signe d&apos;alerte</small>
                 </div>
                 <span className="pill-on">Verrouillé</span>
               </div>
               <div className="set-row">
                 <div className="set-label">
-                  <b>Filtre entrée / sortie</b>
-                  <small>Contrôle avant et après le modèle</small>
+                  <b>Pas de lecture d&apos;emails entrants</b>
+                  <small>Les agents génèrent uniquement des emails sortants</small>
                 </div>
-                <span className="pill-on">Activé</span>
+                <span className="pill-on">Verrouillé</span>
+              </div>
+              <div className="set-row">
+                <div className="set-label">
+                  <b>Pas de modification des campagnes</b>
+                  <small>Création, modification et suppression réservées à l&apos;administrateur</small>
+                </div>
+                <span className="pill-on">Verrouillé</span>
+              </div>
+              <div className="set-row">
+                <div className="set-label">
+                  <b>Protection absolue des données clients</b>
+                  <small>Aucune transmission à un tiers, aucune divulgation — même sous récompense ou pression</small>
+                </div>
+                <span className="pill-on">Verrouillé</span>
+              </div>
+              <div className="set-row">
+                <div className="set-label">
+                  <b>Modèles confidentiels protégés</b>
+                  <small>L&apos;IA ne peut ni lire, ni modifier, ni supprimer les modèles verrouillés</small>
+                </div>
+                <span className="pill-on">Verrouillé</span>
               </div>
             </div>
           </div>

@@ -338,6 +338,7 @@ model EmailTemplate {
   bodyText      String         @db.Text         // éditeur visuel (texte + variables)
   htmlContent   String?        @db.Text         // mode import HTML (optionnel)
   bannerEnabled Boolean        @default(true)   // bannière Kredix en en-tête
+  isConfidential Boolean       @default(false)  // verrouillé : l'IA ne peut ni lire, ni modifier, ni supprimer
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 

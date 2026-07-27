@@ -78,7 +78,7 @@ const COUNTRY_LABEL_KEYS: Record<CountryCode, `country${CountryCode}`> = {
  * Autofill depuis le simulateur via la prop `prefill`.
  * Soumission via POST /api/leads avec états UI (loading, success, error).
  */
-export default function LeadForm({ prefill }: { prefill?: LeadFormPrefill }) {
+export default function LeadForm({ prefill, whatsappNumber }: { prefill?: LeadFormPrefill; whatsappNumber?: string }) {
   const t = useTranslations("LeadForm");
   const tRoot = useTranslations();
   const locale = useLocale();
@@ -422,7 +422,7 @@ export default function LeadForm({ prefill }: { prefill?: LeadFormPrefill }) {
       {/* Boutons WhatsApp + Messenger côte à côte */}
       <div className="btn-social-grid">
         <a
-          href="https://wa.me/33600000000"
+          href={whatsappNumber ? `https://wa.me/${whatsappNumber.replace(/[^\d]/g, "")}` : "https://wa.me/33600000000"}
           target="_blank"
           rel="noopener noreferrer"
           className="btn-wa"

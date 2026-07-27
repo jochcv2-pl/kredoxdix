@@ -50,6 +50,8 @@ const PATHS: Record<string, ReactElement> = {
   'arrow-right': (<><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></>),
   globe: (<><circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></>),
   palette: (<><circle cx="12" cy="12" r="10" /><circle cx="8.5" cy="10.5" r="1.5" fill="currentColor" /><circle cx="15.5" cy="10.5" r="1.5" fill="currentColor" /><circle cx="12" cy="15" r="1.5" fill="currentColor" /><path d="M12 2a10 10 0 0 0 0 20c.55 0 1-.45 1-1 0-.28-.11-.52-.29-.71-.18-.18-.29-.43-.29-.71 0-.55.45-1 1-1h2a4 4 0 0 0 4-4 8 8 0 0 0-8-8z" /></>),
+  lock: (<><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></>),
+  unlock: (<><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 9.9-1" /></>),
 }
 
 export function Icon({ name, size = 20, className, style }: IconProps) {

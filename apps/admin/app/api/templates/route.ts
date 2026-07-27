@@ -20,6 +20,7 @@ const createTemplateSchema = z.object({
   bodyText: z.string(),
   htmlContent: z.string().nullable().optional(),
   bannerEnabled: z.boolean().default(true),
+  isConfidential: z.boolean().default(false),
 });
 
 // GET /api/templates — liste tous les templates, triés par trigger puis date.

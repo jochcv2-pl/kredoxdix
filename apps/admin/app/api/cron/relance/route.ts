@@ -188,38 +188,48 @@ export async function POST(req: NextRequest) {
         const fallbackBody = interpolateTemplate(template.bodyText, ctx);
 
         // d-bis) Génération IA — l'Agent Relance personnalise l'email.
-        // Si l'IA est disponible (clé API + endpoint configurés), génère un email
-        // personnalisé. Sinon, fallback sur le template interpolé.
-        const aiResult = await generateEmail({
-          agentRole: 'relance',
-          trigger: `relance_${nextRelanceNum}`,
-          leadContext: {
-            firstName: lead.firstName,
-            lastName: lead.lastName,
-            email: lead.email ?? undefined,
-            phone: lead.phone,
-            loanType: lead.loanType,
-            amount: lead.amount ?? undefined,
-            durationYears: lead.durationYears ?? undefined,
-            monthlyPayment: lead.monthlyPayment ?? undefined,
-            annualRate: lead.annualRate ?? undefined,
-            relanceCount: lead.relanceCount,
-            preferredLanguage: lead.preferredLanguage,
-          },
-          fallbackSubject,
-          fallbackBody,
-        });
+        // Si le template est CONFIDENTIEL, l'IA est contournée : le template
+        // est envoyé tel quel, sans que l'IA ne puisse en lire le contenu.
+        let subject: string;
+        let bodyText: string;
+        let generated = false;
 
-        const subject = aiResult.subject;
-        const bodyText = aiResult.bodyText;
-        const htmlContent = template.htmlContent && !aiResult.generated
+        if (template.isConfidential) {
+          // Template verrouillé — envoi direct sans passer par l'IA.
+          subject = fallbackSubject;
+          bodyText = fallbackBody;
+        } else {
+          const aiResult = await generateEmail({
+            agentRole: 'relance',
+            trigger: `relance_${nextRelanceNum}`,
+            leadContext: {
+              firstName: lead.firstName,
+              lastName: lead.lastName,
+              email: lead.email ?? undefined,
+              phone: lead.phone,
+              loanType: lead.loanType,
+              amount: lead.amount ?? undefined,
+              durationYears: lead.durationYears ?? undefined,
+              monthlyPayment: lead.monthlyPayment ?? undefined,
+              annualRate: lead.annualRate ?? undefined,
+              relanceCount: lead.relanceCount,
+              preferredLanguage: lead.preferredLanguage,
+            },
+            fallbackSubject,
+            fallbackBody,
+          });
+          subject = aiResult.subject;
+          bodyText = aiResult.bodyText;
+          generated = aiResult.generated;
+        }
+        const htmlContent = template.htmlContent && !generated
           ? interpolateTemplate(template.htmlContent, ctx)
           : textToHtml(bodyText);
 
-        if (aiResult.generated) {
+        if (generated) {
           console.log(`[CRON RELANCE] Email généré par IA (lead ${lead.id}, relance ${nextRelanceNum})`);
-        } else if (aiResult.warning) {
-          console.log(`[CRON RELANCE] Fallback template — ${aiResult.warning}`);
+        } else {
+          console.log(`[CRON RELANCE] Template envoyé${template.isConfidential ? ' (confidentiel — IA contournée)' : ' (fallback)'} (lead ${lead.id}, relance ${nextRelanceNum})`);
         }
 
         // e) Envoi réel via le gateway actif
@@ -246,7 +256,7 @@ export async function POST(req: NextRequest) {
             leadId: lead.id,
             email: lead.email,
             trigger: triggerKey,
-            templateName: aiResult.generated ? `${template.name} (IA)` : template.name,
+            templateName: generated ? `${template.name} (IA)` : template.name,
             subject,
             bodyText,
             status: sendResult.success ? 'sent' : 'failed',

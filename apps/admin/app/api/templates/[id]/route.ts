@@ -20,6 +20,7 @@ const updateTemplateSchema = z.object({
   bodyText: z.string().optional(),
   htmlContent: z.string().nullable().optional(),
   bannerEnabled: z.boolean().optional(),
+  isConfidential: z.boolean().optional(),
 });
 
 // GET /api/templates/[id] — template seul.
@@ -123,6 +124,16 @@ export async function DELETE(
     const existing = await prisma.emailTemplate.findUnique({ where: { id } });
     if (!existing) {
       return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);
+    }
+
+    // Un template confidentiel ne peut pas être supprimé (protection IA).
+    if (existing.isConfidential) {
+      return errorResponse(
+        'Ce modèle est verrouillé (confidentiel) et ne peut pas être supprimé. Désactivez le mode confidentiel d\'abord.',
+        ERR.CONFLICT.code,
+        undefined,
+        409,
+      );
     }
 
     await prisma.emailTemplate.delete({ where: { id } });

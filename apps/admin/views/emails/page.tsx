@@ -131,6 +131,7 @@ interface Template {
   bodyText: string;
   htmlContent: string | null;
   bannerEnabled: boolean;
+  isConfidential: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -398,6 +399,28 @@ export default function Emails() {
     }
   };
 
+  // Bascule le mode confidentiel d'un template (PATCH /api/templates/[id]).
+  // Quand activé : l'IA ne peut ni lire, ni modifier, ni supprimer le modèle.
+  const toggleConfidential = async (tpl: Template) => {
+    setError(null);
+    const next = !tpl.isConfidential;
+    try {
+      const res = await fetch(`/api/templates/${tpl.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isConfidential: next }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        throw new Error(err?.error ?? 'Échec bascule confidentiel');
+      }
+      const updated: Template = await res.json().then((j) => j.data);
+      setTemplates((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erreur inconnue');
+    }
+  };
+
   // Supprime un template (DELETE /api/templates/[id]).
   const deleteTemplate = async (tpl: Template) => {
     setError(null);
@@ -647,7 +670,14 @@ export default function Emails() {
                   <div className="tpl2-header-left">
                     <span className={`tpl2-status-dot ${tpl.status === 'active' ? 'active' : 'draft'}`} />
                     <div>
-                      <div className="tpl2-name">{tpl.name}</div>
+                      <div className="tpl2-name">
+                        {tpl.name}
+                        {tpl.isConfidential && (
+                          <span className="tpl2-confidential" title="Confidentiel — l'IA ne peut pas accéder à ce modèle">
+                            <Icon name="lock" size={12} /> Confidentiel
+                          </span>
+                        )}
+                      </div>
                       <div className="tpl2-trigger">{TRIGGER_LABEL[tpl.trigger] ?? tpl.trigger}</div>
                     </div>
                   </div>
@@ -671,7 +701,13 @@ export default function Emails() {
                       <Icon name="search" size={15} />
                       Aperçu
                     </button>
-                    <button className="tpl2-btn tpl2-btn-edit" onClick={() => editTemplate(tpl)} title="Modifier le modèle">
+                    <button
+                      className="tpl2-btn tpl2-btn-edit"
+                      onClick={() => editTemplate(tpl)}
+                      title="Modifier le modèle"
+                      disabled={tpl.isConfidential}
+                      style={tpl.isConfidential ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
+                    >
                       <Icon name="pencil" size={15} />
                       Modifier
                     </button>
@@ -683,7 +719,20 @@ export default function Emails() {
                       <Icon name={tpl.status === 'active' ? 'pause' : 'play'} size={15} />
                       {tpl.status === 'active' ? 'Désactiver' : 'Activer'}
                     </button>
-                    <button className="tpl2-btn tpl2-btn-delete" onClick={() => setDeleteTarget(tpl)} title="Supprimer">
+                    <button
+                      className={`tpl2-btn ${tpl.isConfidential ? 'tpl2-btn-confidential-on' : 'tpl2-btn-confidential'}`}
+                      onClick={() => toggleConfidential(tpl)}
+                      title={tpl.isConfidential ? 'Désactiver le mode confidentiel' : 'Activer le mode confidentiel — l\'IA ne pourra plus accéder à ce modèle'}
+                    >
+                      <Icon name={tpl.isConfidential ? 'lock' : 'unlock'} size={15} />
+                    </button>
+                    <button
+                      className="tpl2-btn tpl2-btn-delete"
+                      onClick={() => setDeleteTarget(tpl)}
+                      title="Supprimer"
+                      disabled={tpl.isConfidential}
+                      style={tpl.isConfidential ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
+                    >
                       <Icon name="trash" size={15} />
                     </button>
                   </div>
