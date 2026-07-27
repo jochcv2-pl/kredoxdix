@@ -6,8 +6,6 @@ import { Icon } from '@/components/Icon';
 import { EmailFooter, type EmailFooterData, DEFAULT_FOOTER } from '@/components/EmailFooter';
 import { EmailHeader } from '@/components/EmailHeader';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
-import { EmailBlockEditor } from '@/components/email-editor/EmailBlockEditor';
-import { EmailBlock, createBlock, blocksToFullHtml, blocksToText } from '@/lib/email-blocks';
 
 // =============================================================================
 // Types & constantes
@@ -132,7 +130,6 @@ interface Template {
   subject: string;
   bodyText: string;
   htmlContent: string | null;
-  blocksJson: string | null;
   bannerEnabled: boolean;
   isConfidential: boolean;
   createdAt: string;
@@ -165,31 +162,6 @@ export default function Emails() {
   const [bodyInput, setBodyInput] = useState(DEFAULT_BODY);
   const [bannerVisible, setBannerVisible] = useState(true);
 
-  // Blocs pour l'éditeur visuel par glisser-déposer.
-  const [blocks, setBlocks] = useState<EmailBlock[]>([]);
-  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
-
-  // IA — génération assistée.
-  const [aiGenerating, setAiGenerating] = useState(false);
-  const [aiAgentRole, setAiAgentRole] = useState<string>('accueil');
-
-  // Variables dropdown.
-  const [varsOpen, setVarsOpen] = useState(false);
-  const [copiedVar, setCopiedVar] = useState<string | null>(null);
-  const varsRef = useRef<HTMLDivElement>(null);
-
-  // Ferme le dropdown Variables au clic extérieur.
-  useEffect(() => {
-    if (!varsOpen) return;
-    function onDocClick(e: MouseEvent) {
-      if (varsRef.current && !varsRef.current.contains(e.target as Node)) {
-        setVarsOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', onDocClick);
-    return () => document.removeEventListener('mousedown', onDocClick);
-  }, [varsOpen]);
-
   // Mode import HTML.
   const [htmlArea, setHtmlArea] = useState('');
   const [importName, setImportName] = useState('');
@@ -198,8 +170,12 @@ export default function Emails() {
   const [dzFile, setDzFile] = useState('');
   const [dragging, setDragging] = useState(false);
 
-  // Footer (utilisé pour l'aperçu des templates existants en mode liste).
-  const [footerData] = useState<EmailFooterData>(DEFAULT_FOOTER);
+  // Footer (toujours éditable, mais stocké séparément — pas encore persisté en DB).
+  const [footerData, setFooterData] = useState<EmailFooterData>(DEFAULT_FOOTER);
+
+  // IA — génération assistée.
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiAgentRole, setAiAgentRole] = useState<string>('accueil');
 
   // Liste des templates.
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -214,6 +190,7 @@ export default function Emails() {
   const [deleteTarget, setDeleteTarget] = useState<Template | null>(null);
   const [previewTpl, setPreviewTpl] = useState<Template | null>(null);
 
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ---------------------------------------------------------------------------
@@ -239,11 +216,11 @@ export default function Emails() {
   }, []);
 
   // ---------------------------------------------------------------------------
-  // Actions UI
+  // Helpers UI
   // ---------------------------------------------------------------------------
 
-  // Génère un brouillon d'email via l'IA et l'injecte dans l'éditeur par blocs.
-  const generateWithAI = async () => {
+  // Génère un brouillon d'email via l'IA et l'injecte dans le corps.
+  async function generateWithAI() {
     setAiGenerating(true);
     setError(null);
     try {
@@ -273,33 +250,27 @@ export default function Emails() {
       }
       const json = await res.json();
       const data = json.data ?? json;
-
-      // Injecte le sujet généré.
       if (data.subject) setSubjInput(data.subject);
-
-      // Convertit le texte généré en blocs éditables.
-      if (data.bodyText) {
-        const paragraphs = data.bodyText.split(/\n\n+/).filter(Boolean);
-        const newBlocks: EmailBlock[] = paragraphs.map((para: string, idx: number) => {
-          // Premier paragraphe court sans retour ligne = potentiellement un titre.
-          if (idx === 0 && para.length < 60 && !para.includes('\n')) {
-            const b = createBlock('heading');
-            b.props.text = para;
-            return b;
-          }
-          const b = createBlock('text');
-          b.props.text = para;
-          return b;
-        });
-        setBlocks(newBlocks);
-        setBodyInput(data.bodyText);
-      }
+      if (data.bodyText) setBodyInput(data.bodyText);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erreur inconnue');
     } finally {
       setAiGenerating(false);
     }
-  };
+  }
+
+  function insertVar(v: string) {
+    const ta = bodyRef.current;
+    if (!ta) return;
+    const s = ta.selectionStart;
+    const e = ta.selectionEnd;
+    const next = bodyInput.slice(0, s) + v + bodyInput.slice(e);
+    setBodyInput(next);
+    requestAnimationFrame(() => {
+      ta.focus();
+      ta.selectionStart = ta.selectionEnd = s + v.length;
+    });
+  }
 
   function handleFile(file: File | undefined) {
     if (!file) return;
@@ -339,31 +310,14 @@ export default function Emails() {
 
   // Charge un template existant dans l'éditeur visuel pour modification.
   const editTemplate = (tpl: Template) => {
-    setEditingTemplateId(tpl.id);
     setNameInput(tpl.name);
     setTriggerInput(tpl.trigger);
     setLanguageInput(tpl.language);
     setSubjInput(tpl.subject);
     setBodyInput(tpl.bodyText);
     setBannerVisible(tpl.bannerEnabled);
-
-    // Si le template a été créé avec l'éditeur par blocs, charge les blocs.
-    if (tpl.blocksJson) {
-      try {
-        const parsed = JSON.parse(tpl.blocksJson);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setBlocks(parsed);
-          setActiveMode('visuel');
-          setActiveSub('generer');
-          return;
-        }
-      } catch {
-        // JSON corrompu — fallback ci-dessous.
-      }
-    }
-
     // Si le template a du HTML importé, bascule en mode import.
-    if (tpl.htmlContent && !tpl.blocksJson) {
+    if (tpl.htmlContent) {
       setHtmlArea(tpl.htmlContent);
       setImportName(tpl.name);
       setImportTrigger(tpl.trigger);
@@ -380,56 +334,32 @@ export default function Emails() {
   // Actions API
   // ---------------------------------------------------------------------------
 
-  // Crée ou met à jour un template (POST/PATCH /api/templates) depuis le mode visuel.
+  // Crée un template (POST /api/templates) depuis le mode visuel.
   const saveTemplate = async () => {
     setSaving(true);
     setError(null);
     try {
-      // Sérialise les blocs : HTML complet + JSON pour réédition + texte brut.
-      const hasBlocks = blocks.length > 0;
-      const html = hasBlocks ? blocksToFullHtml(blocks, { subject: subjInput, bannerEnabled: bannerVisible }) : null;
-      const blocksJson = hasBlocks ? JSON.stringify(blocks) : null;
-      const textBody = hasBlocks ? blocksToText(blocks) : bodyInput;
-
       const payload = {
         name: nameInput.trim() || 'Nouveau modèle',
         trigger: triggerInput,
         language: languageInput,
         status: 'active' as const,
         subject: subjInput,
-        bodyText: textBody,
-        htmlContent: html,
-        blocksJson,
+        bodyText: bodyInput,
+        htmlContent: null,
         bannerEnabled: bannerVisible,
       };
-
-      let res: Response;
-      if (editingTemplateId) {
-        // Mise à jour d'un template existant.
-        res = await fetch(`/api/templates/${editingTemplateId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-      } else {
-        res = await fetch('/api/templates', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-      }
+      const res = await fetch('/api/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
       if (!res.ok) {
         const err = await res.json().catch(() => null);
         throw new Error(err?.error ?? `Échec création (${res.status})`);
       }
-      const result = await res.json();
-      const saved: Template = result.data ?? result;
-      setTemplates((prev) => {
-        const exists = prev.some((t) => t.id === saved.id);
-        if (exists) return prev.map((t) => (t.id === saved.id ? saved : t));
-        return [saved, ...prev];
-      });
-      setEditingTemplateId(null);
+      const created: Template = (await res.json()).data ?? (await res.json());
+      setTemplates((prev) => [created, ...prev]);
       setSaveModalOpen(false);
       setActiveSub('liste');
     } catch (e) {
@@ -575,14 +505,14 @@ export default function Emails() {
           <div className="info-band">
             <div className="imark">i</div>
             <div>
-              Composez votre email avec des <b>blocs glisser-déposer</b> (texte, boutons, CTA WhatsApp/Messenger).
-              Utilisez des <b>variables</b> comme <code>{'{{Prénom}}'}</code> qui seront remplacées automatiquement à chaque envoi.
-              Vous pouvez aussi <b>générer le contenu avec l&apos;IA</b> ou <b>importer un HTML existant</b>.
+              Créez un modèle une fois avec des <b>variables</b> comme <code>{'{{Prénom}}'}</code>. À chaque envoi,
+              l&apos;agent les remplace par les données réelles du client. Vous pouvez aussi importer un fichier HTML
+              existant.
             </div>
           </div>
           <div className="mode-switch">
             <button className={`mode-btn${activeMode === 'visuel' ? ' active' : ''}`} onClick={() => setActiveMode('visuel')}>
-              Éditeur par blocs
+              Éditeur visuel
             </button>
             <button className={`mode-btn${activeMode === 'import' ? ' active' : ''}`} onClick={() => setActiveMode('import')}>
               Importer un fichier HTML
@@ -591,47 +521,47 @@ export default function Emails() {
 
           {/* ===== MODE VISUEL ===== */}
           {activeMode === 'visuel' && (
-            <div className="editor-grid-v2" id="modeVisuel">
-              {/* Header unifié : settings + actions + variables */}
-              <div className="eb-header">
-                <div className="eb-header-top">
-                  <div className="eb-header-fields">
-                    <div className="eb-field">
+            <div className="editor-grid" id="modeVisuel">
+              <div>
+                <div className="sub-panel">
+                  <h4>Paramètres du modèle</h4>
+                  <div className="frow">
+                    <div className="fg">
                       <label>Nom du modèle</label>
-                      <input value={nameInput} onChange={(e) => setNameInput(e.target.value)} placeholder="Ex: Accusé de réception" />
+                      <input value={nameInput} onChange={(e) => setNameInput(e.target.value)} />
                     </div>
-                    <div className="eb-field">
+                    <div className="fg">
                       <label>Déclencheur</label>
                       <select value={triggerInput} onChange={(e) => setTriggerInput(e.target.value)}>
                         {TRIGGERS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                       </select>
                     </div>
-                    <div className="eb-field">
+                    <div className="fg">
                       <label>Langue</label>
                       <select value={languageInput} onChange={(e) => setLanguageInput(e.target.value)}>
                         {LANGUAGES.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
                       </select>
                     </div>
-                    <div className="eb-field eb-field-grow">
+                    <div className="fg full">
                       <label>Objet de l&apos;email</label>
                       <input value={subjInput} onChange={(e) => setSubjInput(e.target.value)} />
                     </div>
                   </div>
                 </div>
-
-                <div className="eb-header-actions">
-                  <div className="eb-actions-left">
+                <div className="sub-panel">
+                  <h4>Corps du message</h4>
+                  <div className="ai-gen-row">
                     <button
                       type="button"
-                      className="eb-btn-ai"
+                      className="btn-ai-gen"
                       onClick={generateWithAI}
-                      disabled={aiGenerating || saving}
+                      disabled={aiGenerating}
                     >
-                      <Icon name="sparkles" size={16} />
-                      {aiGenerating ? 'Génération…' : "Générer avec l'IA"}
+                      <Icon name="sparkles" size={15} />
+                      {aiGenerating ? 'Génération en cours…' : 'Générer avec l\'IA'}
                     </button>
                     <select
-                      className="eb-agent-select"
+                      className="ai-agent-pick"
                       value={aiAgentRole}
                       onChange={(e) => setAiAgentRole(e.target.value)}
                       disabled={aiGenerating}
@@ -641,56 +571,70 @@ export default function Emails() {
                       <option value="relance">Agent Relance</option>
                     </select>
                   </div>
-
-                  <div className="eb-vars-dropdown" ref={varsRef}>
-                    <button
-                      type="button"
-                      className="eb-vars-trigger"
-                      onClick={() => setVarsOpen(!varsOpen)}
-                    >
-                      <Icon name="plus" size={14} /> Variables
-                    </button>
-                    {varsOpen && (
-                      <div className="eb-vars-popover" onClick={(e) => e.stopPropagation()}>
-                        <p className="eb-vars-hint">Cliquez pour copier une variable :</p>
-                        <div className="eb-vars-grid">
-                          {VARS.map((v) => (
-                            <button
-                              key={v}
-                              className="eb-var-chip"
-                              onClick={() => {
-                                navigator.clipboard?.writeText(v);
-                                setCopiedVar(v);
-                                setTimeout(() => setCopiedVar(null), 1500);
-                              }}
-                            >
-                              {copiedVar === v ? 'Copié !' : v}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="eb-actions-right">
-                    <label className="eb-banner-toggle">
+                  <textarea className="body-editor" ref={bodyRef} value={bodyInput} onChange={(e) => setBodyInput(e.target.value)} />
+                  <p className="var-hint" style={{ marginTop: 10, marginBottom: 0 }}>
+                    <b>Pied de page prédéfini :</b> un bloc signature Kredix (coordonnées, mentions légales ORIAS, liens
+                    de désinscription) est <b>ajouté automatiquement</b> à chaque envoi. Vous n&apos;avez pas à le saisir.
+                  </p>
+                  <div className="email-banner-toggle-row">
+                    <label>
                       <input type="checkbox" checked={bannerVisible} onChange={(e) => setBannerVisible(e.target.checked)} />
-                      <span>Bannière</span>
+                      Bannière d&apos;en-tête Kredix (image)
                     </label>
-                    <button className="btn btn-primary" onClick={() => setSaveModalOpen(true)} disabled={saving}>
-                      <Icon name="check" size={15} />
-                      {saving ? 'Enregistrement…' : editingTemplateId ? 'Mettre à jour' : 'Enregistrer'}
-                    </button>
                   </div>
                 </div>
+                <div className="sub-panel">
+                  <h4>Pied de page (aperçu uniquement)</h4>
+                  <p className="var-hint">Ces informations apparaissent en bas de chaque email envoyé. Modifiez-les librement pour l&apos;aperçu (la persistance du pied de page global est à venir).</p>
+                  <div className="frow">
+                    <div className="fg"><label>Nom de la marque</label><input value={footerData.brand} onChange={(e) => setFooterData({ ...footerData, brand: e.target.value })} /></div>
+                    <div className="fg"><label>Accent de couleur (lettre)</label><input value={footerData.brandAccent} onChange={(e) => setFooterData({ ...footerData, brandAccent: e.target.value })} /></div>
+                    <div className="fg"><label>Téléphone</label><input value={footerData.phone} onChange={(e) => setFooterData({ ...footerData, phone: e.target.value })} /></div>
+                    <div className="fg"><label>Email</label><input value={footerData.email} onChange={(e) => setFooterData({ ...footerData, email: e.target.value })} /></div>
+                    <div className="fg"><label>ORIAS / Agrément</label><input value={footerData.orias} onChange={(e) => setFooterData({ ...footerData, orias: e.target.value })} /></div>
+                    <div className="fg"><label>Lien 1</label><input value={footerData.link1} onChange={(e) => setFooterData({ ...footerData, link1: e.target.value })} /></div>
+                    <div className="fg"><label>Lien 2</label><input value={footerData.link2} onChange={(e) => setFooterData({ ...footerData, link2: e.target.value })} /></div>
+                    <div className="fg"><label>Lien 3</label><input value={footerData.link3} onChange={(e) => setFooterData({ ...footerData, link3: e.target.value })} /></div>
+                  </div>
+                  <div className="fg" style={{ marginTop: 10 }}>
+                    <label>Mentions légales</label>
+                    <textarea className="body-editor" style={{ minHeight: 80 }} value={footerData.legal} onChange={(e) => setFooterData({ ...footerData, legal: e.target.value })} />
+                  </div>
+                </div>
+                <div className="sub-panel">
+                  <h4>Insérer une variable</h4>
+                  <p className="var-hint">Cliquez pour insérer dans le corps. L&apos;agent remplacera par la donnée réelle à l&apos;envoi.</p>
+                  <div className="var-chips">
+                    {VARS.map((v) => <span className="chip" key={v} onClick={() => insertVar(v)}>{v}</span>)}
+                  </div>
+                </div>
+                <button className="btn btn-primary" onClick={() => setSaveModalOpen(true)} disabled={saving}>
+                  Enregistrer le modèle
+                </button>
               </div>
 
-              {/* Éditeur par blocs */}
-              <EmailBlockEditor
-                blocks={blocks}
-                onChange={setBlocks}
-                bannerEnabled={bannerVisible}
-              />
+              {/* PREVIEW avec bouton œil */}
+              <div className="preview">
+                <div className="pv-head">
+                  <div className="pv-head-info">
+                    <div className="pv-from">De : expediteur@votredomaine.com</div>
+                    <div className="pv-subj">{renderFilled(subjInput, previewMode)}</div>
+                  </div>
+                  <button className="pv-expand-btn" title="Aperçu plein écran" onClick={() => setFullPreviewOpen(true)}>
+                    <Icon name="search" size={18} />
+                  </button>
+                </div>
+                <div className="pv-body">
+                  <EmailHeader bannerVisible={bannerVisible} onRemoveBanner={() => setBannerVisible(false)} />
+                  {renderFilled(bodyInput, previewMode)}
+                  <EmailFooter data={footerData} />
+                </div>
+                <div className="pv-toggle">
+                  <span>Aperçu :</span>
+                  <span className={`pv-lang${previewMode === 'data' ? ' active' : ''}`} onClick={() => setPreviewMode('data')}>Données réelles</span>
+                  <span className={`pv-lang${previewMode === 'raw' ? ' active' : ''}`} onClick={() => setPreviewMode('raw')}>Variables</span>
+                </div>
+              </div>
             </div>
           )}
 
@@ -865,11 +809,9 @@ export default function Emails() {
       )}
 
       {/* ===== MODAL SAVE ===== */}
-      <Modal isOpen={saveModalOpen} onClose={() => setSaveModalOpen(false)} title={editingTemplateId ? 'Mettre à jour le modèle' : 'Enregistrer le modèle'}>
+      <Modal isOpen={saveModalOpen} onClose={() => setSaveModalOpen(false)} title="Enregistrer le modèle">
         <p className="field-hint">
-          {editingTemplateId
-            ? 'Le modèle sera mis à jour et activé. S\'il existe déjà un template actif pour le même déclencheur, il sera passé en brouillon.'
-            : 'Le modèle sera sauvegardé et activé. S\'il existe déjà un template actif pour le même déclencheur, il sera passé en brouillon.'}
+          Le modèle sera sauvegardé et activé. S&apos;il existe déjà un template actif pour le même déclencheur, il sera passé en brouillon.
         </p>
         <p style={{ fontSize: 13, color: 'var(--ink)', lineHeight: 1.6 }}>
           <b>Modèle :</b> {nameInput}<br />
@@ -879,7 +821,7 @@ export default function Emails() {
         <div className="modal-actions">
           <button className="btn btn-ghost" onClick={() => setSaveModalOpen(false)} disabled={saving}>Annuler</button>
           <button className="btn btn-primary" onClick={saveTemplate} disabled={saving}>
-            {saving ? 'Enregistrement…' : editingTemplateId ? 'Confirmer la mise à jour' : 'Confirmer l\'enregistrement'}
+            {saving ? 'Enregistrement…' : 'Confirmer l\'enregistrement'}
           </button>
         </div>
       </Modal>
