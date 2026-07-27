@@ -44,8 +44,11 @@ export default async function LegalPage({
 
   let page;
   try {
+    // Les pages légales sont stockées avec locale='all' (communes à toutes les langues).
+    // On accepte aussi une page spécifique à la locale si elle existe.
     page = await prisma.legalPage.findFirst({
-      where: { slug, isActive: true, locale },
+      where: { slug, isActive: true, locale: { in: [locale, 'all'] } },
+      orderBy: [{ locale: 'desc' }],
     });
   } catch {
     notFound();

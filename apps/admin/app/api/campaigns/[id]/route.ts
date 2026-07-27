@@ -8,7 +8,52 @@ import { successResponse, errorResponse, ERR } from '@/app/api/_lib/responses';
 import { requireAuth } from '../../_lib/auth-server';
 import { isValidId } from '@/app/api/_lib/id-validation';
 
-// GET /api/campaigns/[id] — détail + stats groupées par statut.
+// DELETE /api/campaigns/[id] — supprime une campagne et ses destinataires.
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const [, deny] = await requireAuth();
+  if (deny) return deny;
+  try {
+    const { id } = await params;
+
+    if (!isValidId(id)) {
+      return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);
+    }
+
+    const existing = await prisma.campaign.findUnique({
+      where: { id },
+      select: { id: true, status: true },
+    });
+
+    if (!existing) {
+      return errorResponse('Campagne introuvable', ERR.NOT_FOUND.code, undefined, 404);
+    }
+
+    // On ne permet pas de supprimer une campagne en cours d'envoi.
+    if (existing.status === 'sending') {
+      return errorResponse(
+        'Impossible de supprimer une campagne en cours d\'envoi. Annulez-la d\'abord.',
+        ERR.CONFLICT.code,
+        undefined,
+        409,
+      );
+    }
+
+    // Suppression en cascade manuelle : destinataires, puis campagne.
+    await prisma.campaignRecipient.deleteMany({ where: { campaignId: id } });
+    await prisma.campaign.delete({ where: { id } });
+
+    return successResponse({ deleted: true });
+  } catch (err) {
+    console.error('[DELETE /api/campaigns/[id]] Erreur:', err);
+    return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500);
+  }
+}
+
+// Évite le static optimization (params est asynchrone).
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -74,3 +119,5 @@ export async function GET(
     return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500);
   }
 }
+
+export const dynamic = 'force-dynamic';

@@ -21,7 +21,10 @@
     "stat3Value": "24h",
     "stat3Label": "Réponse",
     "stat4Value": "0 €",
-    "stat4Label": "À l'avance"
+    "stat4Label": "À l'avance",
+    "badgeSecure": "100% sécurisé",
+    "badgeNoCommitment": "Sans engagement",
+    "badgeCertified": "Courtier certifié"
   },
   "HowItWorks": {
     "eyebrow": "Comment ça marche",

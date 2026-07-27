@@ -21,7 +21,10 @@
     "stat3Value": "24h",
     "stat3Label": "Respuesta",
     "stat4Value": "0 €",
-    "stat4Label": "Por adelantado"
+    "stat4Label": "Por adelantado",
+    "badgeSecure": "100% seguro",
+    "badgeNoCommitment": "Sin compromiso",
+    "badgeCertified": "Corredor certificado"
   },
   "HowItWorks": {
     "eyebrow": "Cómo funciona",

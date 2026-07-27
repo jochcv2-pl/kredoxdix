@@ -21,7 +21,10 @@
     "stat3Value": "24h",
     "stat3Label": "Resposta",
     "stat4Value": "0 €",
-    "stat4Label": "Adiantado"
+    "stat4Label": "Adiantado",
+    "badgeSecure": "100% seguro",
+    "badgeNoCommitment": "Sem compromisso",
+    "badgeCertified": "Corretor certificado"
   },
   "HowItWorks": {
     "eyebrow": "Como funciona",

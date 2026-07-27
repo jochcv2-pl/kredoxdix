@@ -80,10 +80,14 @@ export default function Settings() {
   const [deleteGatewayTarget, setDeleteGatewayTarget] = useState<Gateway | null>(null)
 
   // Clé API IA — input séparé car masqué (on ne charge que les 4 derniers chars en affichage).
-  // L'utilisateur saisit une nouvelle clé → sauvegardée en clair en DB (setting).
+  // L'utilisateur saisit une nouvelle clé → sauvegardée chiffrée en DB.
   // Affichée masquée (sk-...xxxx) tant que l'utilisateur ne tape pas dessus.
   const [aiApiKeyInput, setAiApiKeyInput] = useState('')
   const [aiApiKeyEditing, setAiApiKeyEditing] = useState(false)
+
+  // L'IA est considérée "configurée" si une clé API OU un nom de modèle est présent.
+  // Ollama (local) n'a pas de clé API — le nom du modèle suffit.
+  const aiConfigured = !!(settings[AI_KEYS.apiKey] || settings[AI_KEYS.modelName])
 
   // Chargement initial : settings + gateways en parallèle.
   useEffect(() => {
@@ -168,18 +172,27 @@ export default function Settings() {
     setAiApiKeyInput('')
   }
 
-  // Déconnexion du modèle IA — efface la clé API en DB.
+  // Déconnexion du modèle IA — efface la clé API ET le nom du modèle en DB.
   const disconnectAI = async () => {
     setSectionSaving('ai-disconnect')
     setError(null)
     try {
-      const res = await fetch('/api/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key: AI_KEYS.apiKey, value: '', category: 'ai.model' }),
-      })
-      if (!res.ok) throw new Error('Échec déconnexion')
-      setSettings((prev) => ({ ...prev, [AI_KEYS.apiKey]: '' }))
+      // Efface la clé API et le nom du modèle en parallèle.
+      const promises = [
+        fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: AI_KEYS.apiKey, value: '', category: 'ai.model' }),
+        }),
+        fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: AI_KEYS.modelName, value: '', category: 'ai.model' }),
+        }),
+      ]
+      const results = await Promise.all(promises)
+      if (results.some((r) => !r.ok)) throw new Error('Échec déconnexion')
+      setSettings((prev) => ({ ...prev, [AI_KEYS.apiKey]: '', [AI_KEYS.modelName]: '' }))
       setAiApiKeyEditing(false)
       setAiApiKeyInput('')
     } catch (e) {
@@ -442,8 +455,8 @@ export default function Settings() {
           <div className="panel">
             <div className="panel-head">
               <h3>Modèle d&apos;IA</h3>
-              <span className={`pill ${settings[AI_KEYS.apiKey] ? 'pill-on' : 'pill-off'}`}>
-                {settings[AI_KEYS.apiKey] ? 'Connecté' : 'Non configuré'}
+              <span className={`pill ${aiConfigured ? 'pill-on' : 'pill-off'}`}>
+                {aiConfigured ? 'Connecté' : 'Non configuré'}
               </span>
             </div>
             <div className="panel-body" style={{ paddingTop: '16px' }}>
@@ -501,7 +514,7 @@ export default function Settings() {
                         color: settings[AI_KEYS.apiKey] ? 'var(--ink, #1e293b)' : 'var(--slate, #9ca3af)',
                         background: 'var(--bg, #f8fafc)',
                       }}>
-                        {settings[AI_KEYS.apiKey] || 'Non configurée'}
+                        {settings[AI_KEYS.apiKey] || (aiConfigured ? 'Non requis (local)' : 'Non configurée')}
                       </span>
                       <button
                         className="btn btn-ghost btn-sm"
@@ -538,13 +551,13 @@ export default function Settings() {
                     Tester la connexion
                   </button>
                 </div>
-                {settings[AI_KEYS.apiKey] && (
+                {aiConfigured && (
                   <button
                     className="btn btn-ghost"
                     style={{ color: 'var(--red, #dc2626)', fontSize: 12, padding: '6px 12px' }}
                     onClick={disconnectAI}
                     disabled={sectionSaving === 'ai-disconnect'}
-                    title="Effacer la clé API et déconnecter le modèle"
+                    title="Effacer la configuration IA (clé API + modèle)"
                   >
                     {sectionSaving === 'ai-disconnect' ? 'Déconnexion…' : 'Déconnecter'}
                   </button>

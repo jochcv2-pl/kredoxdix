@@ -119,6 +119,54 @@ export async function GET() {
     const totalFailed = await prisma.emailLog.count({ where: { status: 'failed' } });
     const totalSkipped = await prisma.emailLog.count({ where: { status: 'skipped' } });
 
+    // --- Campagnes actives (draft + sending) avec leurs compteurs ---
+    const activeCampaignsRaw = await prisma.campaign.findMany({
+      where: { status: { in: ['draft', 'sending'] } },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        name: true,
+        status: true,
+        totalRecipients: true,
+        sentCount: true,
+        failedCount: true,
+        startedAt: true,
+        template: { select: { name: true } },
+      },
+    });
+
+    // Pour les campagnes sending, on récupère aussi les destinataires pending/sending en temps réel
+    const sendingCampaignIds = activeCampaignsRaw
+      .filter((c) => c.status === 'sending')
+      .map((c) => c.id);
+
+    let campaignPendingCounts: Record<string, number> = {};
+    if (sendingCampaignIds.length > 0) {
+      const pendingGroups = await prisma.campaignRecipient.groupBy({
+        by: ['campaignId'],
+        where: {
+          campaignId: { in: sendingCampaignIds },
+          status: { in: ['pending', 'sending'] },
+        },
+        _count: true,
+      });
+      campaignPendingCounts = Object.fromEntries(
+        pendingGroups.map((g) => [g.campaignId, g._count]),
+      );
+    }
+
+    const activeCampaigns = activeCampaignsRaw.map((c) => ({
+      id: c.id,
+      name: c.name,
+      status: c.status,
+      templateName: c.template?.name ?? '—',
+      totalRecipients: c.totalRecipients,
+      sentCount: c.sentCount,
+      failedCount: c.failedCount,
+      pendingCount: campaignPendingCounts[c.id] ?? 0,
+      startedAt: c.startedAt?.toISOString() ?? null,
+    }));
+
     return successResponse({
       paused,
       providerName,
@@ -151,6 +199,7 @@ export async function GET() {
         totalFailed,
         totalSkipped,
       },
+      activeCampaigns,
     }, 200);
   } catch {
     return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500);

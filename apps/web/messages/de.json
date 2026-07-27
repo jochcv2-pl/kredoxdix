@@ -21,7 +21,10 @@
     "stat3Value": "24h",
     "stat3Label": "Antwort",
     "stat4Value": "0 €",
-    "stat4Label": "Im Voraus"
+    "stat4Label": "Im Voraus",
+    "badgeSecure": "100% sicher",
+    "badgeNoCommitment": "Unverbindlich",
+    "badgeCertified": "Zertifizierter Makler"
   },
   "HowItWorks": {
     "eyebrow": "So funktioniert es",

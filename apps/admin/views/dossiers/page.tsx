@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { Icon } from '@/components/Icon'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 
 type LeadStatus = 'new' | 'contacted' | 'progress' | 'offer' | 'waiting' | 'client' | 'lost'
 
@@ -80,6 +82,7 @@ export default function Dossiers() {
   const [dossiers, setDossiers] = useState<Dossier[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
 
   const fetchDossiers = async () => {
     setLoading(true)
@@ -154,6 +157,7 @@ export default function Dossiers() {
                     <th>Mensualité</th>
                     <th>Coût total</th>
                     <th>Statut</th>
+                    <th style={{ textAlign: 'right' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -182,6 +186,16 @@ export default function Dossiers() {
                             {cfg.label}
                           </span>
                         </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <button
+                            className="btn btn-ghost btn-sm"
+                            title="Supprimer"
+                            onClick={() => setDeleteTarget({ id: d.id, name: `${d.firstName} ${d.lastName}` })}
+                            style={{ color: 'var(--red, #dc2626)', padding: '4px 8px' }}
+                          >
+                            <Icon name="trash" size={15} />
+                          </button>
+                        </td>
                       </tr>
                     )
                   })}
@@ -191,6 +205,26 @@ export default function Dossiers() {
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={!!deleteTarget}
+        variant="danger"
+        title="Supprimer ce dossier"
+        message={<>Supprimer définitivement le dossier de <strong>{deleteTarget?.name}</strong> ? Toutes les données associées seront effacées. Cette action est irréversible.</>}
+        confirmLabel="Supprimer"
+        onConfirm={async () => {
+          if (deleteTarget) {
+            try {
+              const res = await fetch(`/api/leads/${deleteTarget.id}`, { method: 'DELETE' })
+              if (res.ok) {
+                setDossiers((prev) => prev.filter((d) => d.id !== deleteTarget.id))
+                setDeleteTarget(null)
+              }
+            } catch { /* ignore */ }
+          }
+        }}
+        onClose={() => setDeleteTarget(null)}
+      />
     </section>
   )
 }

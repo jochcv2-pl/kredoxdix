@@ -127,6 +127,39 @@ export async function PATCH(
   }
 }
 
+// DELETE /api/leads/[id] — supprime un lead et ses données liées (emails, destinataires de campagne).
+export async function DELETE(
+  _req: NextRequest,
+  ctx: { params: Promise<{ id: string }> },
+) {
+  const [, deny] = await requireAuth();
+  if (deny) return deny;
+  try {
+    const { id } = await ctx.params;
+    if (!isValidId(id)) {
+      return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);
+    }
+
+    const existing = await prisma.lead.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+    if (!existing) {
+      return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);
+    }
+
+    // Suppression en cascade manuelle : EmailLogs et CampaignRecipients liés au lead.
+    await prisma.emailLog.deleteMany({ where: { leadId: id } });
+    await prisma.campaignRecipient.deleteMany({ where: { leadId: id } });
+    await prisma.lead.delete({ where: { id } });
+
+    return successResponse({ deleted: true });
+  } catch (err) {
+    console.error('[DELETE /api/leads/[id]] Erreur:', err);
+    return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500);
+  }
+}
+
 // Next.js 15 : fonction utilitaire pour signaler que PATCH est dynamique
 // (params est asynchrone — évite le static optimization).
 export const dynamic = 'force-dynamic';

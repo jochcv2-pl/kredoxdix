@@ -126,6 +126,7 @@ export default function Contacts() {
   const [triLoading, setTriLoading] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [validateTarget, setValidateTarget] = useState<{ id: string; name: string } | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
 
   // ----- Chargement initial -----
   const fetchContacts = useCallback(async () => {
@@ -473,6 +474,14 @@ export default function Contacts() {
                               Dossier perdu
                             </span>
                           )}
+                          <button
+                            className="btn btn-ghost btn-sm"
+                            title="Supprimer"
+                            onClick={() => setDeleteTarget({ id: c.id, name: `${c.firstName} ${c.lastName}` })}
+                            style={{ color: 'var(--red, #dc2626)', padding: '4px 8px' }}
+                          >
+                            <Icon name="trash" size={15} />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -561,6 +570,26 @@ export default function Contacts() {
           }
         }}
         onClose={() => setValidateTarget(null)}
+      />
+
+      <ConfirmDialog
+        isOpen={!!deleteTarget}
+        variant="danger"
+        title="Supprimer ce prospect"
+        message={<>Supprimer définitivement <strong>{deleteTarget?.name}</strong> ? Toutes les données associées (emails, historique) seront effacées. Cette action est irréversible.</>}
+        confirmLabel="Supprimer"
+        onConfirm={async () => {
+          if (deleteTarget) {
+            try {
+              const res = await fetch(`/api/leads/${deleteTarget.id}`, { method: 'DELETE' })
+              if (res.ok) {
+                setContacts((prev) => prev.filter((c) => c.id !== deleteTarget.id))
+                setDeleteTarget(null)
+              }
+            } catch { /* ignore */ }
+          }
+        }}
+        onClose={() => setDeleteTarget(null)}
       />
     </section>
   )

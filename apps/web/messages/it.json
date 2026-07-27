@@ -21,7 +21,10 @@
     "stat3Value": "24h",
     "stat3Label": "Risposta",
     "stat4Value": "0 €",
-    "stat4Label": "In anticipo"
+    "stat4Label": "In anticipo",
+    "badgeSecure": "100% sicuro",
+    "badgeNoCommitment": "Senza impegno",
+    "badgeCertified": "Mediatore certificato"
   },
   "HowItWorks": {
     "eyebrow": "Come funziona",

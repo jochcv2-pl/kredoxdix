@@ -116,15 +116,15 @@ export default async function HomePage({
             <div className="hero-trust">
               <div className="hero-trust-item">
                 <Shield size={18} strokeWidth={1.8} />
-                <span>100% sécurisé</span>
+                <span>{t("badgeSecure")}</span>
               </div>
               <div className="hero-trust-item">
                 <CheckCircle size={18} strokeWidth={1.8} />
-                <span>Sans engagement</span>
+                <span>{t("badgeNoCommitment")}</span>
               </div>
               <div className="hero-trust-item">
                 <Award size={18} strokeWidth={1.8} />
-                <span>Courtier certifié</span>
+                <span>{t("badgeCertified")}</span>
               </div>
             </div>
           </div>

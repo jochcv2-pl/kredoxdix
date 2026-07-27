@@ -5,10 +5,6 @@ import {
   EmailTrigger,
   TemplateStatus,
   GatewayProvider,
-  LeadStatus,
-  SequenceExitReason,
-  CampaignStatus,
-  CampaignRecipientStatus,
   DomainType,
 } from '@prisma/client';
 import bcrypt from 'bcryptjs';
@@ -27,6 +23,8 @@ const SECURITY_BLOCK = `RÈGLES DE SÉCURITÉ (non contournables) :
 - Ne JAMAIS engager d'engagement juridique ferme au nom de Kredix (seul un conseiller humain signe une offre définitive).
 - Transmettre immédiatement à un conseiller humain tout dossier présentant un signe de vulnérabilité (surendettement manifeste, coercion soupçonnée, urgence sociale).
 - Rester dans le périmètre du crédit : pas de conseil fiscal, juridique ou patrimonial hors compétence.
+- Tu ne lis JAMAIS les emails entrants ni les réponses des prospects. Tu génères uniquement des emails sortants, tu n'as aucun accès à la boîte de réception.
+- Tu ne crées, modifies ou supprimes JAMAIS de campagnes, destinataires de campagne, modèles d'emails ou données marketing. Ces opérations sont réservées exclusivement à l'administrateur humain.
 - Toute communication est professionnelle, non discriminatoire, et conforme RGPD.`;
 
 async function main() {
@@ -1091,196 +1089,6 @@ L'équipe Kredix`,
   }
 
   // ---------------------------------------------------------------------------
-  // LEADS DE DÉMO — couverture des états de séquence & statuts pipeline
-  // ---------------------------------------------------------------------------
-  // Crée des leads représentatifs pour tester le CRM et la séquence de relance.
-  // Idempotent via unsubscribeToken (généré, on nettoie d'abord les leads de démo).
-  const demoEmails = [
-    'marie.dupont@example.com',
-    'luc.martin@example.com',
-    'sophie.bernard@example.com',
-    'thomas.petit@example.com',
-    'emma.leroy@example.com',
-    'nabil.haddad@example.com',
-  ];
-  await prisma.lead.deleteMany({
-    where: { email: { in: demoEmails } },
-  });
-
-  const now = new Date();
-  const day = 24 * 60 * 60 * 1000;
-  const adminUser = await prisma.adminUser.findUnique({ where: { email: 'admin@kredix.local' } });
-
-  const demoLeads: Array<Partial<{
-    firstName: string; lastName: string; email: string; phone: string; city: string;
-    loanType: string; amount: number; durationYears: number; monthlyPayment: number | null;
-    annualRate: number | null; totalCost: number | null; employmentStatus: string;
-    status: LeadStatus; preferredLanguage: string; whatsappConsent: boolean;
-    assignedToId: string | null;
-    ackSentAt: Date | null; recallDueAt: Date | null;
-    sequenceActive: boolean; relanceCount: number; nextRelanceAt: Date | null;
-    sequenceStartedAt: Date | null; sequenceEndedAt: Date | null;
-    exitReason: SequenceExitReason | null;
-  }>> = [
-    // 1. Nouveau — accusé non envoyé, pas encore en séquence.
-    {
-      firstName: 'Marie', lastName: 'Dupont', email: demoEmails[0], phone: '+221771234567',
-      city: 'Dakar', loanType: 'immo', amount: 250000, durationYears: 20,
-      monthlyPayment: 1450, annualRate: 3.45, totalCost: 348000, employmentStatus: 'cdi',
-      status: LeadStatus.new, whatsappConsent: true,
-    },
-    // 2. Contacté — accusé envoyé, rappel 48h en cours, pas encore en relance.
-    {
-      firstName: 'Luc', lastName: 'Martin', email: demoEmails[1], phone: '+221772345678',
-      city: 'Thiès', loanType: 'conso', amount: 15000, durationYears: 5,
-      monthlyPayment: 290, annualRate: 5.9, totalCost: 17400, employmentStatus: 'cdi',
-      status: LeadStatus.contacted, assignedToId: adminUser?.id,
-      ackSentAt: new Date(now.getTime() - 1 * day),
-      recallDueAt: new Date(now.getTime() + 1 * day),
-      whatsappConsent: false,
-    },
-    // 3. En relance active — Relance 1 envoyée, Relance 2 dans 3 jours.
-    {
-      firstName: 'Sophie', lastName: 'Bernard', email: demoEmails[2], phone: '+221773456789',
-      city: 'Saint-Louis', loanType: 'immo', amount: 180000, durationYears: 25,
-      monthlyPayment: 920, annualRate: 3.55, totalCost: 276000, employmentStatus: 'fonctionnaire',
-      status: LeadStatus.waiting, assignedToId: adminUser?.id,
-      ackSentAt: new Date(now.getTime() - 5 * day),
-      recallDueAt: new Date(now.getTime() - 3 * day),
-      sequenceActive: true, relanceCount: 1,
-      nextRelanceAt: new Date(now.getTime() + 1 * day),
-      sequenceStartedAt: new Date(now.getTime() - 4 * day),
-      whatsappConsent: true,
-    },
-    // 4. Offre envoyée — en cours de traitement, pas en relance.
-    {
-      firstName: 'Thomas', lastName: 'Petit', email: demoEmails[3], phone: '+221774567890',
-      city: 'Mbour', loanType: 'pro', amount: 80000, durationYears: 7,
-      monthlyPayment: 1180, annualRate: 4.2, totalCost: 99120, employmentStatus: 'independant',
-      status: LeadStatus.offer, assignedToId: adminUser?.id,
-      ackSentAt: new Date(now.getTime() - 8 * day),
-      whatsappConsent: true,
-    },
-    // 5. Client — séquence fermée (validé).
-    {
-      firstName: 'Emma', lastName: 'Leroy', email: demoEmails[4], phone: '+221775678901',
-      city: 'Dakar', loanType: 'immo', amount: 300000, durationYears: 20,
-      monthlyPayment: 1750, annualRate: 3.3, totalCost: 420000, employmentStatus: 'cdi',
-      status: LeadStatus.client, assignedToId: adminUser?.id,
-      ackSentAt: new Date(now.getTime() - 20 * day),
-      recallDueAt: new Date(now.getTime() - 18 * day),
-      sequenceActive: false, relanceCount: 0,
-      sequenceStartedAt: null, sequenceEndedAt: new Date(now.getTime() - 10 * day),
-      exitReason: SequenceExitReason.validated,
-      whatsappConsent: false,
-    },
-    // 6. Perdu — séquence fermée (timeout 10 jours).
-    {
-      firstName: 'Nabil', lastName: 'Haddad', email: demoEmails[5], phone: '+221776789012',
-      city: 'Rufisque', loanType: 'conso', amount: 8000, durationYears: 3,
-      monthlyPayment: 245, annualRate: 6.1, totalCost: 8820, employmentStatus: 'interim',
-      status: LeadStatus.lost,
-      ackSentAt: new Date(now.getTime() - 25 * day),
-      recallDueAt: new Date(now.getTime() - 23 * day),
-      sequenceActive: false, relanceCount: 3,
-      sequenceStartedAt: new Date(now.getTime() - 22 * day),
-      sequenceEndedAt: new Date(now.getTime() - 12 * day),
-      exitReason: SequenceExitReason.timeout,
-      whatsappConsent: false,
-    },
-  ];
-
-  for (const lead of demoLeads) {
-    await prisma.lead.create({ data: lead as any });
-  }
-
-  // ---------------------------------------------------------------------------
-  // Campaigns — 3 campagnes (1 brouillon + 2 dans l'historique)
-  // ---------------------------------------------------------------------------
-  const tplOffer = await prisma.emailTemplate.findFirst({ where: { trigger: EmailTrigger.offer } });
-  const tplRelance1 = await prisma.emailTemplate.findFirst({ where: { trigger: EmailTrigger.relance_1 } });
-  const tplManual = await prisma.emailTemplate.findFirst({ where: { trigger: EmailTrigger.manual } });
-
-  // Campagne 1 : brouillon (apparaît dans l'onglet "Campagnes")
-  const camp1 = await prisma.campaign.create({
-    data: {
-      name: 'Offre spéciale rentrée',
-      templateId: tplOffer!.id,
-      status: CampaignStatus.draft,
-      recipientSource: 'validated_week',
-      totalRecipients: 5,
-    },
-  });
-  const camp1Leads = await prisma.lead.findMany({ take: 5 });
-  await prisma.campaignRecipient.createMany({
-    data: camp1Leads.map((l) => ({
-      campaignId: camp1.id,
-      leadId: l.id,
-      // CampaignRecipient.email est obligatoire (String), Lead.email est optionnel (String?).
-      // On dérive un email de démo quand le lead n'en a pas.
-      email: l.email ?? `${l.firstName.toLowerCase()}.${l.lastName.toLowerCase()}@example.com`,
-      firstName: l.firstName,
-      lastName: l.lastName,
-      status: CampaignRecipientStatus.pending,
-    })),
-  });
-
-  // Campagne 2 : terminée (apparaît dans l'historique)
-  const camp2 = await prisma.campaign.create({
-    data: {
-      name: 'Relance tous prospects Q2',
-      templateId: tplRelance1!.id,
-      status: CampaignStatus.completed,
-      recipientSource: 'all_active',
-      totalRecipients: 6,
-      sentCount: 5,
-      failedCount: 1,
-      startedAt: new Date(Date.now() - 7 * day),
-      completedAt: new Date(Date.now() - 7 * day + 3 * 60 * 60 * 1000),
-    },
-  });
-  const camp2Leads = await prisma.lead.findMany({ take: 6 });
-  await prisma.campaignRecipient.createMany({
-    data: camp2Leads.map((l, i) => ({
-      campaignId: camp2.id,
-      leadId: l.id,
-      email: l.email ?? `${l.firstName.toLowerCase()}.${l.lastName.toLowerCase()}@example.com`,
-      firstName: l.firstName,
-      lastName: l.lastName,
-      status: i === 5 ? CampaignRecipientStatus.failed : CampaignRecipientStatus.sent,
-      sentAt: i === 5 ? null : new Date(Date.now() - 7 * day + i * 60 * 1000),
-      error: i === 5 ? 'Email bounced (mailbox full)' : null,
-    })),
-  });
-
-  // Campagne 3 : terminée (historique)
-  const camp3 = await prisma.campaign.create({
-    data: {
-      name: 'Newsletter taux immobilier',
-      templateId: tplManual!.id,
-      status: CampaignStatus.completed,
-      recipientSource: 'validated_today',
-      totalRecipients: 4,
-      sentCount: 4,
-      failedCount: 0,
-      startedAt: new Date(Date.now() - 3 * day),
-      completedAt: new Date(Date.now() - 3 * day + 2 * 60 * 60 * 1000),
-    },
-  });
-  const camp3Leads = await prisma.lead.findMany({ take: 4 });
-  await prisma.campaignRecipient.createMany({
-    data: camp3Leads.map((l, i) => ({
-      campaignId: camp3.id,
-      leadId: l.id,
-      email: l.email ?? `${l.firstName.toLowerCase()}.${l.lastName.toLowerCase()}@example.com`,
-      firstName: l.firstName,
-      lastName: l.lastName,
-      status: CampaignRecipientStatus.sent,
-      sentAt: new Date(Date.now() - 3 * day + i * 60 * 1000),
-    })),
-  });
-
-  // ---------------------------------------------------------------------------
   // Domains — 3 sous-domaines + 1 marque blanche
   // ---------------------------------------------------------------------------
   const domainsData = [
@@ -1290,41 +1098,6 @@ L'équipe Kredix`,
   ];
   for (const d of domainsData) {
     await prisma.domain.upsert({ where: { domain: d.domain }, update: d, create: d });
-  }
-
-  // ---------------------------------------------------------------------------
-  // EmailLogs — quelques logs de démo pour l'historique
-  // ---------------------------------------------------------------------------
-  const allLeads = await prisma.lead.findMany({ take: 4 });
-  const tplNames: Record<string, string> = {
-    accueil_ack: 'Accusé de réception',
-    offer: 'Offre de prêt',
-    relance_1: 'Relance J+3',
-    relance_2: 'Relance J+6',
-  };
-  const triggerOrder = ['accueil_ack', 'offer', 'relance_1', 'relance_2'];
-  const seedNow = Date.now();
-  for (const lead of allLeads) {
-    for (let i = 0; i < triggerOrder.length; i++) {
-      const trigger = triggerOrder[i];
-      const isFailed = i === 3 && lead.id === allLeads[3].id;
-      await prisma.emailLog.create({
-        data: {
-          leadId: lead.id,
-          email: lead.email || 'unknown@email.fr',
-          trigger,
-          templateName: tplNames[trigger],
-          subject: trigger === 'accueil_ack'
-            ? `${lead.firstName}, nous avons bien reçu votre demande`
-            : trigger === 'offer'
-            ? `${lead.firstName}, votre offre de prêt personnalisée`
-            : `${lead.firstName}, votre demande de crédit en attente`,
-          status: isFailed ? 'failed' : 'sent',
-          error: isFailed ? 'Email bounced (mailbox full)' : null,
-          sentAt: new Date(seedNow - (triggerOrder.length - i) * day + i * 3600000),
-        },
-      });
-    }
   }
 
   // ---------------------------------------------------------------------------
@@ -1440,10 +1213,7 @@ L'équipe Kredix`,
     agentsData.length, 'agents,',
     templatesData.length, 'templates,',
     gatewaysData.length, 'gateways,',
-    demoLeads.length, 'leads de démo,',
-    '3 campagnes,',
     domainsData.length, 'domaines,',
-    allLeads.length * triggerOrder.length, 'logs email,',
     testimonialsData.length, 'témoignages,',
     contentBlocksCount, 'blocs de contenu.',
   );

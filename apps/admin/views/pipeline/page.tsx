@@ -47,6 +47,17 @@ interface PipelineState {
     totalFailed: number
     totalSkipped: number
   }
+  activeCampaigns: Array<{
+    id: string
+    name: string
+    status: string
+    templateName: string
+    totalRecipients: number
+    sentCount: number
+    failedCount: number
+    pendingCount: number
+    startedAt: string | null
+  }>
 }
 
 const TRIGGER_LABELS: Record<string, string> = {
@@ -404,6 +415,65 @@ export default function PipelineView() {
           </div>
         </div>
       </div>
+
+      {/* Section pleine largeur — Campagnes actives */}
+      {state.activeCampaigns && state.activeCampaigns.length > 0 && (
+        <div className="panel" style={{ marginTop: 16 }}>
+          <div className="panel-head">
+            <h3>Campagnes actives</h3>
+            <span style={{ fontSize: 12, color: '#9ca3af' }}>
+              {state.activeCampaigns.length} campagne{state.activeCampaigns.length > 1 ? 's' : ''}
+            </span>
+          </div>
+          <div className="panel-body" style={{ padding: 0 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                  <th style={{ textAlign: 'left', padding: '10px 14px', fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>Campagne</th>
+                  <th style={{ textAlign: 'left', padding: '10px 14px', fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>Statut</th>
+                  <th style={{ textAlign: 'center', padding: '10px 14px', fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>Envoyés</th>
+                  <th style={{ textAlign: 'center', padding: '10px 14px', fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>En attente</th>
+                  <th style={{ textAlign: 'center', padding: '10px 14px', fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>Échecs</th>
+                  <th style={{ textAlign: 'center', padding: '10px 14px', fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>Total</th>
+                  <th style={{ textAlign: 'left', padding: '10px 14px', fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>Progression</th>
+                </tr>
+              </thead>
+              <tbody>
+                {state.activeCampaigns.map((camp) => {
+                  const pct = camp.totalRecipients > 0
+                    ? Math.round((camp.sentCount / camp.totalRecipients) * 100)
+                    : 0
+                  return (
+                    <tr key={camp.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                      <td style={{ padding: '10px 14px', fontSize: 13 }}>
+                        <b>{camp.name}</b>
+                        <div style={{ fontSize: 11, color: '#9ca3af' }}>{camp.templateName}</div>
+                      </td>
+                      <td style={{ padding: '10px 14px' }}>
+                        <span className={`badge ${camp.status === 'sending' ? 'b-progress' : 'b-wait'}`} style={{ fontSize: 10 }}>
+                          {camp.status === 'sending' ? 'Envoi en cours' : 'Brouillon'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '10px 14px', textAlign: 'center', fontSize: 13, fontWeight: 600, color: '#16a34a' }}>{camp.sentCount}</td>
+                      <td style={{ padding: '10px 14px', textAlign: 'center', fontSize: 13, fontWeight: 600, color: '#f59e0b' }}>{camp.pendingCount}</td>
+                      <td style={{ padding: '10px 14px', textAlign: 'center', fontSize: 13, fontWeight: 600, color: camp.failedCount > 0 ? '#ef4444' : '#9ca3af' }}>{camp.failedCount}</td>
+                      <td style={{ padding: '10px 14px', textAlign: 'center', fontSize: 13, color: '#6b7280' }}>{camp.totalRecipients}</td>
+                      <td style={{ padding: '10px 14px', minWidth: 120 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ flex: 1, height: 6, background: '#e5e7eb', borderRadius: 3, overflow: 'hidden' }}>
+                            <div style={{ width: `${pct}%`, height: '100%', background: camp.status === 'sending' ? '#3b82f6' : '#9ca3af', borderRadius: 3 }} />
+                          </div>
+                          <span style={{ fontSize: 11, color: '#6b7280', width: 32 }}>{pct}%</span>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </section>
   )
 }

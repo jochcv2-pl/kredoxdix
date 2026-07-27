@@ -21,7 +21,10 @@
     "stat3Value": "24h",
     "stat3Label": "Response",
     "stat4Value": "0 €",
-    "stat4Label": "Upfront"
+    "stat4Label": "Upfront",
+    "badgeSecure": "100% secure",
+    "badgeNoCommitment": "No commitment",
+    "badgeCertified": "Certified broker"
   },
   "HowItWorks": {
     "eyebrow": "How it works",

@@ -165,6 +165,7 @@ export default function Campaigns({ onNavigate }: { onNavigate?: (view: string) 
   const [detailCampaign, setDetailCampaign] = useState<CampaignDetail | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [cancelTarget, setCancelTarget] = useState<Campaign | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<Campaign | null>(null)
   const [newCampaign, setNewCampaign] = useState(EMPTY_FORM)
   const [previewCount, setPreviewCount] = useState<number | null>(null)
   const [previewLoading, setPreviewLoading] = useState(false)
@@ -839,6 +840,16 @@ export default function Campaigns({ onNavigate }: { onNavigate?: (view: string) 
                       >
                         Voir détails
                       </button>
+                      {c.status !== 'sending' && (
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          title="Supprimer"
+                          onClick={() => setDeleteTarget(c)}
+                          style={{ color: 'var(--red, #dc2626)' }}
+                        >
+                          <Icon name="trash" size={15} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -879,6 +890,7 @@ export default function Campaigns({ onNavigate }: { onNavigate?: (view: string) 
                     <th>Envoyés / Échecs / Total</th>
                     <th>Débutée</th>
                     <th>Terminée</th>
+                    <th style={{ textAlign: 'right' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -896,6 +908,16 @@ export default function Campaigns({ onNavigate }: { onNavigate?: (view: string) 
                       </td>
                       <td>{formatDateTime(c.startedAt)}</td>
                       <td>{formatDateTime(c.completedAt)}</td>
+                      <td style={{ textAlign: 'right' }}>
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          title="Supprimer"
+                          onClick={(e) => { e.stopPropagation(); setDeleteTarget(c) }}
+                          style={{ color: 'var(--red, #dc2626)', padding: '4px 8px' }}
+                        >
+                          <Icon name="trash" size={15} />
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -1537,6 +1559,27 @@ export default function Campaigns({ onNavigate }: { onNavigate?: (view: string) 
           if (cancelTarget) cancelCampaign(cancelTarget.id)
         }}
         onClose={() => setCancelTarget(null)}
+      />
+
+      {/* ===================== CONFIRMATION SUPPRESSION ===================== */}
+      <ConfirmDialog
+        isOpen={!!deleteTarget}
+        variant="danger"
+        title="Supprimer cette campagne"
+        message={<>Supprimer définitivement la campagne <strong>{deleteTarget?.name}</strong> ? Tous les destinataires et statistiques associés seront effacés. Cette action est irréversible.</>}
+        confirmLabel="Supprimer"
+        onConfirm={async () => {
+          if (deleteTarget) {
+            try {
+              const res = await fetch(`/api/campaigns/${deleteTarget.id}`, { method: 'DELETE' })
+              if (res.ok) {
+                setCampaigns((prev: Campaign[]) => prev.filter((c: Campaign) => c.id !== deleteTarget.id))
+                setDeleteTarget(null)
+              }
+            } catch { /* ignore */ }
+          }
+        }}
+        onClose={() => setDeleteTarget(null)}
       />
     </section>
   )

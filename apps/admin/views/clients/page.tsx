@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { Icon } from '@/components/Icon'
 
 // =============================================================================
 // Vue Clients — Parcours d'accompagnement en 7 niveaux.
@@ -76,6 +77,7 @@ export default function Clients() {
 
   const [sendTarget, setSendTarget] = useState<SendTarget | null>(null)
   const [sending, setSending] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
   // Message de retour (succès/erreur) par client, affiché sous la carte.
   const [feedback, setFeedback] = useState<Record<string, { type: 'ok' | 'err'; msg: string }>>({})
 
@@ -317,6 +319,14 @@ export default function Clients() {
                     <span className="clt2-progress-num">{currentLevel}<span style={{ fontSize: 12, color: '#94a3b8' }}>/7</span></span>
                     <span className="clt2-progress-label">niveaux</span>
                   </div>
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    title="Supprimer ce client"
+                    onClick={() => setDeleteTarget({ id: client.id, name: `${client.firstName} ${client.lastName}` })}
+                    style={{ color: 'var(--red, #dc2626)', padding: '4px 8px', marginLeft: 8 }}
+                  >
+                    <Icon name="trash" size={15} />
+                  </button>
                 </div>
 
                 {/* Body : tags + progress bar */}
@@ -421,6 +431,26 @@ export default function Clients() {
         confirmLabel={sending ? 'Envoi…' : 'Envoyer'}
         onConfirm={handleSend}
         onClose={() => { if (!sending) setSendTarget(null) }}
+      />
+
+      <ConfirmDialog
+        isOpen={!!deleteTarget}
+        variant="danger"
+        title="Supprimer ce client"
+        message={<>Supprimer définitivement <strong>{deleteTarget?.name}</strong> ? Toutes les données associées (emails, accompagnement, historique) seront effacées. Cette action est irréversible.</>}
+        confirmLabel="Supprimer"
+        onConfirm={async () => {
+          if (deleteTarget) {
+            try {
+              const res = await fetch(`/api/leads/${deleteTarget.id}`, { method: 'DELETE' })
+              if (res.ok) {
+                setClients((prev) => prev.filter((c) => c.id !== deleteTarget.id))
+                setDeleteTarget(null)
+              }
+            } catch { /* ignore */ }
+          }
+        }}
+        onClose={() => setDeleteTarget(null)}
       />
     </section>
   )
