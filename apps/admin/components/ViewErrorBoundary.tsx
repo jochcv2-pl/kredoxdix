@@ -55,7 +55,7 @@ export class ViewErrorBoundary extends Component<Props, State> {
           </h3>
           <p style={{ fontSize: 13, color: '#64748b', maxWidth: 420, marginBottom: 4 }}>
             {this.props.viewName ? <><strong>{this.props.viewName}</strong> — </> : null}
-            Une erreur inattendue s'est produite lors du chargement.
+            Une erreur inattendue s&apos;est produite lors du chargement.
           </p>
           {this.state.error?.message && (
             <code style={{
