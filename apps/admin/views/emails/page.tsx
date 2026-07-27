@@ -176,6 +176,19 @@ export default function Emails() {
   // Variables dropdown.
   const [varsOpen, setVarsOpen] = useState(false);
   const [copiedVar, setCopiedVar] = useState<string | null>(null);
+  const varsRef = useRef<HTMLDivElement>(null);
+
+  // Ferme le dropdown Variables au clic extérieur.
+  useEffect(() => {
+    if (!varsOpen) return;
+    function onDocClick(e: MouseEvent) {
+      if (varsRef.current && !varsRef.current.contains(e.target as Node)) {
+        setVarsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, [varsOpen]);
 
   // Mode import HTML.
   const [htmlArea, setHtmlArea] = useState('');
@@ -268,22 +281,16 @@ export default function Emails() {
       if (data.bodyText) {
         const paragraphs = data.bodyText.split(/\n\n+/).filter(Boolean);
         const newBlocks: EmailBlock[] = paragraphs.map((para: string, idx: number) => {
-          if (idx === 0) {
-            // Premier paragraphe — si court, c'est potentiellement un titre.
-            if (para.length < 60 && !para.includes('\n')) {
-              return createBlock('heading');
-            }
+          // Premier paragraphe court sans retour ligne = potentiellement un titre.
+          if (idx === 0 && para.length < 60 && !para.includes('\n')) {
+            const b = createBlock('heading');
+            b.props.text = para;
+            return b;
           }
           const b = createBlock('text');
           b.props.text = para;
           return b;
         });
-        // Si le premier bloc est un heading mais le texte est long, le passer en text.
-        if (newBlocks[0]?.type === 'heading' && paragraphs[0]?.length >= 60) {
-          newBlocks[0] = { ...newBlocks[0], type: 'text' };
-        } else if (newBlocks[0]?.type === 'heading') {
-          newBlocks[0].props.text = paragraphs[0];
-        }
         setBlocks(newBlocks);
         setBodyInput(data.bodyText);
       }
@@ -635,7 +642,7 @@ export default function Emails() {
                     </select>
                   </div>
 
-                  <div className="eb-vars-dropdown">
+                  <div className="eb-vars-dropdown" ref={varsRef}>
                     <button
                       type="button"
                       className="eb-vars-trigger"
