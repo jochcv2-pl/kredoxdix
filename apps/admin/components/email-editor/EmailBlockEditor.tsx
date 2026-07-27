@@ -571,7 +571,7 @@ export function EmailBlockEditor({ blocks, onChange, bannerEnabled }: EmailBlock
   return (
     <div className="eb-layout">
       {/* Sidebar — palette de blocs */}
-      <div className="eb-sidebar">
+      <aside className="eb-sidebar">
         <div className="eb-sidebar-section">
           <h4>Contenu</h4>
           <div className="eb-block-palette">
@@ -627,18 +627,35 @@ export function EmailBlockEditor({ blocks, onChange, bannerEnabled }: EmailBlock
           type="button"
           className="eb-preview-toggle"
           onClick={() => setShowPreview(true)}
+          disabled={blocks.length === 0}
         >
           <Icon name="play" size={16} /> Aperçu
         </button>
-      </div>
+      </aside>
 
       {/* Canvas — liste triable de blocs */}
-      <div className="eb-canvas">
+      <main className="eb-canvas">
         {blocks.length === 0 ? (
           <div className="eb-canvas-empty">
-            <Icon name="mail" size={48} />
-            <h3>Modèle vide</h3>
-            <p>Cliquez sur un bloc dans la sidebar pour commencer</p>
+            <div className="eb-empty-icon">
+              <Icon name="mail" size={40} />
+            </div>
+            <h3>Composez votre email</h3>
+            <p>Glissez des blocs depuis la gauche ou démarrez rapidement :</p>
+            <div className="eb-empty-quickstart">
+              <button type="button" className="eb-quick-btn" onClick={() => addBlock('heading')}>
+                <BlockIcon name="heading" size={18} />
+                <span>Titre + Texte</span>
+              </button>
+              <button type="button" className="eb-quick-btn" onClick={() => addBlock('button')}>
+                <BlockIcon name="button" size={18} />
+                <span>Bouton CTA</span>
+              </button>
+              <button type="button" className="eb-quick-btn eb-quick-cta" onClick={() => addBlock('cta-whatsapp')}>
+                <BlockIcon name="whatsapp" size={18} />
+                <span>WhatsApp</span>
+              </button>
+            </div>
           </div>
         ) : (
           <DndContext
@@ -660,12 +677,23 @@ export function EmailBlockEditor({ blocks, onChange, bannerEnabled }: EmailBlock
             </SortableContext>
           </DndContext>
         )}
-      </div>
+      </main>
 
-      {/* Props panel — propriétés du bloc sélectionné */}
-      <div className="eb-props">
-        <PropsPanel block={selectedBlock} onUpdate={updateBlock} />
-      </div>
+      {/* Props panel — panneau coulissant à droite (overlay) */}
+      {selectedBlock && (
+        <aside className="eb-props eb-props-overlay">
+          <div className="eb-props-inner">
+            <button
+              type="button"
+              className="eb-props-close"
+              onClick={() => setSelectedId(null)}
+            >
+              <Icon name="x" size={18} />
+            </button>
+            <PropsPanel block={selectedBlock} onUpdate={updateBlock} />
+          </div>
+        </aside>
+      )}
     </div>
   );
 }

@@ -173,6 +173,10 @@ export default function Emails() {
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiAgentRole, setAiAgentRole] = useState<string>('accueil');
 
+  // Variables dropdown.
+  const [varsOpen, setVarsOpen] = useState(false);
+  const [copiedVar, setCopiedVar] = useState<string | null>(null);
+
   // Mode import HTML.
   const [htmlArea, setHtmlArea] = useState('');
   const [importName, setImportName] = useState('');
@@ -197,7 +201,6 @@ export default function Emails() {
   const [deleteTarget, setDeleteTarget] = useState<Template | null>(null);
   const [previewTpl, setPreviewTpl] = useState<Template | null>(null);
 
-  const bodyRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ---------------------------------------------------------------------------
@@ -582,77 +585,97 @@ export default function Emails() {
           {/* ===== MODE VISUEL ===== */}
           {activeMode === 'visuel' && (
             <div className="editor-grid-v2" id="modeVisuel">
-              {/* Barre d'outils supérieure */}
-              <div className="eb-toolbar-top">
-                <div className="eb-toolbar-left">
-                  <div className="eb-field">
-                    <label>Nom</label>
-                    <input value={nameInput} onChange={(e) => setNameInput(e.target.value)} placeholder="Nom du modèle" />
+              {/* Header unifié : settings + actions + variables */}
+              <div className="eb-header">
+                <div className="eb-header-top">
+                  <div className="eb-header-fields">
+                    <div className="eb-field">
+                      <label>Nom du modèle</label>
+                      <input value={nameInput} onChange={(e) => setNameInput(e.target.value)} placeholder="Ex: Accusé de réception" />
+                    </div>
+                    <div className="eb-field">
+                      <label>Déclencheur</label>
+                      <select value={triggerInput} onChange={(e) => setTriggerInput(e.target.value)}>
+                        {TRIGGERS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                      </select>
+                    </div>
+                    <div className="eb-field">
+                      <label>Langue</label>
+                      <select value={languageInput} onChange={(e) => setLanguageInput(e.target.value)}>
+                        {LANGUAGES.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
+                      </select>
+                    </div>
+                    <div className="eb-field eb-field-grow">
+                      <label>Objet de l&apos;email</label>
+                      <input value={subjInput} onChange={(e) => setSubjInput(e.target.value)} />
+                    </div>
                   </div>
-                  <div className="eb-field">
-                    <label>Déclencheur</label>
-                    <select value={triggerInput} onChange={(e) => setTriggerInput(e.target.value)}>
-                      {TRIGGERS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                </div>
+
+                <div className="eb-header-actions">
+                  <div className="eb-actions-left">
+                    <button
+                      type="button"
+                      className="eb-btn-ai"
+                      onClick={generateWithAI}
+                      disabled={aiGenerating || saving}
+                    >
+                      <Icon name="sparkles" size={16} />
+                      {aiGenerating ? 'Génération…' : "Générer avec l'IA"}
+                    </button>
+                    <select
+                      className="eb-agent-select"
+                      value={aiAgentRole}
+                      onChange={(e) => setAiAgentRole(e.target.value)}
+                      disabled={aiGenerating}
+                    >
+                      <option value="accueil">Agent Accueil</option>
+                      <option value="offre">Agent Offre</option>
+                      <option value="relance">Agent Relance</option>
                     </select>
                   </div>
-                  <div className="eb-field">
-                    <label>Langue</label>
-                    <select value={languageInput} onChange={(e) => setLanguageInput(e.target.value)}>
-                      {LANGUAGES.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
-                    </select>
-                  </div>
-                  <div className="eb-field eb-field-wide">
-                    <label>Objet</label>
-                    <input value={subjInput} onChange={(e) => setSubjInput(e.target.value)} />
-                  </div>
-                </div>
-              </div>
 
-              {/* Boutons d'action */}
-              <div className="eb-actions-bar">
-                <button
-                  type="button"
-                  className="eb-btn-ai"
-                  onClick={generateWithAI}
-                  disabled={aiGenerating || saving}
-                >
-                  <Icon name="sparkles" size={16} />
-                  {aiGenerating ? 'Génération en cours…' : 'Générer avec l\'IA'}
-                </button>
-                <div className="eb-ai-role">
-                  <select value={aiAgentRole} onChange={(e) => setAiAgentRole(e.target.value)} disabled={aiGenerating}>
-                    <option value="accueil">Agent Accueil</option>
-                    <option value="offre">Agent Offre</option>
-                    <option value="relance">Agent Relance</option>
-                  </select>
-                </div>
-                <div className="eb-actions-right">
-                  <label className="eb-banner-toggle">
-                    <input type="checkbox" checked={bannerVisible} onChange={(e) => setBannerVisible(e.target.checked)} />
-                    Bannière
-                  </label>
-                  <button className="btn btn-primary" onClick={() => setSaveModalOpen(true)} disabled={saving}>
-                    {saving ? 'Enregistrement…' : editingTemplateId ? 'Mettre à jour' : 'Enregistrer'}
-                  </button>
-                </div>
-              </div>
+                  <div className="eb-vars-dropdown">
+                    <button
+                      type="button"
+                      className="eb-vars-trigger"
+                      onClick={() => setVarsOpen(!varsOpen)}
+                    >
+                      <Icon name="plus" size={14} /> Variables
+                    </button>
+                    {varsOpen && (
+                      <div className="eb-vars-popover" onClick={(e) => e.stopPropagation()}>
+                        <p className="eb-vars-hint">Cliquez pour copier une variable :</p>
+                        <div className="eb-vars-grid">
+                          {VARS.map((v) => (
+                            <button
+                              key={v}
+                              className="eb-var-chip"
+                              onClick={() => {
+                                navigator.clipboard?.writeText(v);
+                                setCopiedVar(v);
+                                setTimeout(() => setCopiedVar(null), 1500);
+                              }}
+                            >
+                              {copiedVar === v ? 'Copié !' : v}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
-              {/* Variables rapides */}
-              <div className="eb-var-bar">
-                <span className="eb-var-label">Variables :</span>
-                {VARS.map((v) => (
-                  <span
-                    className="eb-var-chip"
-                    key={v}
-                    onClick={() => {
-                      // Copie dans le presse-papier pour coller dans les blocs.
-                      navigator.clipboard?.writeText(v);
-                    }}
-                    title="Cliquer pour copier"
-                  >
-                    {v}
-                  </span>
-                ))}
+                  <div className="eb-actions-right">
+                    <label className="eb-banner-toggle">
+                      <input type="checkbox" checked={bannerVisible} onChange={(e) => setBannerVisible(e.target.checked)} />
+                      <span>Bannière</span>
+                    </label>
+                    <button className="btn btn-primary" onClick={() => setSaveModalOpen(true)} disabled={saving}>
+                      <Icon name="check" size={15} />
+                      {saving ? 'Enregistrement…' : editingTemplateId ? 'Mettre à jour' : 'Enregistrer'}
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {/* Éditeur par blocs */}
@@ -661,25 +684,6 @@ export default function Emails() {
                 onChange={setBlocks}
                 bannerEnabled={bannerVisible}
               />
-
-              {/* Fallback textarea (visible si pas de blocs) */}
-              {blocks.length === 0 && (
-                <div className="eb-textarea-fallback">
-                  <div className="sub-panel">
-                    <h4>Éditeur texte (fallback)</h4>
-                    <textarea
-                      className="body-editor"
-                      ref={bodyRef}
-                      value={bodyInput}
-                      onChange={(e) => setBodyInput(e.target.value)}
-                    />
-                    <p className="var-hint" style={{ marginTop: 10, marginBottom: 0 }}>
-                      Astuce : utilisez les blocs ci-dessus ou l&apos;IA pour une mise en page professionnelle.
-                      Le texte ici sera utilisé si aucun bloc n&apos;est ajouté.
-                    </p>
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
