@@ -55,6 +55,20 @@ export async function sendReceptionAck(lead: Lead): Promise<AckResult> {
   ]);
 
   if (!gateway) {
+    // Aucun gateway actif — on loggue pour traçabilité côté admin.
+    try {
+      await prisma.emailLog.create({
+        data: {
+          leadId: lead.id,
+          email: lead.email,
+          trigger: 'reception_ack',
+          templateName: template?.name ?? '—',
+          subject: template ? interpolateTemplate(template.subject, { lead, siteUrl }) : 'Accusé de réception',
+          status: 'skipped',
+          error: "Aucun gateway email actif. Configurez et activez un fournisseur dans Paramètres → Emails.",
+        },
+      });
+    } catch { /* non bloquant */ }
     return { sent: false, templateUsed: !!template, gatewayActive: false };
   }
   if (!template) {

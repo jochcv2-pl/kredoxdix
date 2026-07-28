@@ -969,9 +969,10 @@ L'équipe Kredix`,
   }
 
   // ---------------------------------------------------------------------------
-  // EMAIL GATEWAYS — 3 fournisseurs configurés (1 actif)
+  // EMAIL GATEWAYS — 3 fournisseurs disponibles (AUCUN actif par défaut)
   // ---------------------------------------------------------------------------
-  // apiKey laissé null en seed (à renseigner via l'admin, jamais en clair en DB de dev).
+  // Le client choisit et active son fournisseur depuis l'admin.
+  // apiKey laissé null (à renseigner via l'admin, jamais en clair en DB de dev).
   const gatewaysData: Array<{
     provider: GatewayProvider;
     label: string;
@@ -982,7 +983,7 @@ L'équipe Kredix`,
       provider: GatewayProvider.resend,
       label: 'Resend',
       config: { mode: 'api', region: 'eu-west' },
-      isActive: true,
+      isActive: false,
     },
     {
       provider: GatewayProvider.brevo,
