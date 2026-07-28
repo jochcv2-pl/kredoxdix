@@ -77,6 +77,13 @@ export async function POST(request: NextRequest) {
     let ack: { sent: boolean; error?: string } | null = null;
     try {
       ack = await sendReceptionAck(lead);
+      // ackSentAt n'est setté QUE si l'email a réellement été envoyé.
+      if (ack?.sent) {
+        await prisma.lead.update({
+          where: { id: lead.id },
+          data: { ackSentAt: new Date() },
+        });
+      }
     } catch (err) {
       // Backup : si sendReceptionAck lève (ne devrait pas), on capture.
       console.error("[API /leads POST] sendReceptionAck threw:", err);

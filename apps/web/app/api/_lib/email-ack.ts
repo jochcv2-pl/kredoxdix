@@ -102,8 +102,11 @@ export async function sendReceptionAck(lead: Lead): Promise<AckResult> {
 /**
  * Calcule les dates de séquence de relance pour un nouveau lead.
  *
+ * RÈGLE IMPORTANTE : ackSentAt n'est PAS setté ici — il ne l'est QUE si
+ * l'email d'accusé de réception a effectivement été envoyé avec succès
+ * (cf. leads/route.ts qui update le lead après sendReceptionAck).
+ *
  * Règle métier (cf. Kredix_MEMORY) :
- *   - ackSentAt       = maintenant
  *   - recallDueAt     = maintenant + 48h (rappel humain annoncé)
  *   - sequenceActive  = true
  *   - sequenceStartedAt = maintenant
@@ -112,7 +115,6 @@ export async function sendReceptionAck(lead: Lead): Promise<AckResult> {
  */
 export function computeSequenceInitDates(now: Date = new Date()) {
   return {
-    ackSentAt: now,
     recallDueAt: new Date(now.getTime() + 2 * DAY), // 48h
     sequenceActive: true,
     sequenceStartedAt: now,
