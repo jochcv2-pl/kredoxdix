@@ -6,12 +6,18 @@ import { Icon } from '@/components/Icon';
 import { EmailFooter, type EmailFooterData, DEFAULT_FOOTER } from '@/components/EmailFooter';
 import { EmailHeader } from '@/components/EmailHeader';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { EmailBlockEditor } from '@/components/email-editor/EmailBlockEditor';
+import {
+  type EmailBlock,
+  blocksToFullHtml,
+  blocksToText,
+} from '@/lib/email-blocks';
 
 // =============================================================================
 // Types & constantes
 // =============================================================================
 
-type Sub = 'generer' | 'liste';
+type Sub = 'generer' | 'liste' | 'blocs';
 type Mode = 'visuel' | 'import';
 type PreviewMode = 'data' | 'raw';
 
@@ -177,6 +183,14 @@ export default function Emails() {
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiAgentRole, setAiAgentRole] = useState<string>('accueil');
   const [aiPrompt, setAiPrompt] = useState('');
+
+  // Éditeur de blocs (sous-menu dédié).
+  const [beBlocks, setBeBlocks] = useState<EmailBlock[]>([]);
+  const [beName, setBeName] = useState('');
+  const [beTrigger, setBeTrigger] = useState<string>('reception_ack');
+  const [beSubject, setBeSubject] = useState('');
+  const [beLanguage, setBeLanguage] = useState<string>('fr');
+  const [beBanner, setBeBanner] = useState(true);
 
   // Liste des templates.
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -366,6 +380,52 @@ export default function Emails() {
     }
   };
 
+  // Sauvegarde un template créé avec l'éditeur de blocs.
+  const saveBlockTemplate = async () => {
+    if (beBlocks.length === 0) {
+      setError('Ajoutez au moins un bloc avant de sauvegarder.');
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      const html = blocksToFullHtml(beBlocks, { bannerEnabled: beBanner });
+      const text = blocksToText(beBlocks);
+      const blocksJson = JSON.stringify(beBlocks);
+      const payload = {
+        name: beName.trim() || 'Modèle blocs',
+        trigger: beTrigger,
+        language: beLanguage,
+        status: 'active' as const,
+        subject: beSubject.trim() || beName.trim() || 'Modèle blocs',
+        bodyText: text,
+        htmlContent: html,
+        blocksJson,
+        bannerEnabled: beBanner,
+      };
+      const res = await fetch('/api/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        throw new Error(err?.error ?? `Échec création (${res.status})`);
+      }
+      const created: Template = (await res.json()).data ?? (await res.json());
+      setTemplates((prev) => [created, ...prev]);
+      // Reset.
+      setBeBlocks([]);
+      setBeName('');
+      setBeSubject('');
+      setActiveSub('liste');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erreur inconnue');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // Importe un template HTML (POST /api/templates avec htmlContent).
   const importTemplate = async () => {
     if (!htmlArea.trim()) {
@@ -491,6 +551,9 @@ export default function Emails() {
       <div className="submenus">
         <div className={`submenu${activeSub === 'generer' ? ' active' : ''}`} onClick={() => setActiveSub('generer')}>
           Générer un nouveau modèle
+        </div>
+        <div className={`submenu${activeSub === 'blocs' ? ' active' : ''}`} onClick={() => setActiveSub('blocs')}>
+          Éditeur de blocs
         </div>
         <div className={`submenu${activeSub === 'liste' ? ' active' : ''}`} onClick={() => setActiveSub('liste')}>
           Modèles disponibles {templates.length > 0 && `(${templates.length})`}
@@ -719,6 +782,114 @@ export default function Emails() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {activeSub === 'blocs' && (
+        <div className="subview active" id="blocs">
+          <div className="info-band">
+            <div className="imark">i</div>
+            <div>
+              Construisez vos emails <b>bloc par bloc</b> (titres, textes, boutons, séparateurs, CTA WhatsApp/Messenger…)
+              par glisser-déposer. Aucune compétence technique requise. Le HTML compatible tous les clients mail est
+              généré automatiquement.
+            </div>
+          </div>
+
+          {/* Paramètres du template */}
+          <div className="panel" style={{ marginBottom: 20 }}>
+            <div className="panel-head">
+              <h3>Paramètres du modèle</h3>
+            </div>
+            <div className="panel-body">
+              <div className="grid2">
+                <div className="fg">
+                  <label className="field-label">Nom du modèle</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: Accueil prospect immo"
+                    value={beName}
+                    onChange={(e) => setBeName(e.target.value)}
+                  />
+                </div>
+                <div className="fg">
+                  <label className="field-label">Objet de l&apos;email</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: Bonjour {{Prénom}}, bienvenue chez Kredix"
+                    value={beSubject}
+                    onChange={(e) => setBeSubject(e.target.value)}
+                  />
+                </div>
+                <div className="fg">
+                  <label className="field-label">Déclencheur</label>
+                  <select value={beTrigger} onChange={(e) => setBeTrigger(e.target.value)}>
+                    <option value="reception_ack">Accusé de réception</option>
+                    <option value="offer">Offre formalisée</option>
+                    <option value="relance_1">Relance 1 (J+3)</option>
+                    <option value="relance_2">Relance 2 (J+6)</option>
+                    <option value="relance_3">Relance 3 (J+9)</option>
+                    <option value="manual">Envoi manuel</option>
+                    <option value="level_1">Niveau 1 — Accueil client</option>
+                    <option value="level_2">Niveau 2 — Documents</option>
+                    <option value="level_3">Niveau 3 — Offre de prêt</option>
+                    <option value="level_4">Niveau 4 — Vérification</option>
+                    <option value="level_5">Niveau 5 — Accord de principe</option>
+                    <option value="level_6">Niveau 6 — Signature</option>
+                    <option value="level_7">Niveau 7 — Déblocage fonds</option>
+                  </select>
+                </div>
+                <div className="fg">
+                  <label className="field-label">Langue</label>
+                  <select value={beLanguage} onChange={(e) => setBeLanguage(e.target.value)}>
+                    <option value="fr">Français</option>
+                    <option value="de">Allemand</option>
+                    <option value="en">Anglais</option>
+                    <option value="es">Espagnol</option>
+                    <option value="it">Italien</option>
+                    <option value="pt">Portugais</option>
+                  </select>
+                </div>
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, fontSize: 13, cursor: 'pointer' }}>
+                <input type="checkbox" checked={beBanner} onChange={(e) => setBeBanner(e.target.checked)} />
+                Bannière d&apos;en-tête Kredix (image)
+              </label>
+            </div>
+          </div>
+
+          {/* Éditeur de blocs */}
+          <div className="panel">
+            <div className="panel-head">
+              <h3>Composez votre email</h3>
+              <span style={{ fontSize: 12, color: 'var(--slate-light)' }}>
+                {beBlocks.length} bloc{beBlocks.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+            <div className="panel-body" style={{ paddingTop: 0 }}>
+              <EmailBlockEditor
+                blocks={beBlocks}
+                onChange={setBeBlocks}
+                bannerEnabled={beBanner}
+              />
+            </div>
+            <div className="panel-foot" style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '12px 20px' }}>
+              <button
+                className="btn btn-ghost"
+                onClick={() => { setBeBlocks([]); setBeName(''); setBeSubject(''); }}
+                disabled={beBlocks.length === 0 || saving}
+              >
+                Vider
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={saveBlockTemplate}
+                disabled={beBlocks.length === 0 || saving}
+              >
+                {saving ? 'Sauvegarde…' : 'Sauvegarder le modèle'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

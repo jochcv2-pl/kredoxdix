@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 // =============================================================================
 // EmailBlockEditor.tsx — Éditeur visuel d'emails par blocs (drag-and-drop).
