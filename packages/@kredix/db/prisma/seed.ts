@@ -1020,6 +1020,109 @@ L'équipe Kredix`,
   }
 
   // ---------------------------------------------------------------------------
+  // TESTIMONIALS — témoignages clients (DE/FR/EN) pour la landing
+  // ---------------------------------------------------------------------------
+  const testimonialsData = [
+    // --- DE (langue par défaut) ---
+    { authorName: 'Thomas Müller', authorRole: 'Softwareingenieur', authorLocation: 'München', rating: 5, content: 'Kredix hat mir einen Immobilienkredit zu einem Zinssatz besorgt, den ich nie allein ausgehandelt hätte. Antwort in 48 Stunden, top Beratung.', locale: 'de', isVisible: true, order: 0 },
+    { authorName: 'Sandra Becker', authorRole: 'Unternehmerin', authorLocation: 'Köln', rating: 5, content: 'Der Simulator ist extrem präzise. Ich konnte 12 Banken in 5 Minuten vergleichen. Mein Kredix-Makler hat dann den Rest übernommen. Perfekt.', locale: 'de', isVisible: true, order: 1 },
+    { authorName: 'Markus Weber', authorRole: 'Selbstständig', authorLocation: 'Berlin', rating: 4, content: 'Sehr gute Erfahrung. Ich schätze die Transparenz bei den Gebühren und die Echtzeit-Verfolgung meines Dossiers. Sehr zu empfehlen.', locale: 'de', isVisible: true, order: 2 },
+    { authorName: 'Julia Schmidt', authorRole: 'Lehrerin', authorLocation: 'Hamburg', rating: 5, content: 'Mein erster Kredit überhaupt, ich war völlig verloren. Das Kredix-Team hat mir alles einfach und ohne Fachjargon erklärt. Unschlagbarer Zins.', locale: 'de', isVisible: true, order: 3 },
+    { authorName: 'Andreas Hoffmann', authorRole: 'Arzt', authorLocation: 'Frankfurt', rating: 5, content: 'Umschuldung meines Darlehens: 18.000 € Ersparnis über die Restlaufzeit. Kredix hat Angebote verglichen, die meine Bank mir nie vorgeschlagen hatte.', locale: 'de', isVisible: true, order: 4 },
+    { authorName: 'Nicole Fischer', authorRole: 'Architektin', authorLocation: 'Stuttgart', rating: 5, content: 'Schnell, professionell und vor allem ehrlich. Keine leeren Versprechen, nur konkrete Zahlen. Mein Dossier war in 3 Wochen erledigt.', locale: 'de', isVisible: true, order: 5 },
+    // --- FR ---
+    { authorName: 'Pierre Dubois', authorRole: 'Ingénieur informatique', authorLocation: 'Lyon', rating: 5, content: 'Kredix m\'a permis d\'obtenir un crédit immobilier à un taux que je n\'aurais jamais négocié seul. Réponse en 48h, accompagnement irréprochable.', locale: 'fr', isVisible: true, order: 0 },
+    { authorName: 'Marie Lefevre', authorRole: 'Commerçante', authorLocation: 'Bordeaux', rating: 5, content: 'Le simulateur est ultra-précis. J\'ai pu comparer 12 banques en 5 minutes. Mon courtier Kredix a ensuite pris le relais pour le dossier. Parfait.', locale: 'fr', isVisible: true, order: 1 },
+    { authorName: 'Karim Benali', authorRole: 'Indépendant', authorLocation: 'Paris', rating: 4, content: 'Très bonne expérience. J\'ai apprécié la transparence sur les frais et le suivi en temps réel de mon dossier. Je recommande vivement.', locale: 'fr', isVisible: true, order: 2 },
+    { authorName: 'Sophie Martin', authorRole: 'Enseignante', authorLocation: 'Nantes', rating: 5, content: 'Premier crédit de ma vie, j\'étais perdue. L\'équipe Kredix m\'a tout expliqué simplement, sans jargon. Taux imbattable obtenu.', locale: 'fr', isVisible: true, order: 3 },
+    // --- EN ---
+    { authorName: 'James Wilson', authorRole: 'Marketing Manager', authorLocation: 'Berlin', rating: 5, content: 'As an expat in Germany, getting a loan seemed impossible. Kredix handled everything in English and got me an unbeatable rate. Highly recommended.', locale: 'en', isVisible: true, order: 0 },
+    { authorName: 'Emma Thompson', authorRole: 'Freelance Designer', authorLocation: 'Munich', rating: 5, content: 'The simulator was spot-on. Within 48 hours I had a concrete offer. Professional, transparent, and no upfront fees. Exactly what I needed.', locale: 'en', isVisible: true, order: 1 },
+  ];
+  let testimonialsCount = 0;
+  for (const t of testimonialsData) {
+    const existing = await prisma.testimonial.findFirst({ where: { authorName: t.authorName, locale: t.locale } });
+    if (existing) {
+      await prisma.testimonial.update({ where: { id: existing.id }, data: t });
+    } else {
+      await prisma.testimonial.create({ data: t });
+      testimonialsCount++;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // CONTENT BLOCKS — Sections "Nos engagements" + "Services" (DE/FR)
+  // ---------------------------------------------------------------------------
+  const contentBlocksData = [
+    {
+      section: 'engagements',
+      locale: 'de',
+      eyebrow: 'Warum Kredix',
+      title: 'Unsere Versprechen',
+      lead: 'Seit 2015 begleiten wir unsere Kunden bei jeder Art von Kredit — transparent, schnell und immer zu Ihrem Vorteil.',
+      items: [
+        { icon: 'shield', title: '0 € Vorkosten', description: 'Keine Vorauszahlung. Sie zahlen nichts, bis Ihr Kredit bewilligt ist.' },
+        { icon: 'check-circle', title: 'Antwort in 24 Std.', description: 'Ihre Anfrage wird innerhalb von 24 Stunden von einem zertifizierten Berater bearbeitet.' },
+        { icon: 'award', title: '40+ Banken verglichen', description: 'Wir vergleichen über 40 Partnerbanken, um Ihnen den günstigsten Zinssatz zu sichern.' },
+        { icon: 'trending', title: '94 % Bewilligungsquote', description: '94 % unserer Anfragen werden von den Banken bewilligt.' },
+        { icon: 'key', title: 'Begleitung bis zur Auszahlung', description: 'Ein dedizierter Berater begleitet Sie vom ersten Kontakt bis zur Auszahlung.' },
+        { icon: 'bar-chart', title: '350+ finanzierte Dossiers', description: 'Seit 2015 haben wir über 350 Kredite erfolgreich finanziert.' },
+      ],
+    },
+    {
+      section: 'services',
+      locale: 'de',
+      eyebrow: 'Unsere Leistungen',
+      title: 'Kredite für jeden Bedarf',
+      lead: 'Ob Immobilienkredit, Umschuldung oder Konsumkredit — wir finden die passende Lösung für Ihr Projekt.',
+      items: [
+        { icon: 'trending', title: 'Baukredit', description: 'Bauen, kaufen oder renovieren — sichern Sie sich die besten Konditionen für Ihr Immobilienprojekt.' },
+        { icon: 'refresh-cw', title: 'Umschuldung', description: 'Senken Sie Ihre monatliche Belastung durch Umschuldung Ihrer bestehenden Kredite zu besseren Konditionen.' },
+        { icon: 'cpu', title: 'Konsumkredit', description: 'Auto, Möbel, Studiengebühren — flexibler Konsumkredit zu transparenten Konditionen.' },
+        { icon: 'bot', title: 'KI-Beratung', description: 'Unser KI-Berater vergleicht in Echtzeit über 40 Banken und findet das beste Angebot für Ihr Profil.' },
+      ],
+    },
+    {
+      section: 'engagements',
+      locale: 'fr',
+      eyebrow: 'Pourquoi Kredix',
+      title: 'Nos engagements',
+      lead: 'Depuis 2015, nous accompagnons nos clients dans tous types de crédit — en toute transparence, rapidité et toujours dans votre intérêt.',
+      items: [
+        { icon: 'shield', title: '0 € à l\'avance', description: 'Aucun frais à payer avant l\'acceptation de votre crédit. Vous ne déboursez rien tant que votre dossier n\'est pas validé.' },
+        { icon: 'check-circle', title: 'Réponse en 24h', description: 'Votre demande est traitée sous 24h par un conseiller certifié.' },
+        { icon: 'award', title: '40+ banques comparées', description: 'Nous comparons plus de 40 banques partenaires pour vous garantir le taux le plus avantageux.' },
+        { icon: 'trending', title: '94% d\'acceptation', description: '94% de nos demandes sont acceptées par les banques.' },
+        { icon: 'key', title: 'Accompagnement complet', description: 'Un conseiller dédié vous suit du premier contact jusqu\'au déboursement de votre crédit.' },
+        { icon: 'bar-chart', title: '350+ dossiers financés', description: 'Depuis 2015, plus de 350 crédits financés avec succès.' },
+      ],
+    },
+    {
+      section: 'services',
+      locale: 'fr',
+      eyebrow: 'Nos services',
+      title: 'Des financements pour chaque projet',
+      lead: 'Crédit immobilier, rachat de crédit ou prêt conso — nous trouvons la solution adaptée à votre projet.',
+      items: [
+        { icon: 'trending', title: 'Prêt immobilier', description: 'Acheter, construire ou investir — obtenez les meilleures conditions pour votre projet immobilier.' },
+        { icon: 'refresh-cw', title: 'Rachat de crédit', description: 'Réduisez vos mensualités en regroupant vos crédits à des conditions plus avantageuses.' },
+        { icon: 'cpu', title: 'Crédit conso', description: 'Auto, travaux, projet personnel — un crédit conso flexible à conditions transparentes.' },
+        { icon: 'bot', title: 'Conseil IA', description: 'Notre conseiller IA compare en temps réel plus de 40 banques pour trouver la meilleure offre.' },
+      ],
+    },
+  ];
+  let contentBlocksCount = 0;
+  for (const cb of contentBlocksData) {
+    const { section, locale, ...data } = cb;
+    await prisma.contentBlock.upsert({
+      where: { section_locale: { section, locale } },
+      create: { section, locale, ...data },
+      update: data,
+    });
+    contentBlocksCount++;
+  }
+
+  // ---------------------------------------------------------------------------
   console.log(
     '✅ Seed terminé :',
     settings.length, 'settings,',
@@ -1027,7 +1130,9 @@ L'équipe Kredix`,
     '1 admin,',
     agentsData.length, 'agents,',
     templatesData.length, 'templates,',
-    gatewaysData.length, 'gateways.',
+    gatewaysData.length, 'gateways,',
+    testimonialsData.length, 'témoignages,',
+    contentBlocksCount, 'blocs de contenu.',
   );
 }
 
