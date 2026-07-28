@@ -53,6 +53,9 @@ interface Contact {
   pays: string
   source: string
   recu: string          // date formatée pour affichage
+  elapsedMin: number    // minutes écoulées depuis la soumission
+  ackSent: boolean      // email de bienvenue envoyé ?
+  relanceCount: number  // nombre de relances envoyées
   loanType: string
   amount: number | null
   status: ContactStatus
@@ -75,7 +78,12 @@ interface ApiLead {
   totalCost: number | null
   status: ContactStatus
   preferredLanguage: string
+  sequenceActive: boolean
+  relanceCount: number
+  nextRelanceAt: string | null
+  ackSentAt: string | null
   createdAt: string
+  updatedAt: string
 }
 
 function makeInitials(firstName: string, lastName: string): string {
@@ -93,6 +101,23 @@ function formatDateRecu(iso: string): string {
   }
 }
 
+function calcElapsedMin(iso: string): number {
+  try {
+    return Math.floor((Date.now() - new Date(iso).getTime()) / 60_000)
+  } catch {
+    return 0
+  }
+}
+
+function formatElapsed(min: number): string {
+  if (min < 1) return "À l'instant"
+  if (min < 60) return `il y a ${min} min`
+  const hours = Math.floor(min / 60)
+  if (hours < 24) return `il y a ${hours} h`
+  const days = Math.floor(hours / 24)
+  return `il y a ${days} j`
+}
+
 function mapLeadToContact(lead: ApiLead): Contact {
   return {
     id: lead.id,
@@ -105,6 +130,9 @@ function mapLeadToContact(lead: ApiLead): Contact {
     pays: SOURCE_LABELS[lead.country] ?? lead.country ?? '—',
     source: 'Formulaire site',
     recu: formatDateRecu(lead.createdAt),
+    elapsedMin: calcElapsedMin(lead.createdAt),
+    ackSent: !!lead.ackSentAt,
+    relanceCount: lead.relanceCount ?? 0,
     loanType: LOAN_TYPE_LABELS[lead.loanType] ?? lead.loanType,
     amount: lead.amount,
     status: lead.status,
@@ -400,6 +428,7 @@ export default function Contacts() {
                   <th>Pays</th>
                   <th>Source</th>
                   <th>Reçu le</th>
+                  <th>Suivi</th>
                   <th>Statut</th>
                   <th style={{ textAlign: 'right' }}>Action</th>
                 </tr>
@@ -425,6 +454,20 @@ export default function Contacts() {
                       <td>{c.pays}</td>
                       <td>{c.source}</td>
                       <td>{c.recu}</td>
+                      <td>
+                        <div className="suivi-cell">
+                          <span className={`suivi-item ${c.elapsedMin < 60 ? 'suivi-hot' : c.elapsedMin < 1440 ? 'suivi-warm' : 'suivi-cold'}`}>
+                            <span className="suivi-dot"></span>
+                            {formatElapsed(c.elapsedMin)}
+                          </span>
+                          <span className={`suivi-item ${c.ackSent ? 'suivi-ok' : 'suivi-pending'}`}>
+                            {c.ackSent ? '✓ Bienvenue envoyé' : '✕ Bienvenue en attente'}
+                          </span>
+                          <span className={`suivi-item ${c.relanceCount > 0 ? 'suivi-ok' : 'suivi-muted'}`}>
+                            {c.relanceCount > 0 ? `${c.relanceCount}/3 relances` : '0/3 relance'}
+                          </span>
+                        </div>
+                      </td>
                       <td className="st">
                         <span className={`badge ${cfg.class}`}>
                           <span className="badge-dot"></span>

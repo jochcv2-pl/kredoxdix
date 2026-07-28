@@ -4033,3 +4033,39 @@ body {
   cursor: pointer;
 }
 
+/* Cellule "Suivi" — prospects & clients */
+.suivi-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 11px;
+  line-height: 1.4;
+}
+.suivi-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.suivi-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.suivi-hot   { color: #dc2626; font-weight: 600; }
+.suivi-hot   .suivi-dot { background: #dc2626; animation: pulse-dot 1.5s ease-in-out infinite; }
+.suivi-warm  { color: #f59e0b; font-weight: 600; }
+.suivi-warm  .suivi-dot { background: #f59e0b; }
+.suivi-cold  { color: var(--slate-light, #94a3b8); }
+.suivi-cold  .suivi-dot { background: var(--slate-light, #94a3b8); }
+.suivi-ok     { color: #16a34a; }
+.suivi-pending { color: #dc2626; }
+.suivi-muted  { color: var(--slate-light, #94a3b8); }
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: .5; transform: scale(1.3); }
+}
+

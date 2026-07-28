@@ -47,6 +47,7 @@ interface LeadListItem {
   sequenceActive: boolean;
   relanceCount: number;
   nextRelanceAt: string | null;
+  ackSentAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -117,6 +118,7 @@ export async function GET(req: NextRequest) {
       sequenceActive: l.sequenceActive,
       relanceCount: l.relanceCount,
       nextRelanceAt: l.nextRelanceAt ? l.nextRelanceAt.toISOString() : null,
+      ackSentAt: l.ackSentAt ? l.ackSentAt.toISOString() : null,
       createdAt: l.createdAt.toISOString(),
       updatedAt: l.updatedAt.toISOString(),
     }));
