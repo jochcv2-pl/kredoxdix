@@ -176,11 +176,13 @@ async function sendViaSmtp(
     const port = (config.port as number) || 587;
     const username = (config.username as string) || undefined;
     const password = apiKey || (config.password as string) || undefined;
+    const encryption = (config.encryption as string) || 'starttls';
 
     const transporter = nodemailer.createTransport({
       host,
       port,
-      secure: port === 465,
+      secure: encryption === 'ssl' || (port === 465 && encryption !== 'none'),
+      requireTLS: encryption === 'starttls',
       auth: username ? { user: username, pass: password } : undefined,
     });
 

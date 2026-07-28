@@ -1,13 +1,18 @@
 import { NextRequest } from "next/server";
 import { prisma, createNotification } from "@kredix/db";
 import { createLeadSchema, errorResponse, successResponse } from "../validators";
-import { sendReceptionAck, computeSequenceInitDates } from "../_lib/email-ack";
+import { computeSequenceInitDates } from "../_lib/email-ack";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limiter";
 
 // =============================================================================
 // POST /api/leads
 // Création d'un lead (demande de crédit) depuis le formulaire public.
 // Endpoint PUBLIC (pas d'auth) — rate limiting : 5 soumissions/min/IP.
+//
+// IMPORTANT : Le welcome email (reception_ack) n'est PAS envoyé ici.
+// Il est programmé via nextRelanceAt = now + 5 min et envoyé par le cron
+// relance. Le cron garantit l'ordre chronologique :
+//   T+5min : welcome → J+3 : relance_1 → J+6 : relance_2 → J+9 : relance_3
 // =============================================================================
 
 export async function POST(request: NextRequest) {
@@ -72,23 +77,10 @@ export async function POST(request: NextRequest) {
     });
 
     // ----- Envoi accusé de réception (Agent Accueil) -----
-    // Défensif : un échec d'email ne doit JAMAIS casser la création du lead.
-    // On loggue juste le résultat dans la réponse (pour debug côté admin).
-    let ack: { sent: boolean; error?: string } | null = null;
-    try {
-      ack = await sendReceptionAck(lead);
-      // ackSentAt n'est setté QUE si l'email a réellement été envoyé.
-      if (ack?.sent) {
-        await prisma.lead.update({
-          where: { id: lead.id },
-          data: { ackSentAt: new Date() },
-        });
-      }
-    } catch (err) {
-      // Backup : si sendReceptionAck lève (ne devrait pas), on capture.
-      console.error("[API /leads POST] sendReceptionAck threw:", err);
-      ack = { sent: false, error: (err as Error).message };
-    }
+    // DÉPLACÉ VERS LE CRON — le welcome email est envoyé 5 min après la création
+    // par le cron relance (garantit l'ordre chronologique + délai humain).
+    // nextRelanceAt = now + 5min a déjà été setté par computeSequenceInitDates().
+    // Le cron détectera ackSentAt = null et enverra le reception_ack.
 
     // ----- Notification admin : nouveau prospect -----
     await createNotification({
@@ -109,8 +101,9 @@ export async function POST(request: NextRequest) {
           lastName: lead.lastName,
           status: lead.status,
           createdAt: lead.createdAt,
-          sequenceActive: lead.sequenceActive,
-          ackSent: ack?.sent ?? false,
+        sequenceActive: lead.sequenceActive,
+        ackSent: false, // Sera envoyé par le cron dans ~5 min
+        ackScheduled: true,
         },
       },
       201,

@@ -11,17 +11,25 @@ import { verifyBearerSecret } from '../../_lib/security';
 // =============================================================================
 // POST /api/cron/relance
 // =============================================================================
-// Job cron de la séquence de relance (J+3 / J+6 / J+9).
+// Job cron de la séquence d'emails (welcome + relances J+3 / J+6 / J+9).
 // Protégé par header Authorization: Bearer <CRON_SECRET> (env var).
+//
+// Chronologie garantie (le cron est le SEUL point d'envoi) :
+//   T+5min : welcome email (reception_ack) → ackSentAt setté
+//   J+3    : relance_1
+//   J+6    : relance_2
+//   J+9    : relance_3 → sortie max_relances
+//
+// Garanties :
+//   - Le welcome email est TOUJOURS envoyé avant les relances (ackSentAt check).
+//   - Si le welcome échoue, il est réessayé au prochain passage du cron.
+//   - Les relances ne partent QUE si ackSentAt est non-null.
 //
 // Le cron :
 //   1. Traite les TIMEOUTS (leads en séquence > N jours sans validation).
-//   2. Sélectionne les relances dues (sequenceActive + nextRelanceAt dépassé).
-//   3. Pour chaque lead : vérifie SuppressionList, récupère le template imposé,
-//      génère l'email via l'IA (Agent Relance) avec fallback template,
-//      envoie via le gateway actif, incrémente le compteur, programme la prochaine.
-//   4. Si relanceCount atteint 3 → sortie max_relances.
-//   5. Respecte le cap journalier (cadence_daily_cap).
+//   2. Sélectionne les emails dus (sequenceActive + nextRelanceAt dépassé).
+//   3. Pour chaque lead : si ackSentAt null → welcome, sinon → relance_N.
+//   4. Respecte le cap journalier (cadence_daily_cap).
 // =============================================================================
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -48,6 +56,7 @@ export async function POST(req: NextRequest) {
     const stats = {
       timeouts: 0,
       suppressed: 0,
+      welcomeSent: 0,
       sent: 0,
       maxRelances: 0,
       errors: 0,
@@ -114,6 +123,7 @@ export async function POST(req: NextRequest) {
         monthlyPayment: true,
         annualRate: true,
         relanceCount: true,
+        ackSentAt: true,
         unsubscribeToken: true,
         preferredLanguage: true,
       },
@@ -154,7 +164,121 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        // b) Détermine le template imposé (relance_1, relance_2, relance_3)
+        // b) Lead sans email — skippe
+        if (!lead.email) {
+          stats.errors++;
+          continue;
+        }
+
+        // ================================================================
+        // c) BRANCHE WELCOME — ackSentAt null → envoyer reception_ack
+        // ================================================================
+        if (!lead.ackSentAt) {
+          const leadLang = lead.preferredLanguage || 'fr';
+          let welcomeTemplate = await prisma.emailTemplate.findFirst({
+            where: { trigger: EmailTrigger.reception_ack, status: 'active', language: leadLang },
+          });
+          if (!welcomeTemplate && leadLang !== 'fr') {
+            welcomeTemplate = await prisma.emailTemplate.findFirst({
+              where: { trigger: EmailTrigger.reception_ack, status: 'active', language: 'fr' },
+            });
+          }
+
+          if (!welcomeTemplate) {
+            stats.skippedNoTemplate++;
+            continue;
+          }
+
+          const siteUrl = await getSetting('site_url', 'http://localhost:3100');
+          const ctx = { lead, siteUrl };
+          const welcomeSubject = interpolateTemplate(welcomeTemplate.subject, ctx);
+          const welcomeBody = interpolateTemplate(welcomeTemplate.bodyText, ctx);
+
+          // IA (Agent Accueil) — sauf si template confidentiel
+          let finalSubject = welcomeSubject;
+          let finalBody = welcomeBody;
+          let generated = false;
+
+          if (!welcomeTemplate.isConfidential) {
+            try {
+              const aiResult = await generateEmail({
+                agentRole: 'accueil',
+                trigger: 'reception_ack',
+                leadContext: {
+                  firstName: lead.firstName,
+                  lastName: lead.lastName,
+                  email: lead.email,
+                  phone: lead.phone,
+                  loanType: lead.loanType,
+                  amount: lead.amount ?? undefined,
+                  durationYears: lead.durationYears ?? undefined,
+                  monthlyPayment: lead.monthlyPayment ?? undefined,
+                  annualRate: lead.annualRate ?? undefined,
+                  preferredLanguage: lead.preferredLanguage,
+                },
+                fallbackSubject: welcomeSubject,
+                fallbackBody: welcomeBody,
+              });
+              finalSubject = aiResult.subject;
+              finalBody = aiResult.bodyText;
+              generated = aiResult.generated;
+            } catch {
+              // Fallback template si l'IA échoue
+            }
+          }
+
+          const welcomeHtml = welcomeTemplate.htmlContent && !generated
+            ? interpolateTemplate(welcomeTemplate.htmlContent, ctx)
+            : textToHtml(finalBody);
+
+          const welcomeResult = await sendEmail(gateway, {
+            to: lead.email,
+            subject: finalSubject,
+            html: welcomeHtml,
+            text: finalBody,
+          });
+
+          // EmailLog
+          await prisma.emailLog.create({
+            data: {
+              leadId: lead.id,
+              email: lead.email,
+              trigger: 'reception_ack',
+              templateName: generated ? `${welcomeTemplate.name} (IA)` : welcomeTemplate.name,
+              subject: finalSubject,
+              bodyText: finalBody,
+              status: welcomeResult.success ? 'sent' : 'failed',
+              error: welcomeResult.success ? null : (welcomeResult.error || 'Unknown error'),
+            },
+          });
+
+          if (!welcomeResult.success) {
+            console.error(`[CRON] Échec welcome → ${lead.email} (lead ${lead.id}):`, welcomeResult.error);
+            stats.errors++;
+            // ackSentAt reste null → le cron réessaiera au prochain passage
+            continue;
+          }
+
+          console.log(`[CRON] Welcome envoyé → ${lead.email} (lead ${lead.id})`);
+
+          // ackSentAt setté + programme la première relance à J+3
+          await prisma.lead.update({
+            where: { id: lead.id },
+            data: {
+              ackSentAt: now,
+              nextRelanceAt: new Date(now.getTime() + 3 * DAY), // J+3
+            },
+          });
+
+          stats.welcomeSent++;
+          continue; // ← passe au lead suivant, ne pas traiter de relance
+        }
+
+        // ================================================================
+        // d) BRANCHE RELANCE — ackSentAt non-null → relance_N
+        // ================================================================
+
+        // d-a) Détermine le template imposé (relance_1, relance_2, relance_3)
         const nextRelanceNum = lead.relanceCount + 1; // 1, 2, ou 3
         const triggerKey = `relance_${nextRelanceNum}` as EmailTrigger;
         // Template dans la langue du prospect (fallback français si absent).
@@ -171,13 +295,6 @@ export async function POST(req: NextRequest) {
         if (!template) {
           // Pas de template actif pour cette étape — on log et on skippe
           stats.skippedNoTemplate++;
-          continue;
-        }
-
-        // c) Lead sans email — skippe (le canal principal est le téléphone,
-        //    mais la relance email nécessite un email)
-        if (!lead.email) {
-          stats.errors++;
           continue;
         }
 

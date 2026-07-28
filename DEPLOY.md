@@ -104,8 +104,8 @@ sudo crontab -e
 Ajouter les deux lignes suivantes :
 
 ```cron
-# Tous les jours à 09h00 — relance les leads en séquence (J+3 / J+6 / J+9)
-0 9 * * * curl -fsS -X POST -H "Authorization: Bearer VOTRE_CRON_SECRET" https://crm.kredix.fr/api/cron/relance >> /var/log/kredix-cron.log 2>&1
+# Toutes les 2 minutes — séquence d'emails (welcome T+5min + relances J+3/J+6/J+9)
+*/2 * * * * curl -fsS -X POST -H "Authorization: Bearer VOTRE_CRON_SECRET" https://crm.kredix.fr/api/cron/relance >> /var/log/kredix-cron.log 2>&1
 
 # Toutes les 5 minutes — reprend les campagnes en masse interrompues (envoi anti-spam)
 */5 * * * * curl -fsS -X POST -H "Authorization: Bearer VOTRE_CRON_SECRET" https://crm.kredix.fr/api/cron/campaign-resume >> /var/log/kredix-cron.log 2>&1
@@ -257,7 +257,8 @@ docker compose -f docker-compose.prod.yml up -d     # Démarrer
 
 ### Les crons ne fonctionnent pas
 
-- Vérifier le `CRON_SECRET` dans la crontab correspond au `.env`
+- Vérifier que le `CRON_SECRET` dans la crontab correspond au `.env`
+- Le cron relance doit tourner **toutes les 2 minutes** (pas 1x/jour) — c'est lui qui envoie les welcome emails (T+5min) ET les relances (J+3/J+6/J+9)
 - Tester manuellement :
   ```bash
   curl -X POST -H "Authorization: Bearer SECRET" https://crm.kredix.fr/api/cron/relance

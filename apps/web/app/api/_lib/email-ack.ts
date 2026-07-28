@@ -114,25 +114,32 @@ export async function sendReceptionAck(lead: Lead): Promise<AckResult> {
 }
 
 /**
- * Calcule les dates de séquence de relance pour un nouveau lead.
+ * Calcule les dates de séquence pour un nouveau lead.
  *
- * RÈGLE IMPORTANTE : ackSentAt n'est PAS setté ici — il ne l'est QUE si
- * l'email d'accusé de réception a effectivement été envoyé avec succès
- * (cf. leads/route.ts qui update le lead après sendReceptionAck).
+ * RÈGLE IMPORTANTE : ackSentAt n'est PAS setté ici — il ne l'est QUE par
+ * le cron relance après envoi réussi du welcome email.
  *
- * Règle métier (cf. Kredix_MEMORY) :
- *   - recallDueAt     = maintenant + 48h (rappel humain annoncé)
- *   - sequenceActive  = true
- *   - sequenceStartedAt = maintenant
- *   - nextRelanceAt   = maintenant + 3 jours (J+3 — première relance)
- *   - relanceCount    = 0
+ * Le welcome email n'est PLUS envoyé synchronément à la création du lead.
+ * Il est pris en charge par le cron, qui sélectionne les leads dont
+ * nextRelanceAt est dépassé ET ackSentAt est null → envoie le reception_ack.
+ *
+ * Chronologie garantie par le cron :
+ *   T+5min : welcome email (reception_ack) → ackSentAt setté
+ *   J+3    : relance_1
+ *   J+6    : relance_2
+ *   J+9    : relance_3 → sortie max_relances
+ *
+ * @param welcomeDelayMs Délai avant le welcome email (défaut 5 min).
  */
-export function computeSequenceInitDates(now: Date = new Date()) {
+export function computeSequenceInitDates(
+  now: Date = new Date(),
+  welcomeDelayMs: number = 5 * 60 * 1000,
+) {
   return {
     recallDueAt: new Date(now.getTime() + 2 * DAY), // 48h
     sequenceActive: true,
     sequenceStartedAt: now,
-    nextRelanceAt: new Date(now.getTime() + 3 * DAY), // J+3
+    nextRelanceAt: new Date(now.getTime() + welcomeDelayMs), // 5 min → welcome
     relanceCount: 0,
   };
 }
