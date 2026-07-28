@@ -111,17 +111,17 @@ export default function LeadForm({ prefill, whatsappNumber }: { prefill?: LeadFo
     if (prefill.loanType !== undefined) setLoanType(prefill.loanType);
     if (prefill.durationYears !== undefined) setDuration(String(prefill.durationYears));
     if (prefill.monthlyPayment !== undefined) setMonthlyPayment(String(prefill.monthlyPayment));
-    if (prefill.annualRate !== undefined) setAnnualRate(prefill.annualRate.toFixed(1).replace(".", ","));
+    if (prefill.annualRate !== undefined) setAnnualRate(prefill.annualRate.toFixed(1));
     if (prefill.totalCost !== undefined) setTotalCost(String(prefill.totalCost));
     setShowAutofill(true);
   }, [prefill]);
 
-  const isAmountFilled = showAutofill && amount !== "";
-  const isTypeFilled = showAutofill && loanType !== "";
-  const isDurationFilled = showAutofill && duration !== "";
-  const isMonthlyFilled = showAutofill && monthlyPayment !== "";
-  const isRateFilled = showAutofill && annualRate !== "";
-  const isTotalFilled = showAutofill && totalCost !== "";
+  const isAmountFilled = amount !== "";
+  const isTypeFilled = loanType !== "";
+  const isDurationFilled = duration !== "";
+  const isMonthlyFilled = monthlyPayment !== "";
+  const isRateFilled = annualRate !== "";
+  const isTotalFilled = totalCost !== "";
 
   // Soumission du formulaire vers POST /api/leads
   const handleSubmit = async () => {
@@ -319,40 +319,45 @@ export default function LeadForm({ prefill, whatsappNumber }: { prefill?: LeadFo
           </select>
         </div>
 
-        {/* Mensualité estimée (pré-remplie par le simulateur) */}
+        {/* Mensualité estimée (pré-remplie par le simulateur, éditable manuellement) */}
         <div className="fg full">
           <label className="field-label">{t("monthlyPayment")}</label>
           <div className="montant">
             <input
-              type="text"
-              value={monthlyPayment ? `${Number(monthlyPayment).toLocaleString("fr-FR").replace(/,/g, " ")} €` : ""}
-              readOnly
+              type="number"
+              value={monthlyPayment}
+              onChange={(e) => setMonthlyPayment(e.target.value)}
               placeholder="—"
               className={isMonthlyFilled ? "filled" : ""}
             />
+            <span className="sfx">€</span>
           </div>
         </div>
 
-        {/* Taux indicatif (pré-rempli par le simulateur) */}
+        {/* Taux indicatif (pré-rempli par le simulateur, éditable manuellement) */}
         <div className="fg full">
           <label className="field-label">{t("indicativeRate")}</label>
-          <input
-            type="text"
-            value={annualRate ? `${annualRate} %` : ""}
-            readOnly
-            placeholder="—"
-            className={isRateFilled ? "filled" : ""}
-          />
+          <div className="montant">
+            <input
+              type="number"
+              step="0.1"
+              value={annualRate}
+              onChange={(e) => setAnnualRate(e.target.value)}
+              placeholder="—"
+              className={isRateFilled ? "filled" : ""}
+            />
+            <span className="sfx">%</span>
+          </div>
         </div>
 
-        {/* Coût total du crédit (pré-rempli par le simulateur) */}
+        {/* Coût total du crédit (pré-rempli par le simulateur, éditable manuellement) */}
         <div className="fg full">
           <label className="field-label">{t("totalCost")}</label>
           <div className="montant">
             <input
-              type="text"
-              value={totalCost ? `${Number(totalCost).toLocaleString("fr-FR").replace(/,/g, " ")} €` : ""}
-              readOnly
+              type="number"
+              value={totalCost}
+              onChange={(e) => setTotalCost(e.target.value)}
               placeholder="—"
               className={isTotalFilled ? "filled" : ""}
             />
