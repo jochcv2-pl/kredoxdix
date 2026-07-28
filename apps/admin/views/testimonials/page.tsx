@@ -221,109 +221,181 @@ export default function Testimonials() {
       )}
 
       <Modal isOpen={creating} onClose={() => setCreating(false)} title={editing ? 'Modifier l\'avis' : 'Nouvel avis client'}>
-        <div className="form-grid" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <label className="form-field">
-            <span className="form-label">Nom de l'auteur *</span>
-            <input
-              type="text"
-              value={form.authorName}
-              onChange={(e) => setForm({ ...form, authorName: e.target.value })}
-              placeholder="Ex : Thomas Müller"
-              className="form-input"
-            />
-          </label>
-          <div style={{ display: 'flex', gap: 14 }}>
-            <label className="form-field" style={{ flex: 1 }}>
-              <span className="form-label">Rôle / profession</span>
-              <input
-                type="text"
-                value={form.authorRole}
-                onChange={(e) => setForm({ ...form, authorRole: e.target.value })}
-                placeholder="Ex : Ingénieur"
-                className="form-input"
+        <div className="tst-modal">
+          {/* Aperçu live */}
+          <div className="tst-preview">
+            <div className="tst-preview-stars">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Icon key={i} name="star" size={18} style={{ color: i < form.rating ? '#f59e0b' : '#e5e7eb' }} />
+              ))}
+            </div>
+            <p className="tst-preview-text">
+              « {form.content || 'Le témoignage apparaîtra ici…'} »
+            </p>
+            <div className="tst-preview-author">
+              <strong>{form.authorName || 'Nom de l\'auteur'}</strong>
+              {form.authorRole && <span> · {form.authorRole}</span>}
+              {form.authorLocation && <span> · {form.authorLocation}</span>}
+            </div>
+          </div>
+
+          {/* Formulaire */}
+          <div className="tst-form">
+            <div className="tst-row">
+              <label className="tst-field">
+                <span className="tst-label">Nom de l'auteur *</span>
+                <input
+                  type="text"
+                  value={form.authorName}
+                  onChange={(e) => setForm({ ...form, authorName: e.target.value })}
+                  placeholder="Ex : Thomas Müller"
+                  className="tst-input"
+                />
+              </label>
+            </div>
+            <div className="tst-row-2">
+              <label className="tst-field">
+                <span className="tst-label">Rôle / profession</span>
+                <input
+                  type="text"
+                  value={form.authorRole}
+                  onChange={(e) => setForm({ ...form, authorRole: e.target.value })}
+                  placeholder="Ex : Ingénieur"
+                  className="tst-input"
+                />
+              </label>
+              <label className="tst-field">
+                <span className="tst-label">Ville</span>
+                <input
+                  type="text"
+                  value={form.authorLocation}
+                  onChange={(e) => setForm({ ...form, authorLocation: e.target.value })}
+                  placeholder="Ex : Munich"
+                  className="tst-input"
+                />
+              </label>
+            </div>
+
+            {/* Star rating interactif */}
+            <div className="tst-rating-row">
+              <span className="tst-label">Note</span>
+              <div className="tst-stars-pick">
+                {[5, 4, 3, 2, 1].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    className="tst-star-btn"
+                    onClick={() => setForm({ ...form, rating: n })}
+                    title={`${n} étoile${n > 1 ? 's' : ''}`}
+                  >
+                    <Icon name="star" size={28} style={{ color: n <= form.rating ? '#f59e0b' : '#e5e7eb' }} />
+                  </button>
+                ))}
+                <span className="tst-rating-val">{form.rating}/5</span>
+              </div>
+            </div>
+
+            <div className="tst-row-3">
+              <label className="tst-field">
+                <span className="tst-label">Langue</span>
+                <select
+                  value={form.locale}
+                  onChange={(e) => setForm({ ...form, locale: e.target.value })}
+                  className="tst-input"
+                >
+                  {LOCALES.map((lc) => <option key={lc} value={lc}>{lc.toUpperCase()}</option>)}
+                </select>
+              </label>
+              <label className="tst-field">
+                <span className="tst-label">Ordre</span>
+                <input
+                  type="number"
+                  value={form.order}
+                  onChange={(e) => setForm({ ...form, order: Number(e.target.value) })}
+                  className="tst-input"
+                />
+              </label>
+              <label className="tst-field">
+                <span className="tst-label">Photo (URL)</span>
+                <input
+                  type="url"
+                  value={form.authorAvatar}
+                  onChange={(e) => setForm({ ...form, authorAvatar: e.target.value })}
+                  placeholder="https://…"
+                  className="tst-input"
+                />
+              </label>
+            </div>
+
+            <label className="tst-field">
+              <span className="tst-label">Témoignage *</span>
+              <textarea
+                value={form.content}
+                onChange={(e) => setForm({ ...form, content: e.target.value })}
+                placeholder="« Kredix m'a permis d'obtenir un crédit à un taux imbattable… »"
+                rows={4}
+                className="tst-input"
+                style={{ resize: 'vertical', fontFamily: 'inherit' }}
               />
             </label>
-            <label className="form-field" style={{ flex: 1 }}>
-              <span className="form-label">Ville</span>
+
+            <label className="tst-toggle">
               <input
-                type="text"
-                value={form.authorLocation}
-                onChange={(e) => setForm({ ...form, authorLocation: e.target.value })}
-                placeholder="Ex : Munich"
-                className="form-input"
+                type="checkbox"
+                checked={form.isVisible}
+                onChange={(e) => setForm({ ...form, isVisible: e.target.checked })}
               />
+              <span>Afficher sur le site public</span>
             </label>
           </div>
-          <label className="form-field">
-            <span className="form-label">Photo / Avatar (URL, optionnel)</span>
-            <input
-              type="url"
-              value={form.authorAvatar}
-              onChange={(e) => setForm({ ...form, authorAvatar: e.target.value })}
-              placeholder="https://exemple.com/avatar.jpg"
-              className="form-input"
-            />
-          </label>
-          <div style={{ display: 'flex', gap: 14 }}>
-            <label className="form-field" style={{ flex: 1 }}>
-              <span className="form-label">Note (1-5)</span>
-              <select
-                value={form.rating}
-                onChange={(e) => setForm({ ...form, rating: Number(e.target.value) })}
-                className="form-input"
-              >
-                {[5, 4, 3, 2, 1].map((n) => <option key={n} value={n}>{n} étoile{n > 1 ? 's' : ''} ({n}/5)</option>)}
-              </select>
-            </label>
-            <label className="form-field" style={{ flex: 1 }}>
-              <span className="form-label">Langue</span>
-              <select
-                value={form.locale}
-                onChange={(e) => setForm({ ...form, locale: e.target.value })}
-                className="form-input"
-              >
-                {LOCALES.map((lc) => <option key={lc} value={lc}>{lc.toUpperCase()}</option>)}
-              </select>
-            </label>
-            <label className="form-field" style={{ width: 100 }}>
-              <span className="form-label">Ordre</span>
-              <input
-                type="number"
-                value={form.order}
-                onChange={(e) => setForm({ ...form, order: Number(e.target.value) })}
-                className="form-input"
-              />
-            </label>
-          </div>
-          <label className="form-field">
-            <span className="form-label">Témoignage *</span>
-            <textarea
-              value={form.content}
-              onChange={(e) => setForm({ ...form, content: e.target.value })}
-              placeholder="« Kredix m'a permis d'obtenir un crédit à un taux imbattable… »"
-              rows={5}
-              className="form-input"
-              style={{ resize: 'vertical', fontFamily: 'inherit' }}
-            />
-          </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-            <input
-              type="checkbox"
-              checked={form.isVisible}
-              onChange={(e) => setForm({ ...form, isVisible: e.target.checked })}
-            />
-            <span style={{ fontSize: 14 }}>Afficher sur le site public</span>
-          </label>
-          <div className="modal-actions" style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
+
+          <div className="tst-actions">
             <button className="btn btn-ghost" onClick={() => setCreating(false)}>Annuler</button>
             <button
               className="btn btn-primary"
               onClick={handleSave}
               disabled={saving || !form.authorName.trim() || !form.content.trim()}
             >
-              {saving ? 'Enregistrement…' : editing ? 'Enregistrer' : 'Créer'}
+              {saving ? 'Enregistrement…' : editing ? 'Enregistrer' : 'Publier l\'avis'}
             </button>
           </div>
+
+          <style>{`
+            .tst-modal { display: flex; flex-direction: column; gap: 16px; }
+            .tst-preview {
+              background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+              border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px;
+            }
+            .tst-preview-stars { display: flex; gap: 2px; margin-bottom: 8px; }
+            .tst-preview-text {
+              font-size: 14px; line-height: 1.6; color: #475569; font-style: italic;
+              margin: 0 0 10px; min-height: 42px;
+            }
+            .tst-preview-author { font-size: 12px; color: #94a3b8; }
+            .tst-preview-author strong { color: #1e293b; font-size: 13px; }
+
+            .tst-form { display: flex; flex-direction: column; gap: 14px; }
+            .tst-field { display: flex; flex-direction: column; gap: 5px; flex: 1; }
+            .tst-label { font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.03em; }
+            .tst-input {
+              padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px;
+              font-size: 14px; color: #1e293b; background: #fff; transition: border-color 0.15s, box-shadow 0.15s;
+            }
+            .tst-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.12); }
+            .tst-row-2 { display: flex; gap: 12px; }
+            .tst-row-3 { display: flex; gap: 12px; }
+
+            .tst-rating-row { display: flex; align-items: center; gap: 12px; }
+            .tst-stars-pick { display: flex; align-items: center; gap: 2px; }
+            .tst-star-btn { background: none; border: none; cursor: pointer; padding: 2px; transition: transform 0.1s; }
+            .tst-star-btn:hover { transform: scale(1.15); }
+            .tst-rating-val { font-size: 13px; font-weight: 700; color: #f59e0b; margin-left: 6px; }
+
+            .tst-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; color: #475569; }
+            .tst-toggle input[type=checkbox] { width: 16px; height: 16px; accent-color: #3b82f6; }
+
+            .tst-actions { display: flex; gap: 10px; justify-content: flex-end; padding-top: 4px; border-top: 1px solid #f1f5f9; padding-top: 16px; }
+          `}</style>
         </div>
       </Modal>
 

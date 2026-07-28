@@ -136,8 +136,8 @@ export default function Clients() {
   return (
     <section className="view" id="clients">
       <style>{`
-        .clt-head { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; }
-        .clt-head h2 { font-size: 22px; font-weight: 600; color: var(--text); margin: 0 0 4px; }
+        .clt-head { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .clt-head h2 { font-size: 22px; font-weight: 700; color: var(--text); margin: 0 0 4px; }
         .clt-head p { margin: 0; color: var(--slate); font-size: 14px; }
 
         .clt-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
@@ -145,8 +145,9 @@ export default function Clients() {
         .clt-card2 {
           background: #fff; border: 1px solid #e5e7eb; border-radius: 14px;
           overflow: hidden; transition: border-color 0.2s, box-shadow 0.2s;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.02);
         }
-        .clt-card2:hover { border-color: #cbd5e1; box-shadow: 0 4px 20px rgba(0,0,0,0.04); }
+        .clt-card2:hover { border-color: #cbd5e1; box-shadow: 0 6px 24px rgba(0,0,0,0.06); }
 
         .clt2-header {
           display: flex; justify-content: space-between; align-items: center;
@@ -269,6 +270,26 @@ export default function Clients() {
           <h2>Clients</h2>
           <p>Parcours d&apos;accompagnement en 7 niveaux</p>
         </div>
+        {!loading && !error && clients.length > 0 && (
+          <div style={{ display: 'flex', gap: 16 }}>
+            <div style={{ textAlign: 'center', padding: '8px 18px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12 }}>
+              <div style={{ fontSize: 24, fontWeight: 800, color: '#1e293b' }}>{clients.length}</div>
+              <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500, textTransform: 'uppercase' }}>Total clients</div>
+            </div>
+            <div style={{ textAlign: 'center', padding: '8px 18px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12 }}>
+              <div style={{ fontSize: 24, fontWeight: 800, color: '#22c55e' }}>
+                {clients.filter((c) => c.currentLevel === 7).length}
+              </div>
+              <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500, textTransform: 'uppercase' }}>Fonds débloqués</div>
+            </div>
+            <div style={{ textAlign: 'center', padding: '8px 18px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12 }}>
+              <div style={{ fontSize: 24, fontWeight: 800, color: '#2B8BDE' }}>
+                {Math.round(clients.reduce((sum, c) => sum + c.currentLevel, 0) / (clients.length * 7) * 100)}%
+              </div>
+              <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500, textTransform: 'uppercase' }}>Progression moy.</div>
+            </div>
+          </div>
+        )}
       </div>
 
       {loading && <div className="clt-loading">Chargement des clients…</div>}

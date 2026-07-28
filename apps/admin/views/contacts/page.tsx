@@ -388,6 +388,32 @@ export default function Contacts() {
                       }}>
                         {lead.score}
                       </span>
+                      <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                        <button
+                          className="btn btn-sm"
+                          style={{ fontSize: 11, padding: '3px 8px', background: 'rgba(34,197,94,0.1)', color: '#15803d', border: '1px solid rgba(34,197,94,0.2)' }}
+                          title="Convertir en client"
+                          onClick={() => patchStatus(lead.id, 'client').then((ok) => {
+                            if (ok) {
+                              setTriResult((prev) => prev ? { ...prev, leads: prev.leads.filter((l) => l.id !== lead.id) } : null)
+                            }
+                          })}
+                        >
+                          Client
+                        </button>
+                        <button
+                          className="btn btn-sm"
+                          style={{ fontSize: 11, padding: '3px 8px', background: 'rgba(43,139,222,0.1)', color: '#1E6FB8', border: '1px solid rgba(43,139,222,0.2)' }}
+                          title="Garder en prospect actif"
+                          onClick={() => patchStatus(lead.id, 'contacted').then((ok) => {
+                            if (ok) {
+                              setTriResult((prev) => prev ? { ...prev, leads: prev.leads.filter((l) => l.id !== lead.id) } : null)
+                            }
+                          })}
+                        >
+                          Prospect
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
