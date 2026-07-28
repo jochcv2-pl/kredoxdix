@@ -176,6 +176,7 @@ export default function Emails() {
   // IA — génération assistée.
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiAgentRole, setAiAgentRole] = useState<string>('accueil');
+  const [aiPrompt, setAiPrompt] = useState('');
 
   // Liste des templates.
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -230,14 +231,9 @@ export default function Emails() {
         body: JSON.stringify({
           agentRole: aiAgentRole,
           trigger: triggerInput,
+          userPrompt: aiPrompt || undefined,
           leadContext: {
-            firstName: 'Marie',
-            lastName: 'Lefèvre',
-            loanType: 'prêt immobilier',
-            amount: 210000,
-            durationYears: 20,
-            monthlyPayment: 1062,
-            annualRate: 2.0,
+            firstName: 'Prospect',
             preferredLanguage: languageInput,
           },
           fallbackSubject: subjInput,
@@ -250,6 +246,7 @@ export default function Emails() {
       }
       const json = await res.json();
       const data = json.data ?? json;
+      if (data.warning) setError(data.warning);
       if (data.subject) setSubjInput(data.subject);
       if (data.bodyText) setBodyInput(data.bodyText);
     } catch (e) {
@@ -550,26 +547,36 @@ export default function Emails() {
                 </div>
                 <div className="sub-panel">
                   <h4>Corps du message</h4>
-                  <div className="ai-gen-row">
-                    <button
-                      type="button"
-                      className="btn-ai-gen"
-                      onClick={generateWithAI}
+                  <div className="ai-gen-block">
+                    <textarea
+                      className="ai-prompt-input"
+                      placeholder="Décris ce que tu veux que l'IA rédige (ex: « Email d'accueil chaleureux pour un prospect qui demande un prêt immo de 200 000 € »). Laisse vide pour utiliser le contexte par défaut de l'agent."
+                      value={aiPrompt}
+                      onChange={(e) => setAiPrompt(e.target.value)}
+                      rows={2}
                       disabled={aiGenerating}
-                    >
-                      <Icon name="sparkles" size={15} />
-                      {aiGenerating ? 'Génération en cours…' : 'Générer avec l\'IA'}
-                    </button>
-                    <select
-                      className="ai-agent-pick"
-                      value={aiAgentRole}
-                      onChange={(e) => setAiAgentRole(e.target.value)}
-                      disabled={aiGenerating}
-                    >
-                      <option value="accueil">Agent Accueil</option>
-                      <option value="offre">Agent Offre</option>
-                      <option value="relance">Agent Relance</option>
-                    </select>
+                    />
+                    <div className="ai-gen-row">
+                      <select
+                        className="ai-agent-pick"
+                        value={aiAgentRole}
+                        onChange={(e) => setAiAgentRole(e.target.value)}
+                        disabled={aiGenerating}
+                      >
+                        <option value="accueil">Agent Accueil</option>
+                        <option value="offre">Agent Offre</option>
+                        <option value="relance">Agent Relance</option>
+                      </select>
+                      <button
+                        type="button"
+                        className="btn-ai-gen"
+                        onClick={generateWithAI}
+                        disabled={aiGenerating}
+                      >
+                        <Icon name="sparkles" size={15} />
+                        {aiGenerating ? 'Génération…' : 'Générer avec l\'IA'}
+                      </button>
+                    </div>
                   </div>
                   <textarea className="body-editor" ref={bodyRef} value={bodyInput} onChange={(e) => setBodyInput(e.target.value)} />
                   <p className="var-hint" style={{ marginTop: 10, marginBottom: 0 }}>

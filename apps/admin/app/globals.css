@@ -3975,11 +3975,30 @@ body {
 }
 
 /* Bouton "Générer avec l'IA" — éditeur d'emails */
+.ai-gen-block {
+  margin-bottom: 10px;
+}
+.ai-prompt-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  font-size: 12px;
+  font-family: inherit;
+  resize: vertical;
+  background: var(--surface, #fff);
+  color: var(--ink, #1e293b);
+  margin-bottom: 8px;
+}
+.ai-prompt-input:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+}
 .ai-gen-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 10px;
 }
 .btn-ai-gen {
   display: inline-flex;

@@ -39,6 +39,8 @@ export interface GenerateEmailInput {
   };
   /** Type d'email à générer (reception_ack, relance_1, relance_2, relance_3, offer…). */
   trigger: string;
+  /** Instructions libres de l'admin pour guider la génération (optionnel). */
+  userPrompt?: string;
   /** Sujet du template de base (fallback si l'IA ne retourne pas de sujet). */
   fallbackSubject?: string;
   /** Corps du template de base (fallback si l'IA échoue). */
@@ -60,7 +62,7 @@ export interface GenerateEmailOutput {
  * Si l'IA échoue (pas de clé API, endpoint down, erreur parsing), retourne le fallback.
  */
 export async function generateEmail(input: GenerateEmailInput): Promise<GenerateEmailOutput> {
-  const { agentRole, leadContext, trigger, fallbackSubject = '', fallbackBody = '' } = input;
+  const { agentRole, leadContext, trigger, userPrompt, fallbackSubject = '', fallbackBody = '' } = input;
 
   try {
     // 1. Charger l'agent (systemPrompt + memories).
@@ -99,19 +101,22 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
 
 La langue de l'email DOIT être : ${leadContext.preferredLanguage || 'fr'}.`;
 
-    // 4. Construire le contexte utilisateur (données lead).
-    const userInfo = buildUserContext(leadContext, trigger);
+    // 4. Construire le contexte utilisateur (données lead + prompt admin).
+    const userInfo = buildUserContext(leadContext, trigger, userPrompt);
 
-    // 5. Appeler le LLM.
-    const completion = await client.chat.completions.create({
-      model: config.model,
-      temperature: config.temperature,
-      max_tokens: config.maxTokens,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userInfo },
-      ],
-    });
+    // 5. Appeler le LLM (timeout 45s pour éviter les 504 côté UI).
+    const completion = await client.chat.completions.create(
+      {
+        model: config.model,
+        temperature: config.temperature,
+        max_tokens: config.maxTokens,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userInfo },
+        ],
+      },
+      { timeout: 45_000 },
+    );
 
     const rawContent = completion.choices[0]?.message?.content?.trim() || '';
 
@@ -139,10 +144,17 @@ La langue de l'email DOIT être : ${leadContext.preferredLanguage || 'fr'}.`;
 function buildUserContext(
   lead: GenerateEmailInput['leadContext'],
   trigger: string,
+  userPrompt?: string,
 ): string {
   const parts: string[] = [];
 
   parts.push(`TÂCHE : Rédige un email pour le trigger "${trigger}".`);
+
+  // Instructions libres de l'admin (prioritaires sur les données génériques).
+  if (userPrompt?.trim()) {
+    parts.push(`\nINSTRUCTIONS SPÉCIFIQUES DE L'ADMINISTRATEUR :`);
+    parts.push(userPrompt.trim());
+  }
 
   parts.push(`\nPROSPECT :`);
   parts.push(`- Prénom : ${lead.firstName}`);

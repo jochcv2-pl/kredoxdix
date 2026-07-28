@@ -14,6 +14,7 @@ import { requireAuth } from '../../_lib/auth-server';
 const generateSchema = z.object({
   agentRole: z.string().default('relance'),
   trigger: z.string().default('manual'),
+  userPrompt: z.string().optional(),
   leadContext: z.object({
     firstName: z.string().default('Prospect'),
     lastName: z.string().optional(),
