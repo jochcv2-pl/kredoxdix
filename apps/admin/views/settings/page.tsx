@@ -219,11 +219,6 @@ export default function Settings() {
     { key: TRACKING_KEYS.gaTracking, value: settings[TRACKING_KEYS.gaTracking] ?? '', category: 'tracking' },
   ])
 
-  // Sauvegarde section Email (from_email)
-  const saveEmail = () => saveSection('email', [
-    { key: 'from_email', value: settings['from_email'] ?? '', category: 'email' },
-  ])
-
   // Test de tracking (FB Pixel / GA4) — valide le format de l'ID.
   const testTracking = async (type: 'fb_pixel' | 'ga4') => {
     const key = type === 'fb_pixel' ? TRACKING_KEYS.fbPixel : TRACKING_KEYS.gaTracking
@@ -687,29 +682,6 @@ export default function Settings() {
               <span className="link" onClick={() => setNewGatewayModalOpen(true)}>+ Ajouter</span>
             </div>
             <div className="panel-body" style={{ paddingTop: '14px' }}>
-              {/* Adresse d'expédition globale */}
-              <div className="fg" style={{ marginBottom: 16 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                  <label>Adresse d&apos;expédition (from_email)</label>
-                  <button
-                    className="btn btn-primary btn-sm"
-                    style={{ fontSize: 12, padding: '4px 12px' }}
-                    onClick={saveEmail}
-                    disabled={sectionSaving === 'email'}
-                  >
-                    {sectionSaving === 'email' ? 'Enregistrement…' : sectionSaved === 'email' ? 'Enregistré' : 'Enregistrer'}
-                  </button>
-                </div>
-                <input
-                  value={settings['from_email'] ?? ''}
-                  onChange={(e) => setSettings((prev) => ({ ...prev, from_email: e.target.value }))}
-                  placeholder="Marque <noreply@domaine.fr>"
-                />
-                <small className="field-hint">
-                  Utilisé pour tous les emails transactionnels. Si vide, fallback sur la config du gateway actif ou l&apos;adresse par défaut.
-                </small>
-              </div>
-
               <p className="field-hint">
                 Configurez plusieurs fournisseurs. L&apos;admin remplit la clé API de chacun ; seul le fournisseur <b>coché « Actif »</b> est utilisé pour l&apos;envoi.
               </p>
@@ -852,6 +824,26 @@ export default function Settings() {
                       </div>
                     </div>
                   )}
+                  {/* Adresse d'expédition (From) — liée au gateway */}
+                  <div className="frow" style={{ marginBottom: '0', marginTop: '8px' }}>
+                    <div className="fg">
+                      <label>Adresse d&apos;expédition (From)</label>
+                      <input
+                        type="email"
+                        placeholder={(g.config?.username as string) || 'contact@votredomaine.com'}
+                        defaultValue={(g.config?.from as string) || (g.config?.username as string) || ''}
+                        onBlur={(e) => {
+                          const val = e.target.value
+                          if (val !== ((g.config?.from as string) || (g.config?.username as string) || '')) {
+                            updateGateway(g.id, { config: { ...g.config, from: val } })
+                          }
+                        }}
+                      />
+                      <small className="field-hint">
+                        Adresse utilisée comme expéditeur. Doit correspondre au domaine autorisé par ce fournisseur.
+                      </small>
+                    </div>
+                  </div>
                   <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
                     <button
                       className="btn btn-ghost"
@@ -1183,6 +1175,7 @@ function NewGatewayForm({
   const [smtpPort, setSmtpPort] = useState('465')
   const [smtpEncryption, setSmtpEncryption] = useState('ssl')
   const [smtpUsername, setSmtpUsername] = useState('')
+  const [fromEmail, setFromEmail] = useState('')
 
   return (
     <>
@@ -1259,16 +1252,35 @@ function NewGatewayForm({
             </select>
           </div>
           <div className="modal-fg">
-            <label>Nom d'utilisateur (email)</label>
+            <label>Nom d&apos;utilisateur (email)</label>
             <input
               type="text"
               placeholder="contact@votredomaine.com"
               value={smtpUsername}
-              onChange={(e) => setSmtpUsername(e.target.value)}
+              onChange={(e) => {
+                setSmtpUsername(e.target.value)
+                // Auto-remplit le from avec le username SMTP (généralement identique).
+                if (!fromEmail || fromEmail === smtpUsername) {
+                  setFromEmail(e.target.value)
+                }
+              }}
             />
           </div>
         </>
       )}
+      {/* Adresse d'expédition — LIÉE au gateway (pas global). */}
+      <div className="modal-fg">
+        <label>Adresse d&apos;expédition (From)</label>
+        <input
+          type="email"
+          placeholder={provider === 'smtp' ? smtpUsername || 'contact@votredomaine.com' : 'noreply@votredomaine.com'}
+          value={fromEmail}
+          onChange={(e) => setFromEmail(e.target.value)}
+        />
+        <small className="field-hint">
+          Adresse utilisée comme expéditeur. Doit correspondre au domaine autorisé par ce fournisseur.
+        </small>
+      </div>
       <div className="modal-actions">
         <button className="btn btn-ghost" onClick={onCancel}>Annuler</button>
         <button
@@ -1278,7 +1290,7 @@ function NewGatewayForm({
             provider,
             label.trim(),
             apiKey.trim(),
-            provider === 'smtp' ? { host: smtpHost, port: Number(smtpPort), encryption: smtpEncryption, username: smtpUsername } : undefined,
+            { ...(provider === 'smtp' ? { host: smtpHost, port: Number(smtpPort), encryption: smtpEncryption, username: smtpUsername } : {}), ...(fromEmail.trim() ? { from: fromEmail.trim() } : {}) },
           )}
         >
           Créer la passerelle

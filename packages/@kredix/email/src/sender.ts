@@ -38,26 +38,27 @@ type EffectiveSendParams = Required<Pick<SendEmailParams, 'to' | 'subject' | 'ht
 /**
  * Résout l'adresse d'expédition dans l'ordre de priorité :
  * 1. config.from (spécifique au gateway — JSON EmailGateway.config)
- * 2. Setting from_email (global CMS admin — configurable depuis Paramètres)
+ *    → Le from est LIÉ au gateway, pas global. Changer de gateway = changer de from.
+ * 2. config.username (SMTP — l'utilisateur SMTP est généralement l'adresse d'envoi)
  * 3. params.from (override caller — ex: campagne avec expéditeur dédié)
- * 4. config.username (SMTP — l'utilisateur SMTP est l'adresse d'envoi)
+ * 4. Setting from_email (legacy global — backward compat, dernier recours)
  * 5. Erreur (pas de fallback hardcoded — l'admin doit configurer son adresse)
  */
 async function resolveFrom(
   config: Record<string, unknown>,
   paramsFrom?: string,
 ): Promise<string> {
-  // 1. Gateway-specific config
+  // 1. Gateway-specific config.from — priorité absolue (lié au gateway actif)
   const configFrom = config.from as string | undefined;
   if (configFrom) return configFrom;
-  // 2. Global CMS from_email Setting
-  const settingFrom = await getSetting('from_email', '');
-  if (settingFrom) return settingFrom;
-  // 3. Caller override
-  if (paramsFrom) return paramsFrom;
-  // 4. SMTP username (pour les gateways SMTP, le username = adresse d'envoi)
+  // 2. SMTP username (pour les gateways SMTP, le username = adresse d'envoi)
   const smtpUser = config.username as string | undefined;
   if (smtpUser) return smtpUser;
+  // 3. Caller override
+  if (paramsFrom) return paramsFrom;
+  // 4. Legacy global Setting from_email (backward compat — dernier recours)
+  const settingFrom = await getSetting('from_email', '');
+  if (settingFrom) return settingFrom;
   // 5. Aucune adresse configurée — on retourne une chaîne vide.
   //    Le caller doit vérifier et retourner une erreur explicite.
   return '';
