@@ -833,7 +833,7 @@ export default function Emails() {
                   )}
                 </div>
                 <div className="frow">
-                  <div className="fg">
+                  <div className="fg full">
                     <label>Nom du modèle importé</label>
                     <input value={importName} placeholder="Ex : Confirmation de demande" onChange={(e) => setImportName(e.target.value)} />
                   </div>
