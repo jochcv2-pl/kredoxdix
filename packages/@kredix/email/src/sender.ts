@@ -71,15 +71,16 @@ export async function sendEmail(
   const config = (gateway.config ?? {}) as Record<string, unknown>;
   const from = await resolveFrom(config, params.from);
 
+  console.log(`[EMAIL] Gateway="${gateway.label}" provider=${gateway.provider} from="${from}" to="${params.to}" subject="${params.subject}"`);
+
   if (!from) {
     return {
       success: false,
-      error: "Aucune adresse d'expédition configurée. Allez dans Paramètres → Emails pour définir le from_email, ou renseignez le nom d'utilisateur SMTP du gateway.",
+      error: "Aucune adresse d'expédition configurée. Le champ From du gateway est vide.",
     };
   }
 
   // Déchiffre la clé API si elle est stockée chiffrée (préfixe "enc:").
-  // decryptSecret gère aussi le legacy plaintext (retourne tel quel si non chiffré).
   const apiKey = gateway.apiKey ? decryptSecret(gateway.apiKey) : null;
 
   if (!apiKey && gateway.provider !== GatewayProvider.smtp) {
@@ -179,13 +180,30 @@ async function sendViaSmtp(
     const password = apiKey || (config.password as string) || undefined;
     const encryption = (config.encryption as string) || 'starttls';
 
+    const secure = encryption === 'ssl' || (port === 465 && encryption !== 'none');
+
+    console.log(`[SMTP] Connecting to ${host}:${port} (encryption=${encryption}, secure=${secure}, auth=${username ? 'yes' : 'no'}, from=${params.from})`);
+
     const transporter = nodemailer.createTransport({
       host,
       port,
-      secure: encryption === 'ssl' || (port === 465 && encryption !== 'none'),
+      secure,
       requireTLS: encryption === 'starttls',
       auth: username ? { user: username, pass: password } : undefined,
+      // Logging détaillé pour diagnostic — apparaît dans docker logs
+      debug: true,
+      logger: true,
     });
+
+    // Vérifie la connexion SMTP avant l'envoi (révèle les erreurs d'auth/réseau).
+    try {
+      await transporter.verify();
+      console.log('[SMTP] Connection verified ✓');
+    } catch (verifyErr) {
+      const msg = verifyErr instanceof Error ? verifyErr.message : String(verifyErr);
+      console.error('[SMTP] Connection verification FAILED:', msg);
+      return { success: false, error: `SMTP verify failed: ${msg}` };
+    }
 
     const info = await transporter.sendMail({
       from: params.from,
@@ -200,8 +218,12 @@ async function sendViaSmtp(
       })),
     });
 
+    console.log(`[SMTP] Sent ✓ messageId=${info.messageId} response=${info.response}`);
+
     return { success: true, messageId: info.messageId };
   } catch (err) {
-    return { success: false, error: `SMTP: ${(err as Error).message}` };
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[SMTP] Send FAILED:', msg);
+    return { success: false, error: `SMTP: ${msg}` };
   }
 }
