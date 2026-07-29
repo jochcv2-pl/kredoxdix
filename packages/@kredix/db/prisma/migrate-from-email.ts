@@ -15,10 +15,9 @@
 //     npx tsx prisma/migrate-from-email.ts
 // =============================================================================
 
-import { config as dotenvConfig } from 'dotenv';
-dotenvConfig();
+import { PrismaClient } from '@prisma/client';
 
-import { prisma } from './client';
+const prisma = new PrismaClient();
 
 async function main() {
   console.log('\n📧 Migration config.from sur les gateways existants...\n');
