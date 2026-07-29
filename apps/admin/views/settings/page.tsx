@@ -693,167 +693,13 @@ export default function Settings() {
               )}
 
               {gateways.map((g) => (
-                <div key={g.id} className={g.isActive ? 'prov active-prov' : 'prov'}>
-                  <div className="prov-head">
-                    <label className="prov-radio">
-                      <input
-                        type="radio"
-                        name="prov"
-                        checked={g.isActive}
-                        onChange={() => activateGateway(g.id)}
-                      />
-                      <b>{g.label}</b>
-                    </label>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <button
-                        className="btn btn-ghost btn-sm"
-                        style={{ fontSize: 12, padding: '4px 10px' }}
-                        onClick={async () => {
-                          setError(null)
-                          try {
-                            const res = await fetch(`/api/gateways/${g.id}/test`, { method: 'POST' })
-                            const body = await res.json()
-                            if (body.success || body.data?.success) {
-                              alert(`Email de test envoyé avec succès via ${g.label}`)
-                            } else {
-                              alert(`Échec : ${body.data?.error || body.error || 'Erreur inconnue'}`)
-                            }
-                          } catch {
-                            alert('Impossible de tester la passerelle')
-                          }
-                        }}
-                      >
-                        Tester
-                      </button>
-                      {g.isActive ? (
-                        <span className="prov-badge">Actif</span>
-                      ) : (
-                        <span className="prov-badge-off">Inactif</span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="frow" style={{ marginBottom: '0', marginTop: '12px' }}>
-                    <div className="fg">
-                      <label>{g.provider === 'smtp' ? 'Mot de passe SMTP' : 'Clé API'}</label>
-                      <input
-                        type="password"
-                        placeholder={g.provider === 'brevo' ? 'xkeysib-…' : g.provider === 'resend' ? 're_…' : 'Mot de passe SMTP'}
-                        defaultValue={g.apiKey ?? ''}
-                        onBlur={(e) => {
-                          if (e.target.value !== (g.apiKey ?? '')) {
-                            updateGateway(g.id, { apiKey: e.target.value })
-                          }
-                        }}
-                      />
-                    </div>
-                    <div className="fg">
-                      <label>Libellé</label>
-                      <input
-                        defaultValue={g.label}
-                        onBlur={(e) => {
-                          if (e.target.value !== g.label) {
-                            updateGateway(g.id, { label: e.target.value })
-                          }
-                        }}
-                      />
-                    </div>
-                  </div>
-                  {/* Champs SMTP supplémentaires */}
-                  {g.provider === 'smtp' && (
-                    <div className="frow" style={{ marginBottom: '0', marginTop: '8px' }}>
-                      <div className="fg" style={{ flex: 2 }}>
-                        <label>Hôte SMTP</label>
-                        <input
-                          type="text"
-                          placeholder="smtp.votrefournisseur.com"
-                          defaultValue={(g.config?.host as string) || ''}
-                          onBlur={(e) => {
-                            const val = e.target.value
-                            if (val !== (g.config?.host as string)) {
-                              updateGateway(g.id, { config: { ...g.config, host: val } })
-                            }
-                          }}
-                        />
-                      </div>
-                      <div className="fg" style={{ flex: 1 }}>
-                        <label>Port</label>
-                        <input
-                          type="number"
-                          placeholder="465"
-                          defaultValue={(g.config?.port as number) || ''}
-                          onBlur={(e) => {
-                            const val = Number(e.target.value)
-                            if (val !== (g.config?.port as number)) {
-                              updateGateway(g.id, { config: { ...g.config, port: val } })
-                            }
-                          }}
-                        />
-                      </div>
-                      <div className="fg" style={{ flex: 1 }}>
-                        <label>Chiffrement</label>
-                        <select
-                          defaultValue={(g.config?.encryption as string) || (Number(g.config?.port) === 465 ? 'ssl' : 'starttls')}
-                          onChange={(e) => {
-                            const enc = e.target.value
-                            const newPort = enc === 'ssl' ? 465 : 587
-                            updateGateway(g.id, { config: { ...g.config, encryption: enc, port: newPort } })
-                          }}
-                        >
-                          <option value="ssl">SSL/TLS (465)</option>
-                          <option value="starttls">STARTTLS (587)</option>
-                          <option value="none">Aucun</option>
-                        </select>
-                      </div>
-                    </div>
-                  )}
-                  {g.provider === 'smtp' && (
-                    <div className="frow" style={{ marginBottom: '0', marginTop: '8px' }}>
-                      <div className="fg">
-                        <label>Nom d&apos;utilisateur (email)</label>
-                        <input
-                          type="text"
-                          placeholder="contact@votredomaine.com"
-                          defaultValue={(g.config?.username as string) || ''}
-                          onBlur={(e) => {
-                            const val = e.target.value
-                            if (val !== (g.config?.username as string)) {
-                              updateGateway(g.id, { config: { ...g.config, username: val } })
-                            }
-                          }}
-                        />
-                      </div>
-                    </div>
-                  )}
-                  {/* Adresse d'expédition (From) — liée au gateway */}
-                  <div className="frow" style={{ marginBottom: '0', marginTop: '8px' }}>
-                    <div className="fg">
-                      <label>Adresse d&apos;expédition (From)</label>
-                      <input
-                        type="email"
-                        placeholder={(g.config?.username as string) || 'contact@votredomaine.com'}
-                        defaultValue={(g.config?.from as string) || (g.config?.username as string) || ''}
-                        onBlur={(e) => {
-                          const val = e.target.value
-                          if (val !== ((g.config?.from as string) || (g.config?.username as string) || '')) {
-                            updateGateway(g.id, { config: { ...g.config, from: val } })
-                          }
-                        }}
-                      />
-                      <small className="field-hint">
-                        Adresse utilisée comme expéditeur. Doit correspondre au domaine autorisé par ce fournisseur.
-                      </small>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
-                    <button
-                      className="btn btn-ghost"
-                      style={{ fontSize: 12, padding: '6px 10px', color: 'var(--red)' }}
-                      onClick={() => setDeleteGatewayTarget(g)}
-                    >
-                      Supprimer
-                    </button>
-                  </div>
-                </div>
+                <GatewayCard
+                  key={g.id}
+                  gateway={g}
+                  onActivate={activateGateway}
+                  onSave={updateGateway}
+                  onDelete={setDeleteGatewayTarget}
+                />
               ))}
 
               <div className="set-row" style={{ marginTop: '8px' }}>
@@ -1297,5 +1143,236 @@ function NewGatewayForm({
         </button>
       </div>
     </>
+  )
+}
+
+// =============================================================================
+// GatewayCard — formulaire contrôlé pour éditer un gateway existant.
+// Tous les champs sont éditables, un bouton "Enregistrer" persiste les changements.
+// =============================================================================
+
+function GatewayCard({
+  gateway,
+  onActivate,
+  onSave,
+  onDelete,
+}: {
+  gateway: Gateway
+  onActivate: (id: string) => void
+  onSave: (id: string, patch: Partial<Pick<Gateway, 'apiKey' | 'config' | 'label'>>) => void
+  onDelete: (g: Gateway) => void
+}) {
+  const isSmtp = gateway.provider === 'smtp'
+  const cfg = gateway.config ?? {}
+
+  // État local contrôlé — initialise depuis les données du gateway.
+  const [label, setLabel] = useState(gateway.label)
+  const [apiKey, setApiKey] = useState(gateway.apiKey ?? '')
+  const [apiKeyTouched, setApiKeyTouched] = useState(false)
+  const [host, setHost] = useState((cfg.host as string) || '')
+  const [port, setPort] = useState(String((cfg.port as number) || ''))
+  const [encryption, setEncryption] = useState((cfg.encryption as string) || (Number(cfg.port) === 465 ? 'ssl' : 'starttls'))
+  const [username, setUsername] = useState((cfg.username as string) || '')
+  const [fromAddr, setFromAddr] = useState((cfg.from as string) || (cfg.username as string) || '')
+  const [saved, setSaved] = useState(false)
+  const [testing, setTesting] = useState(false)
+  const [testResult, setTestResult] = useState<string | null>(null)
+
+  // Détection de changements non sauvegardés.
+  const configChanged = isSmtp && (
+    host !== ((cfg.host as string) || '') ||
+    port !== String((cfg.port as number) || '') ||
+    encryption !== ((cfg.encryption as string) || (Number(cfg.port) === 465 ? 'ssl' : 'starttls')) ||
+    username !== ((cfg.username as string) || '')
+  )
+  const fromChanged = fromAddr !== ((cfg.from as string) || (cfg.username as string) || '')
+  const labelChanged = label !== gateway.label
+  const keyChanged = apiKeyTouched && apiKey !== (gateway.apiKey ?? '')
+  const hasChanges = configChanged || fromChanged || labelChanged || keyChanged
+
+  const handleSave = () => {
+    // Construit le config final.
+    const newConfig: Record<string, unknown> = { ...cfg }
+    if (isSmtp) {
+      newConfig.host = host
+      newConfig.port = Number(port)
+      newConfig.encryption = encryption
+      newConfig.username = username
+    }
+    newConfig.from = fromAddr
+
+    const patch: Partial<Pick<Gateway, 'apiKey' | 'config' | 'label'>> = { config: newConfig }
+    if (labelChanged) patch.label = label
+    // N'envoie la clé que si elle a été touchée et n'est pas le masque.
+    if (keyChanged && !apiKey.startsWith('••••')) {
+      patch.apiKey = apiKey
+    }
+
+    onSave(gateway.id, patch)
+    setSaved(true)
+    setApiKeyTouched(false)
+    setTimeout(() => setSaved(false), 2500)
+  }
+
+  const handleTest = async () => {
+    setTesting(true)
+    setTestResult(null)
+    try {
+      const res = await fetch(`/api/gateways/${gateway.id}/test`, { method: 'POST' })
+      const body = await res.json()
+      if (body.success || body.data?.success) {
+        setTestResult(`✅ Email de test envoyé via ${gateway.label}`)
+      } else {
+        setTestResult(`❌ ${body.data?.error || body.error || 'Erreur inconnue'}`)
+      }
+    } catch {
+      setTestResult('❌ Impossible de tester la passerelle')
+    } finally {
+      setTesting(false)
+      setTimeout(() => setTestResult(null), 5000)
+    }
+  }
+
+  return (
+    <div className={gateway.isActive ? 'prov active-prov' : 'prov'}>
+      <div className="prov-head">
+        <label className="prov-radio">
+          <input
+            type="radio"
+            name="prov"
+            checked={gateway.isActive}
+            onChange={() => onActivate(gateway.id)}
+          />
+          <b>{gateway.label}</b>
+        </label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button
+            className="btn btn-ghost btn-sm"
+            style={{ fontSize: 12, padding: '4px 10px' }}
+            onClick={handleTest}
+            disabled={testing}
+          >
+            {testing ? 'Test…' : 'Tester'}
+          </button>
+          {gateway.isActive ? (
+            <span className="prov-badge">Actif</span>
+          ) : (
+            <span className="prov-badge-off">Inactif</span>
+          )}
+        </div>
+      </div>
+
+      {testResult && (
+        <div className="info-band" style={{ margin: '8px 0 0', background: testResult.startsWith('✅') ? '#f0fdf4' : '#fef2f2', color: testResult.startsWith('✅') ? '#166534' : '#991b1b' }}>
+          <div className="imark" style={{ background: testResult.startsWith('✅') ? '#bbf7d0' : '#fecaca', color: testResult.startsWith('✅') ? '#166534' : '#991b1b' }}>{testResult.startsWith('✅') ? '✓' : '!'}</div>
+          <div>{testResult}</div>
+        </div>
+      )}
+
+      <div className="frow" style={{ marginBottom: '0', marginTop: '12px' }}>
+        <div className="fg">
+          <label>{isSmtp ? 'Mot de passe SMTP' : 'Clé API'}</label>
+          <input
+            type="password"
+            placeholder={gateway.provider === 'brevo' ? 'xkeysib-…' : gateway.provider === 'resend' ? 're_…' : 'Mot de passe SMTP'}
+            value={apiKey}
+            onFocus={() => setApiKeyTouched(true)}
+            onChange={(e) => setApiKey(e.target.value)}
+          />
+        </div>
+        <div className="fg">
+          <label>Libellé</label>
+          <input
+            type="text"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {isSmtp && (
+        <>
+          <div className="frow" style={{ marginBottom: '0', marginTop: '8px' }}>
+            <div className="fg" style={{ flex: 2 }}>
+              <label>Hôte SMTP</label>
+              <input
+                type="text"
+                placeholder="smtp.votrefournisseur.com"
+                value={host}
+                onChange={(e) => setHost(e.target.value)}
+              />
+            </div>
+            <div className="fg" style={{ flex: 1 }}>
+              <label>Port</label>
+              <input
+                type="number"
+                placeholder="465"
+                value={port}
+                onChange={(e) => setPort(e.target.value)}
+              />
+            </div>
+            <div className="fg" style={{ flex: 1 }}>
+              <label>Chiffrement</label>
+              <select
+                value={encryption}
+                onChange={(e) => {
+                  setEncryption(e.target.value)
+                  setPort(e.target.value === 'ssl' ? '465' : '587')
+                }}
+              >
+                <option value="ssl">SSL/TLS (465)</option>
+                <option value="starttls">STARTTLS (587)</option>
+                <option value="none">Aucun</option>
+              </select>
+            </div>
+          </div>
+          <div className="frow" style={{ marginBottom: '0', marginTop: '8px' }}>
+            <div className="fg">
+              <label>Nom d&apos;utilisateur (email)</label>
+              <input
+                type="text"
+                placeholder="contact@votredomaine.com"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+              />
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Adresse d'expédition (From) — liée au gateway */}
+      <div className="frow" style={{ marginBottom: '0', marginTop: '8px' }}>
+        <div className="fg">
+          <label>Adresse d&apos;expédition (From)</label>
+          <input
+            type="email"
+            placeholder={username || 'contact@votredomaine.com'}
+            value={fromAddr}
+            onChange={(e) => setFromAddr(e.target.value)}
+          />
+          <small className="field-hint">
+            Adresse utilisée comme expéditeur. Doit correspondre au domaine autorisé par ce fournisseur.
+          </small>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
+        <button
+          className="btn btn-ghost"
+          style={{ fontSize: 12, padding: '6px 10px', color: 'var(--red)' }}
+          onClick={() => onDelete(gateway)}
+        >
+          Supprimer
+        </button>
+        <button
+          className="btn btn-primary btn-sm"
+          style={{ fontSize: 12, padding: '6px 16px' }}
+          onClick={handleSave}
+          disabled={!hasChanges}
+        >
+          {saved ? '✓ Enregistré' : hasChanges ? 'Enregistrer' : 'Aucun changement'}
+        </button>
+      </div>
+    </div>
   )
 }
