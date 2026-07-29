@@ -22,7 +22,17 @@ export {
   textToHtml,
   formatEuro,
   type InterpolationContext,
+  type BrandContext,
 } from './template';
+
+export {
+  wrapEmailHtml,
+  loadBrandData,
+  brandToContext,
+  buildInterpolationContext,
+  type EmailBrandData,
+  type WrapEmailOptions,
+} from './layout';
 
 export {
   getSetting,

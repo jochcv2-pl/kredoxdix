@@ -17,7 +17,8 @@ import {
 } from '@kredix/db';
 import { getSetting, getSettingNumber, getActiveGateway } from './settings';
 import { sendEmail, type EmailAttachment } from './email-sender';
-import { interpolateTemplate, textToHtml } from './template-interpolation';
+import { interpolateTemplate, textToHtml, buildUnsubscribeUrl } from './template-interpolation';
+import { wrapEmailHtml, loadBrandData, brandToContext } from '@kredix/email';
 import { generateAmortizationPDF } from './amortization';
 
 /** Pause synchrone (Promise) — utilise setTimeout. */
@@ -120,6 +121,7 @@ export async function processCampaign(campaignId: string): Promise<void> {
     const intervalMax = await getSettingNumber('campaign_interval_max', 90);
     const dailyCap = await getSettingNumber('campaign_daily_cap', 200);
     const siteUrl = await getSetting('site_url', '');
+    const brand = await loadBrandData();
 
     const template = campaign.template as EmailTemplate;
 
@@ -221,12 +223,22 @@ export async function processCampaign(campaignId: string): Promise<void> {
           preferredLanguage: 'fr',
         },
         siteUrl,
+        brand: brandToContext(brand),
       };
       const subject = interpolateTemplate(template.subject, ctx);
       const textBody = interpolateTemplate(template.bodyText, ctx);
-      const html = template.htmlContent
+      const rawHtml = template.htmlContent
         ? interpolateTemplate(template.htmlContent, ctx)
         : textToHtml(textBody);
+
+      const html = wrapEmailHtml({
+        bodyHtml: rawHtml,
+        bodyText: textBody,
+        brand,
+        unsubscribeUrl: buildUnsubscribeUrl(ctx.lead, siteUrl),
+        bannerEnabled: template.bannerEnabled,
+        subject,
+      });
 
       // 4e — Envoi effectif via le gateway configuré.
       //      Si le template est une offre, on génère le PDF d'amortissement

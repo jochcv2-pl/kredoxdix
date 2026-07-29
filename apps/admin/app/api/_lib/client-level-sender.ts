@@ -19,7 +19,8 @@ import {
 } from '@kredix/db';
 import { getSetting, getActiveGateway } from './settings';
 import { sendEmail, type EmailAttachment } from './email-sender';
-import { interpolateTemplate, textToHtml } from './template-interpolation';
+import { interpolateTemplate, textToHtml, buildUnsubscribeUrl } from './template-interpolation';
+import { wrapEmailHtml, loadBrandData, brandToContext } from '@kredix/email';
 import { fillPdfTemplate, type PdfFillData } from './pdf-filler';
 
 export interface SendLevelResult {
@@ -145,29 +146,38 @@ export async function sendClientLevelEmail(
 
   const siteName = await getSetting('site_name', 'Kredix');
   const siteUrl = await getSetting('site_url', 'http://localhost:3100');
+  const brand = await loadBrandData();
 
-  // 6 — Interpolation sujet + corps.
-  const ctx = {
-    lead: {
-      firstName: lead.firstName,
-      lastName: lead.lastName,
-      email: lead.email,
-      phone: lead.phone,
-      amount: lead.amount,
-      durationYears: lead.durationYears,
-      monthlyPayment: lead.monthlyPayment,
-      annualRate: lead.annualRate,
-      loanType: lead.loanType,
-      unsubscribeToken: lead.unsubscribeToken,
-      preferredLanguage: lead.preferredLanguage,
-    },
-    siteUrl,
+  // 6 — Interpolation sujet + corps (avec variables marque injectées).
+  const leadData = {
+    firstName: lead.firstName,
+    lastName: lead.lastName,
+    email: lead.email,
+    phone: lead.phone,
+    amount: lead.amount,
+    durationYears: lead.durationYears,
+    monthlyPayment: lead.monthlyPayment,
+    annualRate: lead.annualRate,
+    loanType: lead.loanType,
+    unsubscribeToken: lead.unsubscribeToken,
+    preferredLanguage: lead.preferredLanguage,
   };
+  const ctx = { lead: leadData, siteUrl, brand: brandToContext(brand) };
   const subject = interpolateTemplate(template.subject, ctx);
   const textBody = interpolateTemplate(template.bodyText, ctx);
-  const html = template.htmlContent
+  const rawHtml = template.htmlContent
     ? interpolateTemplate(template.htmlContent, ctx)
     : textToHtml(textBody);
+
+  // Wrapper HTML branded : header (logo + couleur) + footer (unsubscribe + contact).
+  const html = wrapEmailHtml({
+    bodyHtml: rawHtml,
+    bodyText: textBody,
+    brand,
+    unsubscribeUrl: buildUnsubscribeUrl(leadData, siteUrl),
+    bannerEnabled: template.bannerEnabled,
+    subject,
+  });
 
   // 7 — Pièces jointes PDF.
   const attachments: EmailAttachment[] = [];

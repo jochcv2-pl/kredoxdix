@@ -30,6 +30,17 @@ export interface InterpolationContext {
   >;
   siteUrl: string;
   customMessage?: string;
+  /** Données de marque injectées dans l'interpolation. */
+  brand?: BrandContext;
+}
+
+/** Variables marque disponibles dans les templates via {{NomSite}}, {{SiteUrl}}, etc. */
+export interface BrandContext {
+  siteName: string;
+  logoUrl: string;
+  contactEmail: string;
+  agencyPhone: string;
+  agencyAddress: string;
 }
 
 export function buildUnsubscribeUrl(lead: InterpolationContext['lead'], siteUrl: string): string {
@@ -37,7 +48,7 @@ export function buildUnsubscribeUrl(lead: InterpolationContext['lead'], siteUrl:
 }
 
 export function interpolateTemplate(text: string, ctx: InterpolationContext): string {
-  const { lead, siteUrl, customMessage } = ctx;
+  const { lead, siteUrl, customMessage, brand } = ctx;
   const unsubscribeUrl = buildUnsubscribeUrl(lead, siteUrl);
 
   const replacements: Record<string, string> = {
@@ -52,6 +63,13 @@ export function interpolateTemplate(text: string, ctx: InterpolationContext): st
     '{{TAEG}}': lead.annualRate ? `${lead.annualRate.toFixed(2)}%` : '—',
     '{{LienDesinscription}}': unsubscribeUrl,
     '{{Message}}': customMessage ?? '',
+    // Variables marque
+    '{{NomSite}}': brand?.siteName ?? '',
+    '{{SiteUrl}}': siteUrl,
+    '{{LogoUrl}}': brand?.logoUrl ?? '',
+    '{{ContactEmail}}': brand?.contactEmail ?? '',
+    '{{TéléphoneAgence}}': brand?.agencyPhone ?? '',
+    '{{AdresseAgence}}': brand?.agencyAddress ?? '',
   };
 
   let result = text;

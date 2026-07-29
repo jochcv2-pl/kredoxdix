@@ -4,7 +4,8 @@ import { generateEmail } from '@kredix/ai';
 import { successResponse, errorResponse, ERR } from '../../_lib/responses';
 import { getSetting, getSettingNumber, getActiveGateway } from '../../_lib/settings';
 import { sendEmail } from '../../_lib/email-sender';
-import { interpolateTemplate, textToHtml } from '../../_lib/template-interpolation';
+import { interpolateTemplate, textToHtml, buildUnsubscribeUrl } from '../../_lib/template-interpolation';
+import { wrapEmailHtml, loadBrandData, brandToContext } from '@kredix/email';
 import { getOfferAttachment } from '../../_lib/campaign-sender';
 import { verifyBearerSecret } from '../../_lib/security';
 
@@ -136,6 +137,9 @@ export async function POST(req: NextRequest) {
       return successResponse({ ...stats, note: 'Aucun gateway actif — envois skipés' }, 200);
     }
 
+    // Charge les données de marque une fois (header/footer emails).
+    const brand = await loadBrandData();
+
     // -----------------------------------------------------------------
     // 3. Traitement de chaque lead dû
     // -----------------------------------------------------------------
@@ -202,7 +206,7 @@ export async function POST(req: NextRequest) {
           }
 
           const siteUrl = await getSetting('site_url', 'http://localhost:3100');
-          const ctx = { lead, siteUrl };
+          const ctx = { lead, siteUrl, brand: brandToContext(brand) };
           const welcomeSubject = interpolateTemplate(welcomeTemplate.subject, ctx);
           const welcomeBody = interpolateTemplate(welcomeTemplate.bodyText, ctx);
 
@@ -239,9 +243,18 @@ export async function POST(req: NextRequest) {
             }
           }
 
-          const welcomeHtml = welcomeTemplate.htmlContent && !generated
+          const welcomeRawHtml = welcomeTemplate.htmlContent && !generated
             ? interpolateTemplate(welcomeTemplate.htmlContent, ctx)
             : textToHtml(finalBody);
+
+          const welcomeHtml = wrapEmailHtml({
+            bodyHtml: welcomeRawHtml,
+            bodyText: finalBody,
+            brand,
+            unsubscribeUrl: buildUnsubscribeUrl(lead, siteUrl),
+            bannerEnabled: welcomeTemplate.bannerEnabled,
+            subject: finalSubject,
+          });
 
           const welcomeResult = await sendEmail(gateway, {
             to: lead.email,
@@ -315,7 +328,7 @@ export async function POST(req: NextRequest) {
 
         // d) Interpole les variables du template (fallback de base)
         const siteUrl = await getSetting('site_url', 'http://localhost:3100');
-        const ctx = { lead, siteUrl };
+        const ctx = { lead, siteUrl, brand: brandToContext(brand) };
         const fallbackSubject = interpolateTemplate(template.subject, ctx);
         const fallbackBody = interpolateTemplate(template.bodyText, ctx);
 
@@ -354,9 +367,18 @@ export async function POST(req: NextRequest) {
           bodyText = aiResult.bodyText;
           generated = aiResult.generated;
         }
-        const htmlContent = template.htmlContent && !generated
+        const relanceRawHtml = template.htmlContent && !generated
           ? interpolateTemplate(template.htmlContent, ctx)
           : textToHtml(bodyText);
+
+        const htmlContent = wrapEmailHtml({
+          bodyHtml: relanceRawHtml,
+          bodyText,
+          brand,
+          unsubscribeUrl: buildUnsubscribeUrl(lead, siteUrl),
+          bannerEnabled: template.bannerEnabled,
+          subject,
+        });
 
         if (generated) {
           console.log(`[CRON RELANCE] Email généré par IA (lead ${lead.id}, relance ${nextRelanceNum})`);

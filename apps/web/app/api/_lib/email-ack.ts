@@ -13,9 +13,13 @@ import {
   sendEmail,
   interpolateTemplate,
   textToHtml,
+  buildUnsubscribeUrl,
   getSetting,
   getActiveGateway,
   getActiveTemplate,
+  wrapEmailHtml,
+  loadBrandData,
+  brandToContext,
 } from '@kredix/email';
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -48,6 +52,7 @@ export async function sendReceptionAck(lead: Lead): Promise<AckResult> {
   }
 
   const siteUrl = await getSetting('site_url', process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3100');
+  const brand = await loadBrandData();
 
   const [gateway, template] = await Promise.all([
     getActiveGateway(),
@@ -63,7 +68,7 @@ export async function sendReceptionAck(lead: Lead): Promise<AckResult> {
           email: lead.email,
           trigger: 'reception_ack',
           templateName: template?.name ?? '—',
-          subject: template ? interpolateTemplate(template.subject, { lead, siteUrl }) : 'Accusé de réception',
+          subject: template ? interpolateTemplate(template.subject, { lead, siteUrl, brand: brandToContext(brand) }) : 'Accusé de réception',
           status: 'skipped',
           error: "Aucun gateway email actif. Configurez et activez un fournisseur dans Paramètres → Emails.",
         },
@@ -75,11 +80,21 @@ export async function sendReceptionAck(lead: Lead): Promise<AckResult> {
     return { sent: false, templateUsed: false, gatewayActive: true };
   }
 
-  const subject = interpolateTemplate(template.subject, { lead, siteUrl });
-  const bodyText = interpolateTemplate(template.bodyText, { lead, siteUrl });
-  const html = template.htmlContent
-    ? interpolateTemplate(template.htmlContent, { lead, siteUrl })
+  const ctx = { lead, siteUrl, brand: brandToContext(brand) };
+  const subject = interpolateTemplate(template.subject, ctx);
+  const bodyText = interpolateTemplate(template.bodyText, ctx);
+  const rawHtml = template.htmlContent
+    ? interpolateTemplate(template.htmlContent, ctx)
     : textToHtml(bodyText);
+
+  const html = wrapEmailHtml({
+    bodyHtml: rawHtml,
+    bodyText,
+    brand,
+    unsubscribeUrl: buildUnsubscribeUrl(lead, siteUrl),
+    bannerEnabled: template.bannerEnabled,
+    subject,
+  });
 
   const result = await sendEmail(gateway, {
     to: lead.email,
