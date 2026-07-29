@@ -93,10 +93,44 @@ function extractBodyContent(html: string): string {
 
 type IframeRenderMode = 'composed' | 'raw';
 
-function buildComposedEmailDoc(body: string, opts: {
+// Détecte un document HTML complet (template importé ou éditeur de blocs).
+// Même logique que composeEmailHtml côté serveur (@kredix/email/layout.ts).
+const FULL_DOC_RE = /<(!doctype\s+html|html[\s>]|body[\s>])/i;
+function isFullHtmlDocument(html: string): boolean {
+  return FULL_DOC_RE.test(html);
+}
+
+// Pied de page désinscription RGPD injecté dans l'aperçu des documents complets.
+// Reflète ce que le client recevra réellement (composeEmailHtml côté serveur).
+const PREVIEW_UNSUB_FOOTER = `
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:28px;padding:18px 24px;border-top:1px solid #e5e7eb;background:#fafbfc;">
+  <tr><td align="center" style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#94a3b8;line-height:1.6;">
+    <div>© ${new Date().getFullYear()} Kredix. <a style="color:#94a3b8;text-decoration:underline;">Se désinscrire</a></div>
+  </td></tr>
+</table>`;
+
+/**
+ * Construit le document d'aperçu "Email envoyé" — fidèle au rendu réel.
+ *
+ * - Document HTML complet (importé / blocs) → on PRÉSERVE le design original
+ *   et on injecte uniquement le footer de désinscription RGPD (comme le serveur).
+ * - Fragment HTML (texte simple) → on applique le wrapper branded Kredix.
+ */
+function buildPreviewDoc(rawHtml: string, opts: {
   bannerVisible: boolean;
   footer: EmailFooterData;
 }): string {
+  // Document complet : préserver le design, injecter le footer désinscription.
+  if (isFullHtmlDocument(rawHtml)) {
+    const bodyClose = rawHtml.match(/<\/body>\s*/i);
+    if (bodyClose && bodyClose.index !== undefined) {
+      return rawHtml.slice(0, bodyClose.index) + PREVIEW_UNSUB_FOOTER + rawHtml.slice(bodyClose.index);
+    }
+    return rawHtml + PREVIEW_UNSUB_FOOTER;
+  }
+
+  // Fragment : wrapper branded Kredix (comportement inchangé).
+  const body = extractBodyContent(rawHtml);
   const banner = opts.bannerVisible
     ? `<div style="width:100%;background:#0F2942;"><img src="/email-banner.jpg" alt="Kredix" style="width:100%;max-height:140px;object-fit:cover;display:block;" /></div>`
     : '';
@@ -207,6 +241,64 @@ export default function Emails() {
 
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const previewIframeRef = useRef<HTMLIFrameElement>(null);
+
+  // Édition WYSIWYG inline dans l'aperçu (mode import).
+  const [inlineEditing, setInlineEditing] = useState(false);
+
+  // ---------------------------------------------------------------------------
+  // Édition WYSIWYG — active designMode sur l'iframe d'aperçu.
+  // On édite le HTML BRUT (avec {{Variables}}) pour que l'admin modifie le
+  // template réel, pas les valeurs d'exemple. Au moment d'appliquer, on lit
+  // le document via la ref et on normalise les artefacts contentEditable.
+  // ---------------------------------------------------------------------------
+
+  function startInlineEditing() {
+    if (!htmlArea.trim()) return;
+    setInlineEditing(true);
+    setPreviewMode('raw');
+    // Active designMode après le prochain rendu de l'iframe (srcDoc change).
+    requestAnimationFrame(() => {
+      const iframe = previewIframeRef.current;
+      if (iframe?.contentDocument) {
+        iframe.contentDocument.designMode = 'on';
+        iframe.contentWindow?.focus();
+      }
+    });
+  }
+
+  function applyInlineEdits() {
+    const doc = previewIframeRef.current?.contentDocument;
+    if (!doc) {
+      setInlineEditing(false);
+      return;
+    }
+    let edited = doc.documentElement.outerHTML;
+    edited = normalizeVars(edited);
+    setHtmlArea(edited);
+    doc.designMode = 'off';
+    setInlineEditing(false);
+    setPreviewMode('data');
+  }
+
+  function cancelInlineEditing() {
+    const doc = previewIframeRef.current?.contentDocument;
+    if (doc) doc.designMode = 'off';
+    setInlineEditing(false);
+    setPreviewMode('data');
+  }
+
+  /**
+   * Nettoie les artefacts introduits par contentEditable :
+   *  - zero-width spaces (U+200B) insérés par le navigateur
+   *  - espaces insécables parasites
+   * Les variables {{...}} sont préservées telles quelles (texte simple).
+   */
+  function normalizeVars(html: string): string {
+    return html
+      .replace(/\u200B/g, '')
+      .replace(/\uFEFF/g, '');
+  }
 
   // ---------------------------------------------------------------------------
   // Chargement initial — GET /api/templates
@@ -304,13 +396,12 @@ export default function Emails() {
     ? Object.keys(SAMPLE).reduce((acc, v) => acc.split(v).join(SAMPLE[v]), htmlArea)
     : '';
 
-  const composedIframeDoc = htmlArea.trim()
-    ? buildComposedEmailDoc(
-        extractBodyContent(
-          Object.keys(SAMPLE).reduce((acc, v) => acc.split(v).join(SAMPLE[v]), htmlArea),
-        ),
-        { bannerVisible, footer: footerData },
-      )
+  const interpolatedHtml = htmlArea.trim()
+    ? Object.keys(SAMPLE).reduce((acc, v) => acc.split(v).join(SAMPLE[v]), htmlArea)
+    : '';
+
+  const composedIframeDoc = interpolatedHtml
+    ? buildPreviewDoc(interpolatedHtml, { bannerVisible, footer: footerData })
     : '';
 
   const fullscreenIframeDoc = iframeRenderMode === 'composed' ? composedIframeDoc : importSrcDoc;
@@ -759,7 +850,7 @@ export default function Emails() {
                     </select>
                   </div>
                 </div>
-                <button className="btn btn-primary" onClick={importTemplate} disabled={saving}>
+                <button className="btn btn-primary" onClick={importTemplate} disabled={saving || inlineEditing}>
                   {saving ? 'Import…' : 'Importer comme modèle'}
                 </button>
               </div>
@@ -768,16 +859,73 @@ export default function Emails() {
               <div className="iframe-wrap">
                 <div className="ifh">
                   <span>Aperçu du rendu</span>
-                  {importSrcDoc && (
-                    <button className="pv-expand-btn" title="Aperçu plein écran" onClick={() => setFullIframeOpen(true)}>
-                      <Icon name="search" size={18} />
-                    </button>
-                  )}
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    {importSrcDoc && !inlineEditing && (
+                      <button
+                        className="tpl2-btn tpl2-btn-edit"
+                        title="Modifier le texte directement dans l'aperçu"
+                        onClick={startInlineEditing}
+                        style={{ fontSize: 12 }}
+                      >
+                        <Icon name="pencil" size={14} />
+                        Éditer dans l&apos;aperçu
+                      </button>
+                    )}
+                    {inlineEditing && (
+                      <>
+                        <button
+                          className="tpl2-btn tpl2-btn-toggle is-on"
+                          title="Enregistrer les modifications"
+                          onClick={applyInlineEdits}
+                          style={{ fontSize: 12 }}
+                        >
+                          <Icon name="check" size={14} />
+                          Appliquer
+                        </button>
+                        <button
+                          className="tpl2-btn tpl2-btn-delete"
+                          title="Annuler les modifications"
+                          onClick={cancelInlineEditing}
+                          style={{ fontSize: 12 }}
+                        >
+                          Annuler
+                        </button>
+                      </>
+                    )}
+                    {importSrcDoc && !inlineEditing && (
+                      <button className="pv-expand-btn" title="Aperçu plein écran" onClick={() => setFullIframeOpen(true)}>
+                        <Icon name="search" size={18} />
+                      </button>
+                    )}
+                  </div>
                 </div>
-                {importSrcDoc ? (
+                {inlineEditing ? (
+                  <iframe
+                    ref={previewIframeRef}
+                    srcDoc={htmlArea}
+                    title="Édition"
+                    onLoad={() => {
+                      const iframe = previewIframeRef.current;
+                      if (iframe?.contentDocument) {
+                        iframe.contentDocument.designMode = 'on';
+                        iframe.contentWindow?.focus();
+                      }
+                    }}
+                  />
+                ) : importSrcDoc ? (
                   <iframe srcDoc={importSrcDoc} title="Aperçu" />
                 ) : (
                   <div className="iframe-empty">Importez ou collez du HTML pour voir l&apos;aperçu.</div>
+                )}
+                {inlineEditing && (
+                  <div className="info-band" style={{ marginTop: 8, fontSize: 12 }}>
+                    <div className="imark" style={{ background: '#dbeafe', color: '#1e40af' }}>✏️</div>
+                    <div>
+                      Cliquez sur un texte dans l&apos;aperçu pour le modifier directement. Les variables{' '}
+                      <code>{'{{Prénom}}'}</code> sont visibles et éditables. Cliquez sur{' '}
+                      <b>Appliquer</b> pour enregistrer vos modifications dans le code HTML.
+                    </div>
+                  </div>
                 )}
               </div>
             </div>

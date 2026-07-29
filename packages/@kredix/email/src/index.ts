@@ -27,11 +27,13 @@ export {
 
 export {
   wrapEmailHtml,
+  composeEmailHtml,
   loadBrandData,
   brandToContext,
   buildInterpolationContext,
   type EmailBrandData,
   type WrapEmailOptions,
+  type ComposeOptions,
 } from './layout';
 
 export {

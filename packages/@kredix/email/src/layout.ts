@@ -219,6 +219,115 @@ function buildFooter(brand: EmailBrandData, unsubscribeUrl: string): string {
           </tr>`;
 }
 
+// =============================================================================
+// composeEmailHtml — Point d'entrée UNIQUE pour composer un email prêt à envoyer.
+// =============================================================================
+// Décide intelligemment entre :
+//   - Document HTML complet (template importé OU éditeur de blocs) → on PRÉSERVE
+//     le design original. On injecte uniquement un pied de page de désinscription
+//     RGPD discret avant </body>. AUCUN ré-emballage (sinon double <html>/header).
+//   - Fragment HTML (texte brut / IA → textToHtml = simples <p>) → on applique
+//     wrapEmailHtml complet (header logo + footer branded).
+//
+// La détection se base sur la présence de balises structurelles (<html>, <body>,
+// <!doctype>) qui n'existent QUE dans un document HTML complet.
+// =============================================================================
+
+const FULL_DOC_RE = /<(!doctype\s+html|html[\s>]|body[\s>])/i;
+
+export interface ComposeOptions {
+  /** Contenu HTML déjà interpolé du template (body OU document complet). */
+  bodyHtml: string;
+  /** Version texte brut (pour clients mail ne supportant pas le HTML). */
+  bodyText?: string;
+  /** Données de marque (site, logo, contact). */
+  brand: EmailBrandData;
+  /** URL complète de désinscription (avec token). */
+  unsubscribeUrl: string;
+  /** Si false, masque le header avec logo (footer reste). Défaut: true. */
+  bannerEnabled?: boolean;
+  /** Objet de l'email (affiché en pré-header pour les fragments). */
+  subject?: string;
+}
+
+/**
+ * Compose un email prêt à l'envoi en préservant le design des templates HTML
+ * complets, ou en enveloppant les fragments de texte avec un wrapper branded.
+ *
+ * À utiliser par TOUS les senders (cron, campaign, client-level, email-ack).
+ */
+export function composeEmailHtml(opts: ComposeOptions): string {
+  const isFullDocument = FULL_DOC_RE.test(opts.bodyHtml);
+  return isFullDocument
+    ? injectUnsubscribeFooter(opts.bodyHtml, opts.brand, opts.unsubscribeUrl)
+    : wrapEmailHtml(opts);
+}
+
+/**
+ * Injecte un pied de page de désinscription RGPD discret dans un document HTML
+ * complet, SANS modifier le design original du modèle.
+ *
+ * Le footer est inséré juste avant </body> (ou </html>, ou en fin de document).
+ * Il contient le lien de désinscription (obligation RGPD) et les coordonnées.
+ */
+function injectUnsubscribeFooter(
+  html: string,
+  brand: EmailBrandData,
+  unsubscribeUrl: string,
+): string {
+  const footer = buildInlineFooter(brand, unsubscribeUrl);
+
+  // Injection avant </body> (cas le plus fréquent).
+  const bodyClose = html.match(/<\/body>\s*/i);
+  if (bodyClose && bodyClose.index !== undefined) {
+    return (
+      html.slice(0, bodyClose.index) +
+      footer +
+      html.slice(bodyClose.index)
+    );
+  }
+  // Fallback : avant </html>.
+  const htmlClose = html.match(/<\/html>\s*$/i);
+  if (htmlClose && htmlClose.index !== undefined) {
+    return (
+      html.slice(0, htmlClose.index) +
+      footer +
+      html.slice(htmlClose.index)
+    );
+  }
+  // Aucune balise de fermeture → on append.
+  return html + footer;
+}
+
+/**
+ * Pied de page autonome (table-based, compatible tous clients mail) injecté
+ * dans les documents HTML complets. Style sobre pour s'intégrer discrètement.
+ */
+function buildInlineFooter(brand: EmailBrandData, unsubscribeUrl: string): string {
+  const contactParts: string[] = [];
+  if (brand.contactEmail) {
+    contactParts.push(`<a href="mailto:${escapeAttr(brand.contactEmail)}" style="color:#94a3b8;text-decoration:underline;">${escapeHtml(brand.contactEmail)}</a>`);
+  }
+  if (brand.agencyPhone) contactParts.push(escapeHtml(brand.agencyPhone));
+  const contactLine = contactParts.length
+    ? `<div style="margin-bottom:6px;">${contactParts.join(' · ')}</div>`
+    : '';
+
+  return `
+<!-- FOOTER DÉSINSCRIPTION RGPD (injecté automatiquement) -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:28px;padding:18px 24px;border-top:1px solid #e5e7eb;background:#fafbfc;">
+  <tr>
+    <td align="center" style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#94a3b8;line-height:1.6;">
+      ${contactLine}
+      <div>© ${new Date().getFullYear()} ${escapeHtml(brand.siteName)}.
+        <a href="${escapeAttr(unsubscribeUrl)}" style="color:#94a3b8;text-decoration:underline;">Se désinscrire</a>
+      </div>
+    </td>
+  </tr>
+</table>
+`;
+}
+
 // --- Utils ---
 
 function escapeHtml(s: string): string {

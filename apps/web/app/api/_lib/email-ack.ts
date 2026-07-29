@@ -17,7 +17,7 @@ import {
   getSetting,
   getActiveGateway,
   getActiveTemplate,
-  wrapEmailHtml,
+  composeEmailHtml,
   loadBrandData,
   brandToContext,
 } from '@kredix/email';
@@ -87,7 +87,7 @@ export async function sendReceptionAck(lead: Lead): Promise<AckResult> {
     ? interpolateTemplate(template.htmlContent, ctx)
     : textToHtml(bodyText);
 
-  const html = wrapEmailHtml({
+  const html = composeEmailHtml({
     bodyHtml: rawHtml,
     bodyText,
     brand,

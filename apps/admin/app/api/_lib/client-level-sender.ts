@@ -20,7 +20,7 @@ import {
 import { getSetting, getActiveGateway } from './settings';
 import { sendEmail, type EmailAttachment } from './email-sender';
 import { interpolateTemplate, textToHtml, buildUnsubscribeUrl } from './template-interpolation';
-import { wrapEmailHtml, loadBrandData, brandToContext } from '@kredix/email';
+import { composeEmailHtml, loadBrandData, brandToContext } from '@kredix/email';
 import { fillPdfTemplate, type PdfFillData } from './pdf-filler';
 
 export interface SendLevelResult {
@@ -169,8 +169,9 @@ export async function sendClientLevelEmail(
     ? interpolateTemplate(template.htmlContent, ctx)
     : textToHtml(textBody);
 
-  // Wrapper HTML branded : header (logo + couleur) + footer (unsubscribe + contact).
-  const html = wrapEmailHtml({
+  // Composition HTML : préserve le design des templates importés (document
+  // complet), enveloppe les fragments de texte (textToHtml) avec le wrapper.
+  const html = composeEmailHtml({
     bodyHtml: rawHtml,
     bodyText: textBody,
     brand,

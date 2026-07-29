@@ -5,7 +5,7 @@ import { successResponse, errorResponse, ERR } from '../../_lib/responses';
 import { getSetting, getSettingNumber, getActiveGateway } from '../../_lib/settings';
 import { sendEmail } from '../../_lib/email-sender';
 import { interpolateTemplate, textToHtml, buildUnsubscribeUrl } from '../../_lib/template-interpolation';
-import { wrapEmailHtml, loadBrandData, brandToContext } from '@kredix/email';
+import { composeEmailHtml, loadBrandData, brandToContext } from '@kredix/email';
 import { getOfferAttachment } from '../../_lib/campaign-sender';
 import { verifyBearerSecret } from '../../_lib/security';
 
@@ -247,7 +247,7 @@ export async function POST(req: NextRequest) {
             ? interpolateTemplate(welcomeTemplate.htmlContent, ctx)
             : textToHtml(finalBody);
 
-          const welcomeHtml = wrapEmailHtml({
+          const welcomeHtml = composeEmailHtml({
             bodyHtml: welcomeRawHtml,
             bodyText: finalBody,
             brand,
@@ -371,7 +371,7 @@ export async function POST(req: NextRequest) {
           ? interpolateTemplate(template.htmlContent, ctx)
           : textToHtml(bodyText);
 
-        const htmlContent = wrapEmailHtml({
+        const htmlContent = composeEmailHtml({
           bodyHtml: relanceRawHtml,
           bodyText,
           brand,

@@ -18,7 +18,7 @@ import {
 import { getSetting, getSettingNumber, getActiveGateway } from './settings';
 import { sendEmail, type EmailAttachment } from './email-sender';
 import { interpolateTemplate, textToHtml, buildUnsubscribeUrl } from './template-interpolation';
-import { wrapEmailHtml, loadBrandData, brandToContext } from '@kredix/email';
+import { composeEmailHtml, loadBrandData, brandToContext } from '@kredix/email';
 import { generateAmortizationPDF } from './amortization';
 
 /** Pause synchrone (Promise) — utilise setTimeout. */
@@ -231,7 +231,7 @@ export async function processCampaign(campaignId: string): Promise<void> {
         ? interpolateTemplate(template.htmlContent, ctx)
         : textToHtml(textBody);
 
-      const html = wrapEmailHtml({
+      const html = composeEmailHtml({
         bodyHtml: rawHtml,
         bodyText: textBody,
         brand,
