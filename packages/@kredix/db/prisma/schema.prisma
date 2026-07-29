@@ -343,7 +343,8 @@ model EmailTemplate {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
-  campaigns     Campaign[]
+  campaigns       Campaign[]
+  pipelineSteps   PipelineStep[] @relation("PipelineStepTemplate")
 
   @@index([trigger, status, language])   // un seul actif par trigger + langue
 }
@@ -534,7 +535,9 @@ enum DomainType {
 model ClientStep {
   id          String   @id @default(cuid())
   leadId      String
-  level       Int                             // 1 à 7
+  level       Int                             // ordre du PipelineStep au moment de l'envoi (backward compat)
+  stepId      String?                         // FK vers PipelineStep (nullable = niveau legacy)
+  step        PipelineStep?                   @relation(fields: [stepId], references: [id], onDelete: SetNull)
   templateId  String                          // template email envoyé à ce niveau
   emailLogId  String?                         // lien vers EmailLog
   sentAt      DateTime @default(now())
@@ -561,7 +564,34 @@ model DocumentTemplate {
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
+  pipelineSteps PipelineStep[] @relation("PipelineStepDocument")
+
   @@index([level, isActive])
+}
+
+// -----------------------------------------------------------------------------
+// PIPELINESTEP — étapes configurables du parcours client
+// -----------------------------------------------------------------------------
+// Remplace l'ancien système hardcoded de 7 niveaux (EmailTrigger.level_1..7).
+// L'admin peut : ajouter, supprimer, réordonner, activer/désactiver des étapes.
+// Chaque étape associe UN template email + UN document PDF (optionnel).
+// L'envoi est 100% manuel (clic admin) — AUCUN délai automatique.
+model PipelineStep {
+  id            String            @id @default(cuid())
+  order         Int                                // position dans le parcours (1, 2, 3...)
+  name          String                             // "Accueil client"
+  description   String?                            // court résumé affiché dans l'UI
+  templateId    String?                            // EmailTemplate utilisé pour ce niveau
+  documentId    String?                            // DocumentTemplate (PDF) attaché
+  isActive      Boolean           @default(true)   // désactivé = masqué dans la liste d'envoi
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  template      EmailTemplate?    @relation("PipelineStepTemplate", fields: [templateId], references: [id], onDelete: SetNull)
+  document      DocumentTemplate? @relation("PipelineStepDocument", fields: [documentId], references: [id], onDelete: SetNull)
+  clientSteps   ClientStep[]
+
+  @@index([order])
 }
 
 // -----------------------------------------------------------------------------

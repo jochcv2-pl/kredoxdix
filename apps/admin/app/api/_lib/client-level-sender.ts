@@ -1,13 +1,12 @@
 // =============================================================================
-// client-level-sender — Envoi d'un email d'un niveau du parcours client (1-7).
+// client-level-sender — Envoi d'un email d'une étape du parcours client.
 // =============================================================================
-// Quand un prospect est validé comme client (LeadStatus.client), il entre dans
-// le parcours d'accompagnement en 7 niveaux. Chaque niveau déclenche l'envoi
-// d'un email (template EmailTrigger.level_N) + les PDFs DocumentTemplate liés.
+// Le parcours est entièrement configurable via PipelineStep (modèle DB).
+// Chaque étape associe UN template email + UN document PDF (optionnel).
+// L'envoi est 100% manuel (clic admin) — AUCUN délai automatique.
 //
 // Un niveau ne peut être envoyé qu'une seule fois par client (@@unique lead+level).
 // L'envoi réel passe par le gateway actif configuré dans l'admin.
-// Aucune IA ne lit les emails entrants : ce module est purement sortant.
 // =============================================================================
 
 import {
@@ -16,42 +15,56 @@ import {
   EmailTrigger,
   type EmailGateway,
   type EmailTemplate,
+  type DocumentTemplate,
 } from '@kredix/db';
 import { getSetting, getActiveGateway } from './settings';
 import { sendEmail, type EmailAttachment } from './email-sender';
 import { interpolateTemplate, textToHtml } from './template-interpolation';
 import { fillPdfTemplate, type PdfFillData } from './pdf-filler';
-import { generateAmortizationPDF } from './amortization';
 
 export interface SendLevelResult {
   success: boolean;
   error?: string;
   emailLogId?: string;
   currentLevel?: number;
+  stepName?: string;
 }
 
 /**
- * Envoie l'email d'un niveau (1-7) à un client.
+ * Envoie l'email d'une étape du parcours client.
  *
  * Étapes :
- *   1. Valide le niveau (1-7).
+ *   1. Charge le PipelineStep (source de vérité : template + document + nom).
  *   2. Charge le lead — doit exister et être au statut "client".
  *   3. Vérifie que ce niveau n'a pas déjà été envoyé (ClientStep unique).
- *   4. Récupère le template email actif pour `level_N`.
+ *   4. Récupère le template email (PipelineStep.templateId, fallback trigger level_N).
  *   5. Récupère le gateway actif + site_name + site_url.
  *   6. Interpole sujet + corps avec les données du lead.
- *   7. Construit les pièces jointes PDF (DocumentTemplate du niveau + amortissement si level_3).
+ *   7. Construit les pièces jointes PDF (PipelineStep.documentId + level match).
  *   8. Envoie via le gateway.
  *   9. Journalise dans EmailLog + crée le ClientStep (succès uniquement).
  */
 export async function sendClientLevelEmail(
   leadId: string,
-  level: number,
+  stepId: string,
 ): Promise<SendLevelResult> {
-  // 1 — Validation du niveau.
-  if (!Number.isInteger(level) || level < 1 || level > 7) {
-    return { success: false, error: 'Niveau invalide (1 à 7 attendu)' };
+  // 1 — Charge le PipelineStep (source de vérité configurable).
+  const step = await prisma.pipelineStep.findUnique({
+    where: { id: stepId },
+    include: {
+      template: true,
+      document: true,
+    },
+  });
+
+  if (!step) {
+    return { success: false, error: 'Étape du parcours introuvable' };
   }
+  if (!step.isActive) {
+    return { success: false, error: 'Cette étape est désactivée' };
+  }
+
+  const level = step.order;
 
   // 2 — Chargement du lead (doit être un client validé).
   const lead = await prisma.lead.findUnique({
@@ -95,20 +108,33 @@ export async function sendClientLevelEmail(
     return { success: false, error: 'Niveau déjà envoyé' };
   }
 
-  // 4 — Template email actif pour ce trigger + langue du prospect (fallback FR).
-  const triggerKey = `level_${level}` as EmailTrigger;
-  const leadLang = lead.preferredLanguage || 'fr';
-  let template = (await prisma.emailTemplate.findFirst({
-    where: { trigger: triggerKey, status: 'active', language: leadLang },
-  })) as EmailTemplate | null;
-  if (!template && leadLang !== 'fr') {
+  // 4 — Template email.
+  // Priorité : PipelineStep.templateId → fallback par trigger level_N (legacy).
+  let template: EmailTemplate | null = null;
+
+  if (step.templateId && step.template) {
+    // Template directement attaché au PipelineStep.
+    if (step.template.status === 'active') {
+      template = step.template as EmailTemplate;
+    }
+  }
+
+  // Fallback : recherche par trigger si aucun template attaché ou inactif.
+  if (!template) {
+    const triggerKey = `level_${level}` as EmailTrigger;
+    const leadLang = lead.preferredLanguage || 'fr';
     template = (await prisma.emailTemplate.findFirst({
-      where: { trigger: triggerKey, status: 'active', language: 'fr' },
+      where: { trigger: triggerKey, status: 'active', language: leadLang },
     })) as EmailTemplate | null;
+    if (!template && leadLang !== 'fr') {
+      template = (await prisma.emailTemplate.findFirst({
+        where: { trigger: triggerKey, status: 'active', language: 'fr' },
+      })) as EmailTemplate | null;
+    }
   }
 
   if (!template) {
-    return { success: false, error: 'Aucun modèle actif pour ce niveau' };
+    return { success: false, error: 'Aucun modèle actif pour cette étape' };
   }
 
   // 5 — Gateway actif (échec fatal si aucun) + paramètres marque.
@@ -120,7 +146,7 @@ export async function sendClientLevelEmail(
   const siteName = await getSetting('site_name', 'Kredix');
   const siteUrl = await getSetting('site_url', 'http://localhost:3100');
 
-  // 6 — Interpolation sujet + corps (mêmes variables que les autres senders).
+  // 6 — Interpolation sujet + corps.
   const ctx = {
     lead: {
       firstName: lead.firstName,
@@ -144,13 +170,7 @@ export async function sendClientLevelEmail(
     : textToHtml(textBody);
 
   // 7 — Pièces jointes PDF.
-  //   a) Tous les DocumentTemplate actifs rattachés à ce niveau.
-  //   b) Si level_3 (offre formelle) et données de prêt présentes → amortissement.
   const attachments: EmailAttachment[] = [];
-
-  const docTemplates = await prisma.documentTemplate.findMany({
-    where: { level, isActive: true },
-  });
 
   const pdfData: PdfFillData = {
     firstName: lead.firstName,
@@ -169,7 +189,33 @@ export async function sendClientLevelEmail(
     siteName,
   };
 
-  for (const doc of docTemplates) {
+  // a) Document directement attaché au PipelineStep (nouveau système).
+  if (step.documentId && step.document) {
+    const doc = step.document as DocumentTemplate;
+    if (doc.filePath && doc.isActive) {
+      try {
+        const buffer = await fillPdfTemplate(doc.filePath, pdfData);
+        attachments.push({
+          filename: doc.fileName || `${doc.name}.pdf`,
+          content: buffer,
+          contentType: 'application/pdf',
+        });
+      } catch (err) {
+        console.error(
+          `[client-level] Échec remplissage PDF "${doc.fileName}" (étape ${step.name}, lead ${leadId}):`,
+          err,
+        );
+      }
+    }
+  }
+
+  // b) Legacy : DocumentTemplate avec level matching (ancien système).
+  const legacyDocs = await prisma.documentTemplate.findMany({
+    where: { level, isActive: true },
+  });
+  for (const doc of legacyDocs) {
+    // Évite le doublon si le document est déjà attaché via PipelineStep.
+    if (step.documentId && doc.id === step.documentId) continue;
     if (!doc.filePath) continue;
     try {
       const buffer = await fillPdfTemplate(doc.filePath, pdfData);
@@ -179,33 +225,8 @@ export async function sendClientLevelEmail(
         contentType: 'application/pdf',
       });
     } catch (err) {
-      // Un PDF illisible ne doit pas bloquer tout l'envoi : on log et on continue.
       console.error(
-        `[client-level] Échec remplissage PDF "${doc.fileName}" (niveau ${level}, lead ${leadId}):`,
-        err,
-      );
-    }
-  }
-
-  // Offre formelle (level_3) : on joint en plus le tableau d'amortissement.
-  if (level === 3 && lead.amount && lead.durationYears) {
-    try {
-      const amortBuffer = await generateAmortizationPDF({
-        amount: lead.amount,
-        annualRate: lead.annualRate ?? 4.5,
-        durationYears: lead.durationYears,
-        firstName: lead.firstName,
-        lastName: lead.lastName,
-        siteName,
-      });
-      attachments.push({
-        filename: 'tableau-amortissement.pdf',
-        content: amortBuffer,
-        contentType: 'application/pdf',
-      });
-    } catch (err) {
-      console.error(
-        `[client-level] Échec génération tableau d'amortissement (lead ${leadId}):`,
+        `[client-level] Échec remplissage PDF legacy "${doc.fileName}" (niveau ${level}, lead ${leadId}):`,
         err,
       );
     }
@@ -220,7 +241,7 @@ export async function sendClientLevelEmail(
     attachments: attachments.length > 0 ? attachments : undefined,
   });
 
-  // 9 — Journalisation (succès ou échec) dans EmailLog.
+  // 9 — Journalisation.
   const log = await prisma.emailLog.create({
     data: {
       leadId: lead.id,
@@ -242,17 +263,18 @@ export async function sendClientLevelEmail(
     };
   }
 
-  // Succès : on crée le ClientStep (verrou anti-renvoi) et on calcule le niveau courant.
+  // Succès : on crée le ClientStep (verrou anti-renvoi).
   await prisma.clientStep.create({
     data: {
       leadId: lead.id,
       level,
+      stepId: step.id,
       templateId: template.id,
       emailLogId: log.id,
     },
   });
 
-  // Niveau courant après cet envoi (= max niveau envoyé pour ce client).
+  // Niveau courant après cet envoi.
   const steps = await prisma.clientStep.findMany({
     where: { leadId: lead.id },
     select: { level: true },
@@ -260,8 +282,8 @@ export async function sendClientLevelEmail(
   const currentLevel = steps.reduce((max, s) => Math.max(max, s.level), 0);
 
   console.log(
-    `[client-level] level_${level} envoyé → ${lead.email} (lead ${lead.id}, msgId: ${sendResult.messageId ?? 'n/a'})`,
+    `[client-level] ${step.name} (order ${level}) envoyé → ${lead.email} (lead ${lead.id}, msgId: ${sendResult.messageId ?? 'n/a'})`,
   );
 
-  return { success: true, emailLogId: log.id, currentLevel };
+  return { success: true, emailLogId: log.id, currentLevel, stepName: step.name };
 }

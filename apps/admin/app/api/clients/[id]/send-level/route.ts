@@ -1,9 +1,10 @@
 // =============================================================================
-// /api/clients/[id]/send-level — Déclenche l'envoi d'un niveau du parcours client.
+// /api/clients/[id]/send-level — Déclenche l'envoi d'une étape du parcours client.
 // =============================================================================
-// Body : { level: 1..7 }
+// Body : { stepId: string }  — ID du PipelineStep à envoyer.
 // Appelle client-level-sender qui :
-//   - vérifie le lead (client), l'absence d'envoi antérieur, le template actif,
+//   - charge le PipelineStep (template + document),
+//   - vérifie le lead (client), l'absence d'envoi antérieur,
 //   - envoie l'email + PDFs via le gateway actif,
 //   - crée le ClientStep et journalise dans EmailLog.
 //
@@ -19,10 +20,10 @@ import { isValidId } from '@/app/api/_lib/id-validation';
 import { sendClientLevelEmail } from '@/app/api/_lib/client-level-sender';
 
 const sendLevelSchema = z.object({
-  level: z.number().int().min(1).max(7),
+  stepId: z.string().min(1, 'stepId est requis'),
 });
 
-// POST /api/clients/[id]/send-level — envoie le niveau demandé au client.
+// POST /api/clients/[id]/send-level — envoie l'étape demandée au client.
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -49,23 +50,22 @@ export async function POST(
       return errorResponse('Client introuvable', ERR.NOT_FOUND.code, undefined, 404);
     }
 
-    // Envoi effectif du niveau.
-    const result = await sendClientLevelEmail(id, data.level);
+    // Envoi effectif de l'étape.
+    const result = await sendClientLevelEmail(id, data.stepId);
 
     if (!result.success) {
       // Erreurs métier (déjà envoyé, pas de template, pas de gateway...) → 400.
       return errorResponse(
         result.error ?? "Échec de l'envoi",
         'SEND_LEVEL_ERROR',
-        { level: data.level },
+        { stepId: data.stepId },
         400,
       );
     }
 
     return successResponse(
       {
-        message: `Niveau ${data.level} envoyé`,
-        level: data.level,
+        message: `${result.stepName ?? 'Étape'} envoyé`,
         emailLogId: result.emailLogId,
         currentLevel: result.currentLevel,
       },

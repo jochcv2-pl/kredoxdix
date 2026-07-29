@@ -5,25 +5,26 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { Icon } from '@/components/Icon'
 
 // =============================================================================
-// Vue Clients — Parcours d'accompagnement en 7 niveaux.
+// Vue Clients — Parcours d'accompagnement (étapes configurables).
 // =============================================================================
 // Liste les prospects validés comme clients (GET /api/clients) et permet à
-// l'admin de déclencher l'envoi d'un niveau (POST /api/clients/[id]/send-level).
-// Chaque niveau envoyé est verrouillé (un envoi unique par niveau et par client).
+// l'admin de déclencher l'envoi d'une étape (POST /api/clients/[id]/send-level).
+// Les étapes sont chargées dynamiquement depuis /api/pipeline-steps.
+// Chaque étape envoyée est verrouillée (un envoi unique par étape et par client).
+// 100% manuel : aucun envoi automatique.
 // =============================================================================
 
-// Libellés métier des 7 niveaux (alignés avec EmailTrigger.level_N).
-const LEVEL_NAMES: Record<number, string> = {
-  1: 'Accueil client',
-  2: 'Demande de documents',
-  3: 'Offre de prêt formelle',
-  4: 'Vérification du dossier',
-  5: 'Accord de principe',
-  6: 'Signature',
-  7: 'Déblocage des fonds',
+interface PipelineStep {
+  id: string
+  order: number
+  name: string
+  description: string | null
+  templateId: string | null
+  documentId: string | null
+  isActive: boolean
+  template: { id: string; name: string; subject: string; language: string } | null
+  document: { id: string; name: string; fileName: string } | null
 }
-
-const ALL_LEVELS = [1, 2, 3, 4, 5, 6, 7]
 
 interface ClientStepInfo {
   id: string
@@ -48,7 +49,7 @@ interface Client {
 
 interface SendTarget {
   client: Client
-  level: number
+  step: PipelineStep
 }
 
 // Formate une date ISO en JJ/MM/AAAA court.
@@ -72,6 +73,7 @@ function formatEuro(amount: number): string {
 
 export default function Clients() {
   const [clients, setClients] = useState<Client[]>([])
+  const [pipelineSteps, setPipelineSteps] = useState<PipelineStep[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -80,6 +82,19 @@ export default function Clients() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
   // Message de retour (succès/erreur) par client, affiché sous la carte.
   const [feedback, setFeedback] = useState<Record<string, { type: 'ok' | 'err'; msg: string }>>({})
+
+  const fetchPipelineSteps = useCallback(async () => {
+    try {
+      const res = await fetch('/api/pipeline-steps', { cache: 'no-store' })
+      const json = await res.json()
+      if (json.data) {
+        // Uniquement les étapes actives, triées par order.
+        setPipelineSteps(json.data.filter((s: PipelineStep) => s.isActive))
+      }
+    } catch (e) {
+      console.error('fetchPipelineSteps:', e)
+    }
+  }, [])
 
   const fetchClients = useCallback(async () => {
     try {
@@ -100,18 +115,18 @@ export default function Clients() {
   }, [])
 
   useEffect(() => {
-    fetchClients()
-  }, [fetchClients])
+    Promise.all([fetchPipelineSteps(), fetchClients()])
+  }, [fetchPipelineSteps, fetchClients])
 
   const handleSend = async () => {
     if (!sendTarget) return
-    const { client, level } = sendTarget
+    const { client, step } = sendTarget
     setSending(true)
     try {
       const res = await fetch(`/api/clients/${client.id}/send-level`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ level }),
+        body: JSON.stringify({ stepId: step.id }),
       })
       const json = await res.json()
       if (!res.ok) {
@@ -120,7 +135,7 @@ export default function Clients() {
         })
       } else {
         setFeedback({
-          [client.id]: { type: 'ok', msg: `Niveau ${level} envoyé à ${client.email ?? '—'}` },
+          [client.id]: { type: 'ok', msg: `${step.name} envoyé à ${client.email ?? '—'}` },
         })
         await fetchClients()
       }
@@ -132,6 +147,9 @@ export default function Clients() {
       setSendTarget(null)
     }
   }
+
+  const totalSteps = pipelineSteps.length
+  const completedSteps = clients.filter((c) => c.currentLevel >= totalSteps).length
 
   return (
     <section className="view" id="clients">
@@ -193,15 +211,8 @@ export default function Clients() {
 
         .clt2-levels {
           display: grid;
-          grid-template-columns: repeat(7, 1fr);
           gap: 0;
           padding: 0; border-top: 1px solid #f1f5f9;
-        }
-        @media (max-width: 900px) {
-          .clt2-levels { grid-template-columns: repeat(4, 1fr); }
-        }
-        @media (max-width: 600px) {
-          .clt2-levels { grid-template-columns: repeat(2, 1fr); }
         }
 
         .clt2-lvl {
@@ -268,23 +279,21 @@ export default function Clients() {
       <div className="clt-head">
         <div>
           <h2>Clients</h2>
-          <p>Parcours d&apos;accompagnement en 7 niveaux</p>
+          <p>Parcours d&apos;accompagnement — {totalSteps} étapes</p>
         </div>
-        {!loading && !error && clients.length > 0 && (
+        {!loading && !error && clients.length > 0 && totalSteps > 0 && (
           <div style={{ display: 'flex', gap: 16 }}>
             <div style={{ textAlign: 'center', padding: '8px 18px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12 }}>
               <div style={{ fontSize: 24, fontWeight: 800, color: '#1e293b' }}>{clients.length}</div>
               <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500, textTransform: 'uppercase' }}>Total clients</div>
             </div>
             <div style={{ textAlign: 'center', padding: '8px 18px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12 }}>
-              <div style={{ fontSize: 24, fontWeight: 800, color: '#22c55e' }}>
-                {clients.filter((c) => c.currentLevel === 7).length}
-              </div>
-              <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500, textTransform: 'uppercase' }}>Fonds débloqués</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: '#22c55e' }}>{completedSteps}</div>
+              <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500, textTransform: 'uppercase' }}>Parcours terminés</div>
             </div>
             <div style={{ textAlign: 'center', padding: '8px 18px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12 }}>
               <div style={{ fontSize: 24, fontWeight: 800, color: '#2B8BDE' }}>
-                {Math.round(clients.reduce((sum, c) => sum + c.currentLevel, 0) / (clients.length * 7) * 100)}%
+                {Math.round(clients.reduce((sum, c) => sum + c.currentLevel, 0) / (clients.length * totalSteps) * 100)}%
               </div>
               <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500, textTransform: 'uppercase' }}>Progression moy.</div>
             </div>
@@ -312,8 +321,8 @@ export default function Clients() {
             const stepsByLevel = new Map<number, string>()
             for (const s of client.steps) stepsByLevel.set(s.level, s.sentAt)
             const currentLevel = client.currentLevel
-            const nextLevel = currentLevel + 1
-            const progressPct = Math.round((currentLevel / 7) * 100)
+            const nextOrder = currentLevel + 1
+            const progressPct = totalSteps > 0 ? Math.round((currentLevel / totalSteps) * 100) : 0
 
             // Couleur avatar basée sur le nom
             const colors = ['#2B8BDE', '#F97316', '#8B5CF6', '#22C55E', '#EC4899', '#14B8A6', '#EAB308']
@@ -337,8 +346,8 @@ export default function Clients() {
                     </div>
                   </div>
                   <div className="clt2-progress-ring">
-                    <span className="clt2-progress-num">{currentLevel}<span style={{ fontSize: 12, color: '#94a3b8' }}>/7</span></span>
-                    <span className="clt2-progress-label">niveaux</span>
+                    <span className="clt2-progress-num">{currentLevel}<span style={{ fontSize: 12, color: '#94a3b8' }}>/{totalSteps}</span></span>
+                    <span className="clt2-progress-label">étapes</span>
                   </div>
                   <button
                     className="btn btn-ghost btn-sm"
@@ -375,21 +384,21 @@ export default function Clients() {
                   </div>
                 </div>
 
-                {/* Timeline des 7 niveaux */}
-                <div className="clt2-levels">
-                  {ALL_LEVELS.map((lvl) => {
-                    const sentAt = stepsByLevel.get(lvl)
+                {/* Timeline des étapes */}
+                <div className="clt2-levels" style={{ gridTemplateColumns: `repeat(${totalSteps}, 1fr)` }}>
+                  {pipelineSteps.map((step) => {
+                    const sentAt = stepsByLevel.get(step.order)
                     const isDone = !!sentAt
-                    const isNext = lvl === nextLevel && !isDone
-                    const isLocked = lvl > nextLevel
+                    const isNext = step.order === nextOrder && !isDone
+                    const isLocked = step.order > nextOrder
 
                     if (isDone) {
                       return (
-                        <div className="clt2-lvl done" key={lvl} title={`${LEVEL_NAMES[lvl]} — envoyé le ${formatDate(sentAt)}`}>
+                        <div className="clt2-lvl done" key={step.id} title={`${step.name} — envoyé le ${formatDate(sentAt)}`}>
                           <div className="clt2-lvl-num">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                           </div>
-                          <div className="clt2-lvl-label">{LEVEL_NAMES[lvl]}</div>
+                          <div className="clt2-lvl-label">{step.name}</div>
                           <div className="clt2-lvl-date">{formatDate(sentAt)}</div>
                         </div>
                       )
@@ -397,11 +406,11 @@ export default function Clients() {
 
                     if (isLocked) {
                       return (
-                        <div className="clt2-lvl locked" key={lvl} title={LEVEL_NAMES[lvl]}>
+                        <div className="clt2-lvl locked" key={step.id} title={step.name}>
                           <div className="clt2-lvl-num">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                           </div>
-                          <div className="clt2-lvl-label">{LEVEL_NAMES[lvl]}</div>
+                          <div className="clt2-lvl-label">{step.name}</div>
                         </div>
                       )
                     }
@@ -410,14 +419,14 @@ export default function Clients() {
                       <button
                         type="button"
                         className={`clt2-lvl${isNext ? ' next' : ''}`}
-                        key={lvl}
-                        onClick={() => setSendTarget({ client, level: lvl })}
-                        disabled={sending && sendTarget?.client.id === client.id && sendTarget?.level === lvl}
-                        title={LEVEL_NAMES[lvl]}
+                        key={step.id}
+                        onClick={() => setSendTarget({ client, step })}
+                        disabled={sending && sendTarget?.client.id === client.id && sendTarget?.step.id === step.id}
+                        title={step.name}
                         style={{ all: 'unset', cursor: 'pointer' }}
                       >
-                        <div className="clt2-lvl-num">{lvl}</div>
-                        <div className="clt2-lvl-label">{LEVEL_NAMES[lvl]}</div>
+                        <div className="clt2-lvl-num">{step.order}</div>
+                        <div className="clt2-lvl-label">{step.name}</div>
                         {isNext && <div className="clt2-lvl-date" style={{ color: '#2B8BDE', fontWeight: 600 }}>Cliquer →</div>}
                       </button>
                     )
@@ -440,13 +449,19 @@ export default function Clients() {
       <ConfirmDialog
         isOpen={!!sendTarget}
         variant="info"
-        title={`Envoyer le niveau ${sendTarget?.level ?? ''} ?`}
+        title={`Envoyer « ${sendTarget?.step.name ?? ''} » ?`}
         message={
           <>
-            Voulez-vous envoyer le <strong>niveau {sendTarget?.level} — {sendTarget ? LEVEL_NAMES[sendTarget.level] : ''}</strong>{' '}
+            Voulez-vous envoyer l&apos;étape <strong>{sendTarget?.step.name}</strong>{' '}
             à <strong>{sendTarget?.client.firstName} {sendTarget?.client.lastName}</strong>&nbsp;?
             <br />
-            Un email sera envoyé à <strong>{sendTarget?.client.email ?? '—'}</strong> avec les documents associés en pièce jointe.
+            Un email sera envoyé à <strong>{sendTarget?.client.email ?? '—'}</strong>
+            {sendTarget?.step.template ? (
+              <> via le modèle <strong>{sendTarget.step.template.name}</strong></>
+            ) : null}
+            {sendTarget?.step.document ? (
+              <> avec le document <strong>{sendTarget.step.document.name}</strong> en pièce jointe.</>
+            ) : '.'}
           </>
         }
         confirmLabel={sending ? 'Envoi…' : 'Envoyer'}

@@ -6,6 +6,7 @@ import {
   LayoutDashboard, Users, UserCheck, FolderOpen, Percent,
   Mail, Megaphone, History, Globe, LayoutTemplate,
   Star, LayoutGrid, FileText, Search, Bot, Settings, User, Activity, Building2,
+  Route,
 } from "lucide-react";
 
 const ICON_PROPS = { className: "sb-ico", size: 18, strokeWidth: 1.8 } as const;
@@ -14,6 +15,7 @@ const ICONS: Record<string, ReactNode> = {
   dashboard: <LayoutDashboard {...ICON_PROPS} />,
   contacts: <Users {...ICON_PROPS} />,
   clients: <UserCheck {...ICON_PROPS} />,
+  parcours: <Route {...ICON_PROPS} />,
   dossiers: <FolderOpen {...ICON_PROPS} />,
   taux: <Percent {...ICON_PROPS} />,
   emails: <Mail {...ICON_PROPS} />,
@@ -36,6 +38,7 @@ const navigation = [
   { id: "dashboard", label: "Vue d'ensemble", group: "Pilotage" },
   { id: "contacts", label: "Prospects & clients", group: "Pilotage" },
   { id: "clients", label: "Clients", group: "Pilotage" },
+  { id: "parcours", label: "Parcours client", group: "Pilotage" },
   { id: "dossiers", label: "Dossiers", group: "Pilotage" },
   { id: "taux", label: "Taux & barèmes", group: "Pilotage" },
   { id: "emails", label: "Modèles d'emails", group: "Pilotage" },

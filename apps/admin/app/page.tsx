@@ -9,6 +9,7 @@ import { ViewErrorBoundary } from '@/components/ViewErrorBoundary'
 import Dashboard from '@/views/dashboard/page'
 import Contacts from '@/views/contacts/page'
 import Clients from '@/views/clients/page'
+import Parcours from '@/views/parcours/page'
 import Dossiers from '@/views/dossiers/page'
 import Taux from '@/views/taux/page'
 import Emails from '@/views/emails/page'
@@ -31,6 +32,7 @@ const pageTitles: Record<string, [string, string]> = {
   dashboard: ["Vue d'ensemble", "Activité de votre agence en temps réel"],
   contacts: ['Prospects & clients', 'Gérez et validez vos contacts'],
   clients: ['Clients', "Parcours d'accompagnement en 7 niveaux"],
+  parcours: ['Parcours client', "Configurez les étapes du parcours client — 100% manuel, aucun envoi automatique"],
   dossiers: ['Dossiers', 'Tous les dossiers'],
   taux: ['Taux & barèmes', 'Pilotez les taux affichés sur le simulateur'],
   emails: ["Modèles d'emails", 'Les emails utilisés par vos agents'],
@@ -119,6 +121,7 @@ export default function AdminPage() {
       case 'dashboard': return <ViewErrorBoundary viewName="Tableau de bord"><Dashboard /></ViewErrorBoundary>
       case 'contacts': return <ViewErrorBoundary viewName="Prospects"><Contacts /></ViewErrorBoundary>
       case 'clients': return <ViewErrorBoundary viewName="Clients"><Clients /></ViewErrorBoundary>
+      case 'parcours': return <ViewErrorBoundary viewName="Parcours client"><Parcours /></ViewErrorBoundary>
       case 'dossiers': return <ViewErrorBoundary viewName="Dossiers"><Dossiers /></ViewErrorBoundary>
       case 'taux': return <ViewErrorBoundary viewName="Taux"><Taux /></ViewErrorBoundary>
       case 'emails': return <ViewErrorBoundary viewName="Modèles d'emails"><Emails /></ViewErrorBoundary>
