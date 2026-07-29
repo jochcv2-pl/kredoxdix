@@ -174,6 +174,18 @@ export async function POST(req: NextRequest) {
         // c) BRANCHE WELCOME — ackSentAt null → envoyer reception_ack
         // ================================================================
         if (!lead.ackSentAt) {
+          // CLAIM ATOMIQUE — set ackSentAt IMMÉDIATEMENT pour empêcher un second
+          // cron run concurrent d'envoyer un doublon pendant la génération IA (~30-45s).
+          // Pattern optimistic locking (même principe qu'A-036 campaign-sender).
+          const claimed = await prisma.lead.updateMany({
+            where: { id: lead.id, ackSentAt: null },
+            data: { ackSentAt: now },
+          });
+          if (claimed.count === 0) {
+            // Déjà claimé par un autre cron run — on skippe.
+            continue;
+          }
+
           const leadLang = lead.preferredLanguage || 'fr';
           let welcomeTemplate = await prisma.emailTemplate.findFirst({
             where: { trigger: EmailTrigger.reception_ack, status: 'active', language: leadLang },
@@ -255,17 +267,20 @@ export async function POST(req: NextRequest) {
           if (!welcomeResult.success) {
             console.error(`[CRON] Échec welcome → ${lead.email} (lead ${lead.id}):`, welcomeResult.error);
             stats.errors++;
-            // ackSentAt reste null → le cron réessaiera au prochain passage
+            // Reset ackSentAt → le cron réessaiera au prochain passage.
+            await prisma.lead.update({
+              where: { id: lead.id },
+              data: { ackSentAt: null },
+            });
             continue;
           }
 
           console.log(`[CRON] Welcome envoyé → ${lead.email} (lead ${lead.id})`);
 
-          // ackSentAt setté + programme la première relance à J+3
+          // Programme la première relance à J+3 (ackSentAt déjà setté par le claim atomique).
           await prisma.lead.update({
             where: { id: lead.id },
             data: {
-              ackSentAt: now,
               nextRelanceAt: new Date(now.getTime() + 3 * DAY), // J+3
             },
           });
