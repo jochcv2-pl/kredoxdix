@@ -79,12 +79,18 @@ async function main() {
   console.log('   ✓ Foreign keys');
 
   // 4. Seed : insère les 7 niveaux par défaut si la table est vide.
-  const existing = await prisma.pipelineStep.count();
+  //    Utilise $queryRaw au lieu de prisma.pipelineStep car le client Prisma
+  //    du VPS peut ne pas connaître le modèle PipelineStep (généré au build Docker).
+  const rows = await prisma.$queryRaw<Array<{ count: bigint }>>`
+    SELECT COUNT(*) as count FROM "PipelineStep"
+  `;
+  const existing = Number(rows[0]?.count ?? 0);
+
   if (existing === 0) {
     const defaults = [
       { order: 1, name: 'Accueil client',         description: 'Email de bienvenue envoyé au client' },
       { order: 2, name: 'Demande documents',      description: 'Liste des documents requis pour le dossier' },
-      { order: 3, name: 'Offre de prêt formelle', description: 'Offre détaillée avec tableau d\'amortissement' },
+      { order: 3, name: 'Offre de prêt formelle', description: "Offre détaillée avec tableau d'amortissement" },
       { order: 4, name: 'Vérification dossier',   description: 'Dossier en cours de vérification interne' },
       { order: 5, name: 'Accord de principe',     description: 'Accord préliminaire de la banque' },
       { order: 6, name: 'Signature',              description: 'Convocation pour signature du contrat' },
@@ -92,7 +98,10 @@ async function main() {
     ];
 
     for (const d of defaults) {
-      await prisma.pipelineStep.create({ data: d });
+      await prisma.$executeRaw`
+        INSERT INTO "PipelineStep" ("id", "order", "name", "description", "isActive", "createdAt", "updatedAt")
+        VALUES (gen_random_uuid(), ${d.order}, ${d.name}, ${d.description}, true, NOW(), NOW())
+      `;
     }
     console.log(`   ✓ Seed: ${defaults.length} étapes par défaut insérées`);
   } else {
