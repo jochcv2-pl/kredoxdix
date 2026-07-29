@@ -38,26 +38,57 @@ const TRIGGER_LABEL: Record<string, string> = Object.fromEntries(
   TRIGGERS.map((t) => [t.value, t.label]),
 );
 
-const VARS = [
-  '{{Prénom}}', '{{Nom}}', '{{Ville}}', '{{Type de crédit}}', '{{Montant}}',
-  '{{Taux}}', '{{Mensualité}}', '{{Durée}}', '{{Date}}', '{{Date validité}}',
-  '{{Situation}}', '{{Prénom du courtier}}',
+// Variables disponibles — alignées EXACTEMENT sur interpolateTemplate()
+// (@kredix/email/template.ts). Toute variable absente de l'interpolateur ne
+// serait jamais remplacée et resterait visible dans l'email envoyé.
+const VARS: Array<{ value: string; group: string }> = [
+  // Prospect (données du lead)
+  { value: '{{Prénom}}', group: 'Prospect' },
+  { value: '{{Nom}}', group: 'Prospect' },
+  { value: '{{Email}}', group: 'Prospect' },
+  { value: '{{Téléphone}}', group: 'Prospect' },
+  { value: '{{TypePrêt}}', group: 'Prospect' },
+  { value: '{{Montant}}', group: 'Prospect' },
+  { value: '{{Durée}}', group: 'Prospect' },
+  { value: '{{Mensualité}}', group: 'Prospect' },
+  { value: '{{TAEG}}', group: 'Prospect' },
+  { value: '{{Message}}', group: 'Prospect' },
+  { value: '{{LienDesinscription}}', group: 'Prospect' },
+  // Marque (données du site / agence)
+  { value: '{{NomSite}}', group: 'Marque' },
+  { value: '{{SiteUrl}}', group: 'Marque' },
+  { value: '{{LogoUrl}}', group: 'Marque' },
+  { value: '{{ContactEmail}}', group: 'Marque' },
+  { value: '{{TéléphoneAgence}}', group: 'Marque' },
+  { value: '{{AdresseAgence}}', group: 'Marque' },
 ];
 
 const SAMPLE: Record<string, string> = {
-  '{{Prénom}}': 'Marie', '{{Nom}}': 'Lefèvre', '{{Ville}}': 'Lyon',
-  '{{Type de crédit}}': 'prêt immobilier', '{{Montant}}': '210 000 €',
-  '{{Taux}}': '2,0', '{{Mensualité}}': '1 062 €', '{{Durée}}': '20 ans',
-  '{{Date}}': '15 juillet 2026', '{{Date validité}}': '15 août 2026',
-  '{{Situation}}': 'Salarié CDI', '{{Prénom du courtier}}': 'Thomas',
+  '{{Prénom}}': 'Marie',
+  '{{Nom}}': 'Lefèvre',
+  '{{Email}}': 'marie.lefevre@email.fr',
+  '{{Téléphone}}': '06 12 34 56 78',
+  '{{TypePrêt}}': 'immobilier',
+  '{{Montant}}': '210 000 €',
+  '{{Durée}}': '20 ans',
+  '{{Mensualité}}': '1 062 €/mois',
+  '{{TAEG}}': '2,00 %',
+  '{{Message}}': 'Votre dossier est complet.',
+  '{{LienDesinscription}}': 'https://kredix.fr/api/unsubscribe?t=...',
+  '{{NomSite}}': 'Kredix',
+  '{{SiteUrl}}': 'https://kredix.fr',
+  '{{LogoUrl}}': 'https://kredix.fr/logo.png',
+  '{{ContactEmail}}': 'contact@kredix.fr',
+  '{{TéléphoneAgence}}': '01 23 45 67 89',
+  '{{AdresseAgence}}': '12 rue de la Finance, 75001 Paris',
 };
 
 const DEFAULT_BODY = `Bonjour {{Prénom}},
 
-Nous avons bien reçu votre demande de {{Type de crédit}} d'un montant de {{Montant}}. Votre courtier {{Prénom du courtier}} étudie votre profil et vous rappelle sous 24 heures.
+Nous avons bien reçu votre demande de prêt {{TypePrêt}} d'un montant de {{Montant}}. Notre équipe étudie votre profil et vous recontacte sous 24 heures.
 
 À très bientôt,
-{{Prénom du courtier}} — Courtier senior, Kredix`;
+L'équipe {{NomSite}}`;
 
 const VAR_RE = /\{\{[^}]+\}\}/g;
 
@@ -240,6 +271,7 @@ export default function Emails() {
   const [previewTpl, setPreviewTpl] = useState<Template | null>(null);
 
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const htmlAreaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewIframeRef = useRef<HTMLIFrameElement>(null);
 
@@ -374,6 +406,26 @@ export default function Emails() {
       ta.selectionStart = ta.selectionEnd = s + v.length;
     });
   }
+
+  // Insertion au curseur dans la zone de code HTML (mode import).
+  function insertVarImport(v: string) {
+    const ta = htmlAreaRef.current;
+    if (!ta) return;
+    const s = ta.selectionStart;
+    const e = ta.selectionEnd;
+    const next = htmlArea.slice(0, s) + v + htmlArea.slice(e);
+    setHtmlArea(next);
+    requestAnimationFrame(() => {
+      ta.focus();
+      ta.selectionStart = ta.selectionEnd = s + v.length;
+    });
+  }
+
+  // Variables groupées par catégorie pour le rendu des chips.
+  const VAR_GROUPS = VARS.reduce<Record<string, string[]>>((acc, v) => {
+    (acc[v.group] ??= []).push(v.value);
+    return acc;
+  }, {});
 
   function handleFile(file: File | undefined) {
     if (!file) return;
@@ -765,9 +817,14 @@ export default function Emails() {
                 <div className="sub-panel">
                   <h4>Insérer une variable</h4>
                   <p className="var-hint">Cliquez pour insérer dans le corps. L&apos;agent remplacera par la donnée réelle à l&apos;envoi.</p>
-                  <div className="var-chips">
-                    {VARS.map((v) => <span className="chip" key={v} onClick={() => insertVar(v)}>{v}</span>)}
-                  </div>
+                  {Object.entries(VAR_GROUPS).map(([group, vars]) => (
+                    <div key={group} style={{ marginBottom: 12 }}>
+                      <div className="var-group-label">{group}</div>
+                      <div className="var-chips">
+                        {vars.map((v) => <span className="chip" key={v} onClick={() => insertVar(v)}>{v}</span>)}
+                      </div>
+                    </div>
+                  ))}
                 </div>
                 <button className="btn btn-primary" onClick={() => setSaveModalOpen(true)} disabled={saving}>
                   Enregistrer le modèle
@@ -823,7 +880,7 @@ export default function Emails() {
                   </div>
                   <input type="file" ref={fileInputRef} accept=".html,.htm,text/html" style={{ display: 'none' }} onChange={onFileChange} />
                   <div className="or-line"><span>ou collez le code HTML</span></div>
-                  <textarea className="html-area" placeholder="<html><body>Bonjour {{Prénom}}…</body></html>" value={htmlArea} onChange={(e) => setHtmlArea(e.target.value)} />
+                  <textarea className="html-area" ref={htmlAreaRef} placeholder="<html><body>Bonjour {{Prénom}}…</body></html>" value={htmlArea} onChange={(e) => setHtmlArea(e.target.value)} />
                   {detected.length > 0 && (
                     <div className="detected">
                       <h4>Variables détectées</h4>
@@ -831,6 +888,18 @@ export default function Emails() {
                       <div className="var-chips">{detected.map((v) => <span className="chip" key={v}>{v}</span>)}</div>
                     </div>
                   )}
+                </div>
+                <div className="sub-panel">
+                  <h4>Insérer une variable</h4>
+                  <p className="var-hint">Cliquez sur une variable pour l&apos;insérer dans votre code HTML, à l&apos;endroit du curseur. L&apos;agent la remplacera par la donnée réelle à l&apos;envoi.</p>
+                  {Object.entries(VAR_GROUPS).map(([group, vars]) => (
+                    <div key={group} style={{ marginBottom: 12 }}>
+                      <div className="var-group-label">{group}</div>
+                      <div className="var-chips">
+                        {vars.map((v) => <span className="chip" key={v} onClick={() => insertVarImport(v)}>{v}</span>)}
+                      </div>
+                    </div>
+                  ))}
                 </div>
                 <div className="frow">
                   <div className="fg full">
