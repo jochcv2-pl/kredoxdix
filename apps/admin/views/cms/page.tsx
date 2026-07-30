@@ -1,7 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Modal } from '@/components/Modal'
+import { useEffect, useState, useCallback } from 'react'
 import { Icon } from '@/components/Icon'
 
 const LANGUES = ['Français', 'English', 'Deutsch', 'Español', 'Português', 'Italiano'] as const
@@ -34,6 +33,16 @@ const KEYS = {
   activeLanguages: 'cms_active_languages',
 } as const
 
+// Catégories de settings par section (pour la sauvegarde indépendante).
+type SectionId = 'hero' | 'services' | 'coord' | 'langues'
+
+interface SettingPayload {
+  key: string
+  value: string
+  category: string
+  description: string
+}
+
 interface Setting {
   key: string
   value: string
@@ -62,9 +71,24 @@ export default function CMS() {
   )
 
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [publierModalOpen, setPublierModalOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // --- Sauvegarde indépendante par section ---
+  const [savingSection, setSavingSection] = useState<SectionId | null>(null)
+  // Timestamp de dernière sauvegarde par section.
+  const [savedAt, setSavedAt] = useState<Record<SectionId, Date | null>>({
+    hero: null,
+    services: null,
+    coord: null,
+    langues: null,
+  })
+  // Erreur par section.
+  const [sectionError, setSectionError] = useState<Record<SectionId, string | null>>({
+    hero: null,
+    services: null,
+    coord: null,
+    langues: null,
+  })
 
   // Chargement initial : GET /api/settings (toutes catégories).
   useEffect(() => {
@@ -152,33 +176,11 @@ export default function CMS() {
     }
   }
 
-  // Publication : POST /api/settings (upsert par clé) pour toutes les valeurs éditées.
-  const publish = async () => {
-    setSaving(true)
-    setError(null)
+  // Sauvegarde une section spécifique (upsert séquentiel des clés concernées).
+  const saveSection = useCallback(async (sectionId: SectionId, payload: SettingPayload[]) => {
+    setSavingSection(sectionId)
+    setSectionError((prev) => ({ ...prev, [sectionId]: null }))
     try {
-      const activeLangs = LANGUES.filter((l) => languesActives[l])
-        .map((l) => LANG_CODE[l])
-        .join(',')
-
-      const payload: Array<{ key: string; value: string; category: string; description: string }> = [
-        { key: KEYS.heroTitle, value: hero.titre, category: 'cms.hero', description: 'Titre principal du hero.' },
-        { key: KEYS.heroSubtitle, value: hero.sousTitre, category: 'cms.hero', description: 'Sous-titre du hero.' },
-        { key: KEYS.heroCtaPrimary, value: hero.btnPrincipal, category: 'cms.hero', description: 'Bouton CTA principal du hero.' },
-        { key: KEYS.heroCtaSecondary, value: hero.btnSecondaire, category: 'cms.hero', description: 'Bouton CTA secondaire du hero.' },
-        { key: KEYS.service1, value: services.s1, category: 'cms.services', description: 'Libellé service 1.' },
-        { key: KEYS.service2, value: services.s2, category: 'cms.services', description: 'Libellé service 2.' },
-        { key: KEYS.service3, value: services.s3, category: 'cms.services', description: 'Libellé service 3.' },
-        { key: KEYS.service4, value: services.s4, category: 'cms.services', description: 'Libellé service 4.' },
-        { key: KEYS.tel, value: coord.tel, category: 'contact', description: 'Téléphone affiché.' },
-        { key: KEYS.whatsapp, value: coord.whatsapp, category: 'contact', description: 'Numéro WhatsApp.' },
-        { key: KEYS.email, value: coord.email, category: 'contact', description: 'Email de contact.' },
-        { key: KEYS.orias, value: coord.orias, category: 'legal', description: "Numéro ORIAS (obligation d'affichage)." },
-        { key: KEYS.siteUrl, value: coord.siteUrl, category: 'general', description: 'URL du site (utilisée pour les liens de désinscription dans les emails).' },
-        { key: KEYS.activeLanguages, value: activeLangs, category: 'cms.i18n', description: 'Langues actives sur le site (CSV de codes).' },
-      ]
-
-      // Upsert séquentiel (l'API ne supporte pas le batch).
       for (const p of payload) {
         const res = await fetch('/api/settings', {
           method: 'POST',
@@ -187,13 +189,43 @@ export default function CMS() {
         })
         if (!res.ok) throw new Error(`Échec enregistrement ${p.key}`)
       }
-
-      setPublierModalOpen(false)
+      setSavedAt((prev) => ({ ...prev, [sectionId]: new Date() }))
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erreur inconnue')
+      setSectionError((prev) => ({ ...prev, [sectionId]: e instanceof Error ? e.message : 'Erreur' }))
     } finally {
-      setSaving(false)
+      setSavingSection(null)
     }
+  }, [])
+
+  const saveHero = () => saveSection('hero', [
+    { key: KEYS.heroTitle, value: hero.titre, category: 'cms.hero', description: 'Titre principal du hero.' },
+    { key: KEYS.heroSubtitle, value: hero.sousTitre, category: 'cms.hero', description: 'Sous-titre du hero.' },
+    { key: KEYS.heroCtaPrimary, value: hero.btnPrincipal, category: 'cms.hero', description: 'Bouton CTA principal du hero.' },
+    { key: KEYS.heroCtaSecondary, value: hero.btnSecondaire, category: 'cms.hero', description: 'Bouton CTA secondaire du hero.' },
+  ])
+
+  const saveServices = () => saveSection('services', [
+    { key: KEYS.service1, value: services.s1, category: 'cms.services', description: 'Libellé service 1.' },
+    { key: KEYS.service2, value: services.s2, category: 'cms.services', description: 'Libellé service 2.' },
+    { key: KEYS.service3, value: services.s3, category: 'cms.services', description: 'Libellé service 3.' },
+    { key: KEYS.service4, value: services.s4, category: 'cms.services', description: 'Libellé service 4.' },
+  ])
+
+  const saveCoord = () => saveSection('coord', [
+    { key: KEYS.tel, value: coord.tel, category: 'contact', description: 'Téléphone affiché.' },
+    { key: KEYS.whatsapp, value: coord.whatsapp, category: 'contact', description: 'Numéro WhatsApp.' },
+    { key: KEYS.email, value: coord.email, category: 'contact', description: 'Email de contact.' },
+    { key: KEYS.orias, value: coord.orias, category: 'legal', description: "Numéro ORIAS (obligation d'affichage)." },
+    { key: KEYS.siteUrl, value: coord.siteUrl, category: 'general', description: 'URL du site (utilisée pour les liens de désinscription dans les emails).' },
+  ])
+
+  const saveLangues = () => {
+    const activeLangs = LANGUES.filter((l) => languesActives[l])
+      .map((l) => LANG_CODE[l])
+      .join(',')
+    saveSection('langues', [
+      { key: KEYS.activeLanguages, value: activeLangs, category: 'cms.i18n', description: 'Langues actives sur le site (CSV de codes).' },
+    ])
   }
 
   if (loading) {
@@ -204,13 +236,61 @@ export default function CMS() {
     )
   }
 
+  // Bouton de sauvegarde de section avec feedback inline.
+  const renderSaveBtn = (
+    sectionId: SectionId,
+    onSave: () => void,
+  ) => {
+    const isSaving = savingSection === sectionId
+    const lastSaved = savedAt[sectionId]
+    const err = sectionError[sectionId]
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14, paddingTop: 14, borderTop: '1px solid #f1f5f9' }}>
+        <button
+          className="btn btn-primary"
+          onClick={onSave}
+          disabled={isSaving}
+          style={{ padding: '8px 18px', fontSize: 13, fontWeight: 600, borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6 }}
+        >
+          {isSaving ? (
+            <>
+              <span style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', display: 'inline-block', animation: 'cms-spin 0.6s linear infinite' }} />
+              Enregistrement…
+            </>
+          ) : (
+            <>
+              <Icon name="save" size={15} />
+              Enregistrer
+            </>
+          )}
+        </button>
+        {lastSaved && !err && (
+          <span style={{ fontSize: 12, color: '#16a34a', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <Icon name="check-circle" size={13} />
+            {lastSaved.toLocaleTimeString()}
+          </span>
+        )}
+        {err && (
+          <span style={{ fontSize: 12, color: '#dc2626', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <Icon name="x-circle" size={13} />
+            {err}
+          </span>
+        )}
+      </div>
+    )
+  }
+
   return (
     <section className="view" id="cms">
+      <style>{`
+        @keyframes cms-spin { to { transform: rotate(360deg); } }
+      `}</style>
+
       <div className="info-band">
         <div className="imark">i</div>
         <div>
-          Modifiez tout le contenu du site public depuis ici. Les changements s&apos;appliquent
-          directement aux pages en ligne, dans les 6 langues.
+          Modifiez tout le contenu du site public depuis ici. Chaque section a son propre
+          bouton « Enregistrer » — les changements s&apos;appliquent directement aux pages en ligne.
         </div>
       </div>
 
@@ -229,7 +309,7 @@ export default function CMS() {
         <div className="panel-body" style={{ paddingTop: 16 }}>
           <p className="field-hint" style={{ marginBottom: 12 }}>
             Le nom de marque est utilisé partout (sidebar, login, site public, emails, footer).
-            Le renommer met à jour tous les templates d'emails et paramètres en une seule transaction.
+            Le renommer met à jour tous les templates d&apos;emails et paramètres en une seule transaction.
           </p>
           <div className="frow" style={{ marginBottom: 12 }}>
             <div className="fg">
@@ -269,6 +349,7 @@ export default function CMS() {
 
       <div className="grid-2">
         <div>
+          {/* ===== SECTION HERO ===== */}
           <div className="panel">
             <div className="panel-head">
               <h3>Section Hero (accueil)</h3>
@@ -305,8 +386,10 @@ export default function CMS() {
                 </div>
               </div>
             </div>
+            {renderSaveBtn('hero', saveHero)}
           </div>
 
+          {/* ===== NOS SERVICES ===== */}
           <div className="panel">
             <div className="panel-head">
               <h3>Nos services</h3>
@@ -329,10 +412,12 @@ export default function CMS() {
                 <input value={services.s4} onChange={(e) => setServices({ ...services, s4: e.target.value })} />
               </div>
             </div>
+            {renderSaveBtn('services', saveServices)}
           </div>
         </div>
 
         <div>
+          {/* ===== COORDONNÉES ===== */}
           <div className="panel">
             <div className="panel-head">
               <h3>Coordonnées</h3>
@@ -359,8 +444,10 @@ export default function CMS() {
                 <input value={coord.siteUrl} onChange={(e) => setCoord({ ...coord, siteUrl: e.target.value })} placeholder="https://kredix.fr" />
               </div>
             </div>
+            {renderSaveBtn('coord', saveCoord)}
           </div>
 
+          {/* ===== LANGUES ACTIVES ===== */}
           <div className="panel">
             <div className="panel-head">
               <h3>Langues actives</h3>
@@ -380,34 +467,10 @@ export default function CMS() {
                  ))}
                </div>
             </div>
+            {renderSaveBtn('langues', saveLangues)}
           </div>
         </div>
       </div>
-
-      <button className="btn btn-primary" onClick={() => setPublierModalOpen(true)} disabled={saving}>
-        {saving ? 'Publication…' : 'Publier les modifications'}
-      </button>
-
-      <Modal
-        isOpen={publierModalOpen}
-        onClose={() => setPublierModalOpen(false)}
-        title="Publier les modifications"
-      >
-        <p className="field-hint">
-          Les modifications seront appliquées immédiatement sur le site public. Tous les visiteurs verront la nouvelle version.
-        </p>
-        <p style={{ fontSize: 13, color: 'var(--ink)', lineHeight: 1.6 }}>
-          Vous allez publier : titre du Hero, sous-titre, boutons, 4 services, coordonnées (téléphone, WhatsApp, email, ORIAS) et les langues actives.
-        </p>
-        <div className="modal-actions">
-          <button className="btn btn-ghost" onClick={() => setPublierModalOpen(false)} disabled={saving}>
-            Annuler
-          </button>
-          <button className="btn btn-primary" onClick={publish} disabled={saving}>
-            {saving ? 'Publication…' : 'Confirmer la publication'}
-          </button>
-        </div>
-      </Modal>
     </section>
   )
 }
