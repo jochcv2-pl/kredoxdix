@@ -23,6 +23,8 @@ const ALLOWED_MIME_TYPES = new Set([
   'image/x-icon',
   'image/vnd.microsoft.icon',
   'image/jpeg',
+  'image/webp',
+  'image/gif',
 ]);
 
 // Extension associée à chaque type MIME (pour le nom de fichier généré).
@@ -31,6 +33,8 @@ const EXT_BY_MIME: Record<string, string> = {
   'image/x-icon': '.ico',
   'image/vnd.microsoft.icon': '.ico',
   'image/jpeg': '.jpg',
+  'image/webp': '.webp',
+  'image/gif': '.gif',
 };
 
 // =============================================================================

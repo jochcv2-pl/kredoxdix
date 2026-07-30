@@ -801,37 +801,269 @@ body {
   color: #94a3b8;
 }
 
-/* ===== BANK PARTNERS END ===== */
-
-/* ===== LOGO UPLOAD (modal banque) ===== */
-.bnk-logo-set {
+/* ===== BANK PARTNERS — FORM (redesign) ===== */
+.bp-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.bp-section {
+  border: 1px solid #e8edf2;
+  border-radius: 10px;
+  padding: 16px 18px;
+  background: #fcfdff;
+}
+.bp-section-title {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #334155;
+  margin-bottom: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
-.bnk-logo-preview-large {
-  width: 120px;
-  height: 64px;
+.bp-section-title svg {
+  color: #94a3b8;
+  stroke-width: 1.8;
+}
+.bp-hint {
+  font-weight: 400;
+  font-size: 11px;
+  color: #94a3b8;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.bp-req {
+  color: #ef4444;
+}
+.bp-row-2 {
+  display: flex;
+  gap: 14px;
+}
+.bp-row-2 .bp-field {
+  flex: 1;
+}
+.bp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.bp-field label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+}
+.bp-field input,
+.bp-url-input {
+  padding: 9px 12px;
+  border: 1px solid #dde3ec;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #1e293b;
+  background: #fff;
+  transition: border-color .15s, box-shadow .15s;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+.bp-field input:focus,
+.bp-url-input:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(43, 139, 222, 0.12);
+}
+
+/* --- Upload error --- */
+.bp-upload-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+/* --- Logo zone (set) --- */
+.bp-logo-set {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.bp-logo-preview {
+  width: 140px;
+  height: 72px;
   border-radius: 10px;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 8px;
+  padding: 10px;
   flex-shrink: 0;
 }
-.bnk-logo-preview-large img {
+.bp-logo-preview img {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
 }
-.bnk-logo-actions {
+.bp-logo-side {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.bp-logo-url {
+  font-size: 11px;
+  color: #94a3b8;
+  font-family: monospace;
+  word-break: break-all;
+  max-width: 280px;
+}
+.bp-logo-btns {
   display: flex;
   gap: 6px;
 }
 
-/* ===== PANEL HEAD ===== */
+/* --- Logo zone (upload) --- */
+.bp-logo-upload {
+  display: flex;
+  flex-direction: column;
+}
+.bp-dropzone {
+  border: 2px dashed #cbd5e1;
+  border-radius: 10px;
+  padding: 26px 20px;
+  text-align: center;
+  background: #f8fafc;
+  cursor: pointer;
+  transition: all .15s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.bp-dropzone:hover,
+.bp-dropzone.drag {
+  border-color: var(--blue);
+  background: #f0f7ff;
+}
+.bp-dropzone.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+.bp-dz-icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  color: #94a3b8;
+  stroke-width: 1.5;
+}
+.bp-dropzone:hover .bp-dz-icon {
+  color: var(--blue);
+}
+.bp-dz-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #334155;
+}
+.bp-dz-sub {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+/* --- Spinner --- */
+.bp-spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid #e2e8f0;
+  border-top-color: var(--blue);
+  border-radius: 50%;
+  animation: bp-spin 0.7s linear infinite;
+}
+@keyframes bp-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* --- OR separator --- */
+.bp-or {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 14px 0;
+}
+.bp-or::before,
+.bp-or::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #e2e8f0;
+}
+.bp-or span {
+  font-size: 10px;
+  color: #94a3b8;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.bp-url-input {
+  font-size: 13px;
+}
+
+/* --- Toggle --- */
+.bp-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #334155;
+}
+.bp-toggle input {
+  display: none;
+}
+.bp-toggle-track {
+  width: 38px;
+  height: 22px;
+  border-radius: 20px;
+  background: #cbd5e1;
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  transition: background .2s;
+  flex-shrink: 0;
+}
+.bp-toggle-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  transition: transform .2s;
+}
+.bp-toggle input:checked + .bp-toggle-track {
+  background: #16a34a;
+}
+.bp-toggle input:checked + .bp-toggle-track .bp-toggle-thumb {
+  transform: translateX(16px);
+}
+.bp-toggle-label {
+  font-weight: 600;
+}
+
+/* --- Actions --- */
+.bp-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+/* ===== BANK PARTNERS END ===== */
 .panel-head h3 {
   font-size: 14px;
   font-weight: 700;

@@ -37,6 +37,10 @@ const EMPTY: FormState = {
   isActive: true, displayOrder: 0,
 }
 
+// Types MIME acceptés côté client (sync avec l'API).
+const ACCEPTED_TYPES = '.png,.jpg,.jpeg,.ico,.webp,.gif'
+const MAX_FILE_SIZE = 500 * 1024 // 500 Ko
+
 export default function Partners() {
   const [list, setList] = useState<BankPartner[]>([])
   const [loading, setLoading] = useState(true)
@@ -47,6 +51,8 @@ export default function Partners() {
   const [form, setForm] = useState<FormState>(EMPTY)
   const [deleteTarget, setDeleteTarget] = useState<BankPartner | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const [dragOver, setDragOver] = useState(false)
   const logoInputRef = useRef<HTMLInputElement>(null)
 
   const load = useCallback(async () => {
@@ -69,6 +75,7 @@ export default function Partners() {
   const openCreate = () => {
     setForm({ ...EMPTY, displayOrder: list.length })
     setEditing(null)
+    setUploadError(null)
     setCreating(true)
   }
 
@@ -83,6 +90,7 @@ export default function Partners() {
       displayOrder: p.displayOrder,
     })
     setEditing(p)
+    setUploadError(null)
     setCreating(true)
   }
 
@@ -141,9 +149,23 @@ export default function Partners() {
     } catch { /* ignore */ }
   }
 
+  // --- Upload logo ---
   const handleLogoUpload = async (file: File) => {
+    setUploadError(null)
+
+    // Validation client : type
+    const allowed = ['image/png', 'image/jpeg', 'image/x-icon', 'image/vnd.microsoft.icon', 'image/webp', 'image/gif']
+    if (!allowed.includes(file.type)) {
+      setUploadError(`Format non supporté : ${file.type || 'inconnu'}. Utilisez PNG, JPG, WebP, GIF ou ICO.`)
+      return
+    }
+    // Validation client : taille
+    if (file.size > MAX_FILE_SIZE) {
+      setUploadError(`Fichier trop volumineux (${Math.round(file.size / 1024)} Ko). Maximum : 500 Ko.`)
+      return
+    }
+
     setUploading(true)
-    setError(null)
     try {
       const fd = new FormData()
       fd.append('file', file)
@@ -151,12 +173,12 @@ export default function Partners() {
       const res = await fetch('/api/cms/upload', { method: 'POST', body: fd })
       const json = await res.json()
       if (!res.ok) {
-        throw new Error(json?.error ?? 'Upload échoué')
+        throw new Error(json?.error ?? json?.message ?? 'Upload échoué')
       }
       const url: string = json.data?.url ?? json.url
       setForm((prev) => ({ ...prev, logoUrl: url }))
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erreur upload')
+      setUploadError(e instanceof Error ? e.message : 'Erreur upload')
     } finally {
       setUploading(false)
     }
@@ -231,167 +253,219 @@ export default function Partners() {
         </div>
       )}
 
-      <Modal isOpen={creating} onClose={() => setCreating(false)} title={editing ? 'Modifier la banque' : 'Ajouter une banque'}>
-        <div className="form-grid" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <label className="form-field">
-            <span className="form-label">Nom de la banque *</span>
+      {/* ===== MODAL CRÉATION / ÉDITION ===== */}
+      <Modal
+        isOpen={creating}
+        onClose={() => setCreating(false)}
+        title={editing ? 'Modifier la banque' : 'Nouvelle banque partenaire'}
+        wide
+      >
+        <div className="bp-form">
+          {/* --- Section Identité --- */}
+          <div className="bp-section">
+            <div className="bp-section-title">
+              <Icon name="building" size={15} />
+              Identité
+            </div>
+            <div className="bp-row-2">
+              <div className="bp-field">
+                <label>Nom de la banque <span className="bp-req">*</span></label>
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={(e) => {
+                    const name = e.target.value
+                    setForm((prev) => ({
+                      ...prev,
+                      name,
+                      slug: editing ? prev.slug : name.toLowerCase()
+                        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                        .replace(/[^a-z0-9]+/g, '-')
+                        .replace(/(^-|-$)/g, ''),
+                    }))
+                  }}
+                  placeholder="Ex : Sparkasse"
+                  autoFocus
+                />
+              </div>
+              <div className="bp-field">
+                <label>Slug <span className="bp-hint">(auto-généré, modifiable)</span></label>
+                <input
+                  type="text"
+                  value={form.slug}
+                  onChange={(e) => setForm({ ...form, slug: e.target.value })}
+                  placeholder="sparkasse"
+                  style={{ fontFamily: 'monospace', fontSize: 13 }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* --- Section Logo --- */}
+          <div className="bp-section">
+            <div className="bp-section-title">
+              <Icon name="image" size={15} />
+              Logo
+            </div>
+
+            {/* Erreur d'upload visible dans le modal */}
+            {uploadError && (
+              <div className="bp-upload-error">
+                <Icon name="alert-triangle" size={14} />
+                {uploadError}
+              </div>
+            )}
+
+            {form.logoUrl ? (
+              <div className="bp-logo-set">
+                <div className="bp-logo-preview">
+                  <img src={form.logoUrl} alt="Logo" onError={() => setUploadError('L\'image ne se charge pas. Vérifiez l\'URL ou re-uploadez le fichier.')} />
+                </div>
+                <div className="bp-logo-side">
+                  <div className="bp-logo-url">{form.logoUrl}</div>
+                  <div className="bp-logo-btns">
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => logoInputRef.current?.click()}
+                      disabled={uploading}
+                    >
+                      <Icon name="upload" size={14} /> Changer
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => { setForm((prev) => ({ ...prev, logoUrl: '' })); setUploadError(null) }}
+                    >
+                      <Icon name="x" size={14} /> Retirer
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="bp-logo-upload">
+                <div
+                  className={`bp-dropzone${dragOver ? ' drag' : ''}${uploading ? ' loading' : ''}`}
+                  onClick={() => !uploading && logoInputRef.current?.click()}
+                  onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    setDragOver(false)
+                    const f = e.dataTransfer.files[0]
+                    if (f) handleLogoUpload(f)
+                  }}
+                >
+                  <div className="bp-dz-icon">
+                    {uploading ? (
+                      <span className="bp-spinner" />
+                    ) : (
+                      <Icon name="upload" size={28} />
+                    )}
+                  </div>
+                  <div className="bp-dz-title">
+                    {uploading ? 'Chargement…' : 'Glisser le logo ici ou cliquer pour parcourir'}
+                  </div>
+                  <div className="bp-dz-sub">PNG · JPG · WebP · GIF · ICO — 500 Ko max — ~400×100px conseillé</div>
+                </div>
+
+                <div className="bp-or">
+                  <span>OU</span>
+                </div>
+
+                <input
+                  type="url"
+                  value={form.logoUrl}
+                  onChange={(e) => { setForm({ ...form, logoUrl: e.target.value }); setUploadError(null) }}
+                  placeholder="https://exemple.com/logo.png"
+                  className="bp-url-input"
+                />
+              </div>
+            )}
+
             <input
-              type="text"
-              value={form.name}
+              ref={logoInputRef}
+              type="file"
+              accept={ACCEPTED_TYPES}
+              style={{ display: 'none' }}
               onChange={(e) => {
-                const name = e.target.value
-                setForm((prev) => ({
-                  ...prev,
-                  name,
-                  slug: editing ? prev.slug : name.toLowerCase()
-                    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-                    .replace(/[^a-z0-9]+/g, '-')
-                    .replace(/(^-|-$)/g, ''),
-                }))
+                const f = e.target.files?.[0]
+                if (f) handleLogoUpload(f)
+                e.target.value = ''
               }}
-              placeholder="Ex : Sparkasse"
-              className="form-input"
-              autoFocus
             />
-          </label>
-          <label className="form-field">
-            <span className="form-label">Slug (URL, auto-généré depuis le nom)</span>
-            <input
-              type="text"
-              value={form.slug}
-              onChange={(e) => setForm({ ...form, slug: e.target.value })}
-              placeholder="sparkasse"
-              className="form-input"
-              style={{ fontFamily: 'monospace' }}
-            />
-          </label>
-          {/* Logo — upload depuis la machine OU URL (optionnel) */}
-          <div className="form-field">
-             <span className="form-label">Logo (optionnel)</span>
-
-             {/* Aperçu si logo déjà présent */}
-             {form.logoUrl ? (
-               <div className="bnk-logo-set">
-                 <div className="bnk-logo-preview-large">
-                   <img src={form.logoUrl} alt="Logo" />
-                 </div>
-                 <div className="bnk-logo-actions">
-                   <button
-                     type="button"
-                     className="btn btn-ghost btn-sm"
-                     onClick={() => logoInputRef.current?.click()}
-                     disabled={uploading}
-                   >
-                     <Icon name="upload" size={14} /> Changer
-                   </button>
-                   <button
-                     type="button"
-                     className="btn btn-ghost btn-sm"
-                     onClick={() => setForm((prev) => ({ ...prev, logoUrl: '' }))}
-                   >
-                     <Icon name="x" size={14} /> Retirer
-                   </button>
-                 </div>
-               </div>
-             ) : (
-               <>
-                 {/* Zone d'upload (clic ou drag) */}
-                 <div
-                   className="dropzone"
-                   onClick={() => logoInputRef.current?.click()}
-                   onDragOver={(e) => { e.preventDefault() }}
-                   onDrop={(e) => {
-                     e.preventDefault()
-                     const f = e.dataTransfer.files[0]
-                     if (f) handleLogoUpload(f)
-                   }}
-                   style={uploading ? { opacity: 0.5, pointerEvents: 'none' } : undefined}
-                 >
-                   <Icon name="upload" size={32} className="dz-ico" />
-                   <div className="dz-title">
-                     {uploading ? 'Upload en cours…' : 'Cliquer ou glisser un logo ici'}
-                   </div>
-                   <div className="dz-sub">PNG, JPG ou ICO · 500 Ko max · ~400×100px conseillé</div>
-                 </div>
-
-                 {/* Séparateur « ou » */}
-                 <div className="or-line">
-                   <span>ou coller une URL</span>
-                 </div>
-
-                 {/* Champ URL optionnel */}
-                 <input
-                   type="url"
-                   value={form.logoUrl}
-                   onChange={(e) => setForm({ ...form, logoUrl: e.target.value })}
-                   placeholder="https://exemple.com/logo.png"
-                   className="form-input"
-                 />
-               </>
-             )}
-
-             {/* Input file caché */}
-             <input
-               ref={logoInputRef}
-               type="file"
-               accept="image/png,image/jpeg,image/x-icon,image/vnd.microsoft.icon"
-               style={{ display: 'none' }}
-               onChange={(e) => {
-                 const f = e.target.files?.[0]
-                 if (f) handleLogoUpload(f)
-                 e.target.value = ''
-               }}
-             />
           </div>
-          <div style={{ display: 'flex', gap: 14 }}>
-            <label className="form-field" style={{ flex: 1 }}>
-              <span className="form-label">Email contact</span>
-              <input
-                type="email"
-                value={form.contactEmail}
-                onChange={(e) => setForm({ ...form, contactEmail: e.target.value })}
-                placeholder="contact@banque.fr"
-                className="form-input"
-              />
-            </label>
-            <label className="form-field" style={{ flex: 1 }}>
-              <span className="form-label">Téléphone contact</span>
-              <input
-                type="tel"
-                value={form.contactPhone}
-                onChange={(e) => setForm({ ...form, contactPhone: e.target.value })}
-                placeholder="+33 1 23 45 67 89"
-                className="form-input"
-              />
-            </label>
+
+          {/* --- Section Contact --- */}
+          <div className="bp-section">
+            <div className="bp-section-title">
+              <Icon name="phone" size={15} />
+              Contact <span className="bp-hint">(optionnel)</span>
+            </div>
+            <div className="bp-row-2">
+              <div className="bp-field">
+                <label>Email</label>
+                <input
+                  type="email"
+                  value={form.contactEmail}
+                  onChange={(e) => setForm({ ...form, contactEmail: e.target.value })}
+                  placeholder="contact@banque.fr"
+                />
+              </div>
+              <div className="bp-field">
+                <label>Téléphone</label>
+                <input
+                  type="tel"
+                  value={form.contactPhone}
+                  onChange={(e) => setForm({ ...form, contactPhone: e.target.value })}
+                  placeholder="+33 1 23 45 67 89"
+                />
+              </div>
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: 14 }}>
-            <label className="form-field" style={{ width: 120 }}>
-              <span className="form-label">Ordre d&apos;affichage</span>
-              <input
-                type="number"
-                value={form.displayOrder}
-                onChange={(e) => setForm({ ...form, displayOrder: Number(e.target.value) })}
-                className="form-input"
-              />
-            </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', paddingTop: 24 }}>
-              <input
-                type="checkbox"
-                checked={form.isActive}
-                onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
-              />
-              <span style={{ fontSize: 14 }}>Afficher sur le site public</span>
-            </label>
+
+          {/* --- Section Affichage --- */}
+          <div className="bp-section">
+            <div className="bp-section-title">
+              <Icon name="eye" size={15} />
+              Affichage
+            </div>
+            <div className="bp-row-2">
+              <div className="bp-field" style={{ maxWidth: 140 }}>
+                <label>Ordre d&apos;affichage</label>
+                <input
+                  type="number"
+                  value={form.displayOrder}
+                  onChange={(e) => setForm({ ...form, displayOrder: Number(e.target.value) })}
+                />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 8 }}>
+                <label className="bp-toggle">
+                  <input
+                    type="checkbox"
+                    checked={form.isActive}
+                    onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
+                  />
+                  <span className="bp-toggle-track">
+                    <span className="bp-toggle-thumb" />
+                  </span>
+                  <span className="bp-toggle-label">
+                    {form.isActive ? 'Visible sur le site public' : 'Masqué'}
+                  </span>
+                </label>
+              </div>
+            </div>
           </div>
-          <div className="modal-actions" style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
+
+          {/* --- Actions --- */}
+          <div className="bp-actions">
             <button className="btn btn-ghost" onClick={() => setCreating(false)}>Annuler</button>
             <button
               className="btn btn-primary"
               onClick={handleSave}
               disabled={saving || !form.name.trim()}
             >
-              {saving ? 'Enregistrement…' : editing ? 'Enregistrer' : 'Créer'}
+              {saving ? 'Enregistrement…' : editing ? 'Enregistrer les modifications' : 'Créer la banque'}
             </button>
           </div>
         </div>
