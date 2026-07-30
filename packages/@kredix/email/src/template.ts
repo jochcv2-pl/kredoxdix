@@ -47,6 +47,7 @@ export interface BrandContext {
   contactEmail: string;
   agencyPhone: string;
   agencyAddress: string;
+  advisorName: string;
 }
 
 export function buildUnsubscribeUrl(lead: InterpolationContext['lead'], siteUrl: string): string {
@@ -65,8 +66,8 @@ export function interpolateTemplate(text: string, ctx: InterpolationContext): st
     ? new Date(lead.createdAt).toLocaleDateString('fr-FR')
     : '';
 
-  // Prénom du conseiller (displayName ou fallback générique).
-  const prenomConseiller = lead.advisorName ?? 'votre conseiller';
+  // Prénom du conseiller : priorité au paramètre global, fallback au conseiller assigné.
+  const prenomConseiller = brand?.advisorName || lead.advisorName || 'votre conseiller';
 
   const replacements: Record<string, string> = {
     // Variables lead — PascalCase FR (originales)

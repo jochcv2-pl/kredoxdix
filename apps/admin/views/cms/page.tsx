@@ -30,6 +30,8 @@ const KEYS = {
   email: 'contact_email',
   orias: 'orias_number',
   siteUrl: 'site_url',
+  advisorName: 'advisor_name',
+  agencyAddress: 'agency_address',
   activeLanguages: 'cms_active_languages',
 } as const
 
@@ -65,7 +67,7 @@ export default function CMS() {
     btnSecondaire: '',
   })
   const [services, setServices] = useState({ s1: '', s2: '', s3: '', s4: '' })
-  const [coord, setCoord] = useState({ tel: '', whatsapp: '', email: '', orias: '', siteUrl: '' })
+  const [coord, setCoord] = useState({ tel: '', whatsapp: '', email: '', orias: '', siteUrl: '', advisorName: '', agencyAddress: '' })
   const [languesActives, setLanguesActives] = useState<Record<string, boolean>>(
     Object.fromEntries(LANGUES.map((l) => [l, true])),
   )
@@ -122,6 +124,8 @@ export default function CMS() {
           email: byKey.get(KEYS.email) ?? '',
           orias: byKey.get(KEYS.orias) ?? '',
           siteUrl: byKey.get(KEYS.siteUrl) ?? '',
+          advisorName: byKey.get(KEYS.advisorName) ?? '',
+          agencyAddress: byKey.get(KEYS.agencyAddress) ?? '',
         })
 
         const langsCsv = byKey.get(KEYS.activeLanguages) ?? 'fr,en,de,es,pt,it'
@@ -212,11 +216,13 @@ export default function CMS() {
   ])
 
   const saveCoord = () => saveSection('coord', [
-    { key: KEYS.tel, value: coord.tel, category: 'contact', description: 'Téléphone affiché.' },
+    { key: KEYS.tel, value: coord.tel, category: 'contact', description: 'Téléphone du conseiller.' },
     { key: KEYS.whatsapp, value: coord.whatsapp, category: 'contact', description: 'Numéro WhatsApp.' },
-    { key: KEYS.email, value: coord.email, category: 'contact', description: 'Email de contact.' },
+    { key: KEYS.email, value: coord.email, category: 'contact', description: 'Email du conseiller.' },
     { key: KEYS.orias, value: coord.orias, category: 'legal', description: "Numéro ORIAS (obligation d'affichage)." },
     { key: KEYS.siteUrl, value: coord.siteUrl, category: 'general', description: 'URL du site (utilisée pour les liens de désinscription dans les emails).' },
+    { key: KEYS.advisorName, value: coord.advisorName, category: 'contact', description: 'Nom du conseiller affiché dans les emails.' },
+    { key: KEYS.agencyAddress, value: coord.agencyAddress, category: 'contact', description: 'Adresse du siège social.' },
   ])
 
   const saveLangues = () => {
@@ -424,20 +430,28 @@ export default function CMS() {
             </div>
             <div className="panel-body" style={{ paddingTop: 16 }}>
               <div className="fg" style={{ marginBottom: 10 }}>
-                <label>Téléphone</label>
-                <input value={coord.tel} onChange={(e) => setCoord({ ...coord, tel: e.target.value })} />
+                <label>Nom du conseiller</label>
+                <input value={coord.advisorName} onChange={(e) => setCoord({ ...coord, advisorName: e.target.value })} placeholder="Ex : Marie Lefèvre" />
+              </div>
+              <div className="fg" style={{ marginBottom: 10 }}>
+                <label>Téléphone du conseiller</label>
+                <input value={coord.tel} onChange={(e) => setCoord({ ...coord, tel: e.target.value })} placeholder="Ex : +33 1 23 45 67 89" />
+              </div>
+              <div className="fg" style={{ marginBottom: 10 }}>
+                <label>Email du conseiller</label>
+                <input value={coord.email} onChange={(e) => setCoord({ ...coord, email: e.target.value })} placeholder="Ex : marie@kredix.fr" />
               </div>
               <div className="fg" style={{ marginBottom: 10 }}>
                 <label>WhatsApp</label>
-                <input value={coord.whatsapp} onChange={(e) => setCoord({ ...coord, whatsapp: e.target.value })} />
+                <input value={coord.whatsapp} onChange={(e) => setCoord({ ...coord, whatsapp: e.target.value })} placeholder="Ex : +33 6 12 34 56 78" />
               </div>
               <div className="fg" style={{ marginBottom: 10 }}>
-                <label>Email conseiller</label>
-                <input value={coord.email} onChange={(e) => setCoord({ ...coord, email: e.target.value })} />
+                <label>Adresse du siège social</label>
+                <input value={coord.agencyAddress} onChange={(e) => setCoord({ ...coord, agencyAddress: e.target.value })} placeholder="Ex : 12 rue de la Finance, 75001 Paris" />
               </div>
               <div className="fg" style={{ marginBottom: 10 }}>
                 <label>Numéro ORIAS</label>
-                <input value={coord.orias} onChange={(e) => setCoord({ ...coord, orias: e.target.value })} />
+                <input value={coord.orias} onChange={(e) => setCoord({ ...coord, orias: e.target.value })} placeholder="Ex : 12345678" />
               </div>
               <div className="fg" style={{ marginBottom: 0 }}>
                 <label>URL du site (pour les liens de désinscription)</label>

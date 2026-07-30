@@ -19,6 +19,7 @@ export interface EmailBrandData {
   contactEmail: string;
   agencyPhone: string;
   agencyAddress: string;
+  advisorName: string;
   primaryColor: string;
 }
 
@@ -27,18 +28,19 @@ export interface EmailBrandData {
  * Utilisé par tous les senders pour peupler le wrapper HTML + l'interpolation.
  */
 export async function loadBrandData(): Promise<EmailBrandData> {
-  const [siteName, logoUrl, siteUrl, contactEmail, agencyPhone, agencyAddress, primaryColor] =
+  const [siteName, logoUrl, siteUrl, contactEmail, agencyPhone, agencyAddress, advisorName, primaryColor] =
     await Promise.all([
       getSetting('site_name', 'Kredix'),
       getSetting('cms_logo_url', ''),
       getSetting('site_url', ''),
       getSetting('contact_email', ''),
-      getSetting('agency_phone', ''),
+      getSetting('contact_phone', ''),
       getSetting('agency_address', ''),
+      getSetting('advisor_name', ''),
       getSetting('cms_primary_color', '#2B8BDE'),
     ]);
 
-  return { siteName, logoUrl, siteUrl, contactEmail, agencyPhone, agencyAddress, primaryColor };
+  return { siteName, logoUrl, siteUrl, contactEmail, agencyPhone, agencyAddress, advisorName, primaryColor };
 }
 
 /**
@@ -51,6 +53,7 @@ export function brandToContext(brand: EmailBrandData): BrandContext {
     contactEmail: brand.contactEmail,
     agencyPhone: brand.agencyPhone,
     agencyAddress: brand.agencyAddress,
+    advisorName: brand.advisorName,
   };
 }
 
