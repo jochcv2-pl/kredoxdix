@@ -83,10 +83,12 @@ export async function sendClientLevelEmail(
       monthlyPayment: true,
       totalCost: true,
       loanType: true,
+      companyName: true,
       status: true,
       unsubscribeToken: true,
       preferredLanguage: true,
       createdAt: true,
+      assignedTo: { select: { displayName: true } },
     },
   });
 
@@ -150,6 +152,7 @@ export async function sendClientLevelEmail(
 
   // 6 — Interpolation sujet + corps (avec variables marque injectées).
   const leadData = {
+    id: lead.id,
     firstName: lead.firstName,
     lastName: lead.lastName,
     email: lead.email,
@@ -159,8 +162,11 @@ export async function sendClientLevelEmail(
     monthlyPayment: lead.monthlyPayment,
     annualRate: lead.annualRate,
     loanType: lead.loanType,
+    companyName: lead.companyName,
+    createdAt: lead.createdAt,
     unsubscribeToken: lead.unsubscribeToken,
     preferredLanguage: lead.preferredLanguage,
+    advisorName: lead.assignedTo?.displayName ?? null,
   };
   const ctx = { lead: leadData, siteUrl, brand: brandToContext(brand) };
   const subject = interpolateTemplate(template.subject, ctx);

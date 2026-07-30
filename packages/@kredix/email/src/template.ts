@@ -25,9 +25,15 @@ export interface InterpolationContext {
     | 'monthlyPayment'
     | 'annualRate'
     | 'loanType'
+    | 'companyName'
+    | 'id'
+    | 'createdAt'
     | 'unsubscribeToken'
     | 'preferredLanguage'
-  >;
+  > & {
+    /** Prénom du conseiller assigné (si Lead.assignedTo chargé). */
+    advisorName?: string | null;
+  };
   siteUrl: string;
   customMessage?: string;
   /** Données de marque injectées dans l'interpolation. */
@@ -51,7 +57,19 @@ export function interpolateTemplate(text: string, ctx: InterpolationContext): st
   const { lead, siteUrl, customMessage, brand } = ctx;
   const unsubscribeUrl = buildUnsubscribeUrl(lead, siteUrl);
 
+  // Référence demande : prefix + 8 premiers chars du CUID.
+  const reference = `KREDIX-${lead.id.slice(-8).toUpperCase()}`;
+
+  // Date de soumission formatée (ex: 30/07/2026).
+  const dateSoumission = lead.createdAt
+    ? new Date(lead.createdAt).toLocaleDateString('fr-FR')
+    : '';
+
+  // Prénom du conseiller (displayName ou fallback générique).
+  const prenomConseiller = lead.advisorName ?? 'votre conseiller';
+
   const replacements: Record<string, string> = {
+    // Variables lead — PascalCase FR (originales)
     '{{Prénom}}': lead.firstName,
     '{{Nom}}': lead.lastName,
     '{{Email}}': lead.email ?? '',
@@ -63,13 +81,27 @@ export function interpolateTemplate(text: string, ctx: InterpolationContext): st
     '{{TAEG}}': lead.annualRate ? `${lead.annualRate.toFixed(2)}%` : '—',
     '{{LienDesinscription}}': unsubscribeUrl,
     '{{Message}}': customMessage ?? '',
-    // Variables marque
+    // Variables marque — PascalCase FR
     '{{NomSite}}': brand?.siteName ?? '',
     '{{SiteUrl}}': siteUrl,
     '{{LogoUrl}}': brand?.logoUrl ?? '',
     '{{ContactEmail}}': brand?.contactEmail ?? '',
     '{{TéléphoneAgence}}': brand?.agencyPhone ?? '',
     '{{AdresseAgence}}': brand?.agencyAddress ?? '',
+
+    // ===== NOUVELLES VARIABLES (snake_case) =====
+    '{{prenom}}': lead.firstName,
+    '{{nom}}': lead.lastName,
+    '{{nom_entreprise}}': lead.companyName ?? '',
+    '{{reference_demande}}': reference,
+    '{{date_soumission}}': dateSoumission,
+    '{{type_pret}}': LOAN_TYPE_LABELS[lead.loanType] ?? lead.loanType,
+    '{{montant_pret}}': formatEuro(lead.amount),
+    '{{prenom_conseiller}}': prenomConseiller,
+    '{{telephone_conseiller}}': brand?.agencyPhone ?? '',
+    '{{email_conseiller}}': brand?.contactEmail ?? '',
+    '{{adresse_siege}}': brand?.agencyAddress ?? '',
+    '{{lien_desabonnement}}': unsubscribeUrl,
   };
 
   let result = text;

@@ -147,6 +147,9 @@ model Lead {
   // Même logique que loanType : situations professionnelles évolutives.
   employmentStatus  String
 
+  // Nom de l'entreprise (pour les prêts pro / entreprise).
+  companyName       String?
+
   status            LeadStatus @default(new)
 
   preferredLanguage String     @default("fr") // i18n des communications

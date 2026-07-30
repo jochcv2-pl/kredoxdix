@@ -124,11 +124,14 @@ export async function POST(req: NextRequest) {
         durationYears: true,
         monthlyPayment: true,
         annualRate: true,
+        companyName: true,
+        createdAt: true,
         relanceCount: true,
         ackSentAt: true,
         offerSentAt: true,
         unsubscribeToken: true,
         preferredLanguage: true,
+        assignedTo: { select: { displayName: true } },
       },
     });
 
@@ -208,7 +211,7 @@ export async function POST(req: NextRequest) {
           }
 
           const siteUrl = await getSetting('site_url', 'http://localhost:3100');
-          const ctx = { lead, siteUrl, brand: brandToContext(brand) };
+          const ctx = { lead: { ...lead, advisorName: lead.assignedTo?.displayName ?? null }, siteUrl, brand: brandToContext(brand) };
           const welcomeSubject = interpolateTemplate(welcomeTemplate.subject, ctx);
           const welcomeBody = interpolateTemplate(welcomeTemplate.bodyText, ctx);
 
@@ -338,7 +341,7 @@ export async function POST(req: NextRequest) {
           }
 
           const siteUrl = await getSetting('site_url', 'http://localhost:3100');
-          const ctx = { lead, siteUrl, brand: brandToContext(brand) };
+          const ctx = { lead: { ...lead, advisorName: lead.assignedTo?.displayName ?? null }, siteUrl, brand: brandToContext(brand) };
           const offerSubject = interpolateTemplate(offerTemplate.subject, ctx);
           const offerBody = interpolateTemplate(offerTemplate.bodyText, ctx);
           const offerRawHtml = offerTemplate.htmlContent
@@ -430,7 +433,7 @@ export async function POST(req: NextRequest) {
 
         // d) Interpole les variables du template (fallback de base)
         const siteUrl = await getSetting('site_url', 'http://localhost:3100');
-        const ctx = { lead, siteUrl, brand: brandToContext(brand) };
+        const ctx = { lead: { ...lead, advisorName: lead.assignedTo?.displayName ?? null }, siteUrl, brand: brandToContext(brand) };
         const fallbackSubject = interpolateTemplate(template.subject, ctx);
         const fallbackBody = interpolateTemplate(template.bodyText, ctx);
 

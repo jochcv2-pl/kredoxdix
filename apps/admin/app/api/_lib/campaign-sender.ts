@@ -210,6 +210,7 @@ export async function processCampaign(campaignId: string): Promise<void> {
       // 4d — Interpolation du sujet + corps avec les données du destinataire.
       const ctx = {
         lead: {
+          id: recipient.leadId ?? recipient.id,
           firstName: recipient.firstName ?? '',
           lastName: recipient.lastName ?? '',
           email: recipient.email,
@@ -219,6 +220,8 @@ export async function processCampaign(campaignId: string): Promise<void> {
           monthlyPayment: null,
           annualRate: null,
           loanType: 'autre',
+          companyName: null,
+          createdAt: new Date(),
           unsubscribeToken: '',
           preferredLanguage: 'fr',
         },

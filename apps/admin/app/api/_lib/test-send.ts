@@ -24,6 +24,7 @@ import {
 
 /** Données de test réalistes pour l'interpolation des variables {{...}}. */
 const TEST_LEAD: InterpolationContext['lead'] = {
+  id: 'test-lead-0001',
   firstName: 'Jean',
   lastName: 'Dupont',
   email: 'test@kredix.fr',
@@ -33,8 +34,11 @@ const TEST_LEAD: InterpolationContext['lead'] = {
   monthlyPayment: 1285,
   annualRate: 3.85,
   loanType: 'immo',
+  companyName: null,
+  createdAt: new Date('2026-07-30'),
   unsubscribeToken: 'test-token-preview',
   preferredLanguage: 'fr',
+  advisorName: 'Marie Lefèvre',
 };
 
 export interface TestSendResult {
