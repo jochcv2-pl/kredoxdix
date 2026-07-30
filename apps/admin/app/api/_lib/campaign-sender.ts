@@ -237,8 +237,6 @@ export async function processCampaign(campaignId: string): Promise<void> {
         brand,
         unsubscribeUrl: buildUnsubscribeUrl(ctx.lead, siteUrl),
         bannerEnabled: template.bannerEnabled,
-        customHeader: template.headerHtml ? interpolateTemplate(template.headerHtml, ctx) : undefined,
-        customFooter: template.footerHtml ? interpolateTemplate(template.footerHtml, ctx) : undefined,
         subject,
       });
 

@@ -202,8 +202,6 @@ interface Template {
   bodyText: string;
   htmlContent: string | null;
   bannerEnabled: boolean;
-  headerHtml: string | null;
-  footerHtml: string | null;
   isConfidential: boolean;
   createdAt: string;
   updatedAt: string;
@@ -234,10 +232,6 @@ export default function Emails() {
   const [subjInput, setSubjInput] = useState('Votre dossier a bien été reçu, {{Prénom}}');
   const [bodyInput, setBodyInput] = useState(DEFAULT_BODY);
   const [bannerVisible, setBannerVisible] = useState(true);
-
-  // En-tête / pied de page personnalisés (par template).
-  const [headerInput, setHeaderInput] = useState('');
-  const [footerInput, setFooterInput] = useState('');
 
   // Mode import HTML.
   const [htmlArea, setHtmlArea] = useState('');
@@ -285,9 +279,9 @@ export default function Emails() {
   const previewIframeRef = useRef<HTMLIFrameElement>(null);
 
   // Mémorise la dernière position du curseur dans le textarea HTML (mode import).
+  // Sans ça, si l'utilisateur clique une variable sans avoir mis le curseur dans
+  // le textarea, selectionStart = 0 et la variable s'insère tout en haut.
   const lastHtmlCursor = useRef<number>(0);
-  const headerRef = useRef<HTMLTextAreaElement>(null);
-  const footerRef = useRef<HTMLTextAreaElement>(null);
 
   // Édition WYSIWYG inline dans l'aperçu (mode import).
   const [inlineEditing, setInlineEditing] = useState(false);
@@ -446,26 +440,6 @@ export default function Emails() {
     return acc;
   }, {});
 
-  // Insertion générique au curseur dans n'importe quel textarea.
-  function insertVarIn(
-    v: string,
-    ref: React.RefObject<HTMLTextAreaElement | null>,
-    value: string,
-    setter: (s: string) => void,
-  ) {
-    const ta = ref.current;
-    if (!ta) { setter(value + v); return; }
-    const hasFocus = document.activeElement === ta;
-    const s = hasFocus ? ta.selectionStart : value.length;
-    const e = hasFocus ? ta.selectionEnd : value.length;
-    const next = value.slice(0, s) + v + value.slice(e);
-    setter(next);
-    requestAnimationFrame(() => {
-      ta.focus();
-      ta.selectionStart = ta.selectionEnd = s + v.length;
-    });
-  }
-
   function handleFile(file: File | undefined) {
     if (!file) return;
     setDzFile(file.name);
@@ -510,8 +484,6 @@ export default function Emails() {
     setSubjInput(tpl.subject);
     setBodyInput(tpl.bodyText);
     setBannerVisible(tpl.bannerEnabled);
-    setHeaderInput(tpl.headerHtml ?? '');
-    setFooterInput(tpl.footerHtml ?? '');
     // Si le template a du HTML importé, bascule en mode import.
     if (tpl.htmlContent) {
       setHtmlArea(tpl.htmlContent);
@@ -539,8 +511,6 @@ export default function Emails() {
     setLanguageInput('fr');
     setImportTrigger('reception_ack');
     setImportLanguage('fr');
-    setHeaderInput('');
-    setFooterInput('');
   };
 
   // ---------------------------------------------------------------------------
@@ -561,8 +531,6 @@ export default function Emails() {
         bodyText: bodyInput,
         htmlContent: null,
         bannerEnabled: bannerVisible,
-        headerHtml: headerInput.trim() || null,
-        footerHtml: footerInput.trim() || null,
       };
       // PATCH si on édite un template existant, POST sinon.
       const isEditing = !!editingId;
@@ -615,8 +583,6 @@ export default function Emails() {
         htmlContent: html,
         blocksJson,
         bannerEnabled: beBanner,
-        headerHtml: headerInput.trim() || null,
-        footerHtml: footerInput.trim() || null,
       };
       const res = await fetch('/api/templates', {
         method: 'POST',
@@ -660,8 +626,6 @@ export default function Emails() {
         bodyText: extractBodyContent(htmlArea).replace(/<[^>]+>/g, ' ').trim().slice(0, 500),
         htmlContent: htmlArea,
         bannerEnabled: bannerVisible,
-        headerHtml: headerInput.trim() || null,
-        footerHtml: footerInput.trim() || null,
       };
       // PATCH si on édite un template existant, POST sinon.
       const url = isEditing ? `/api/templates/${editingId}` : '/api/templates';
@@ -880,41 +844,6 @@ export default function Emails() {
                   </div>
                 </div>
                 <div className="sub-panel">
-                  <h4>En-tête &amp; pied de page personnalisés</h4>
-                  <p className="var-hint">
-                    Personnalisez l&apos;en-tête et le pied de page <b>pour ce template</b>. Laissez vide pour utiliser
-                    le design par défaut (logo + coordonnées + lien de désinscription). Supporte les variables.
-                  </p>
-                  <label className="field-label" style={{ marginTop: 8 }}>En-tête HTML (optionnel)</label>
-                  <textarea
-                    className="html-area"
-                    ref={headerRef}
-                    style={{ minHeight: 80 }}
-                    placeholder="<table><tr><td>Bonjour depuis {{NomSite}}</td></tr></table>"
-                    value={headerInput}
-                    onChange={(e) => setHeaderInput(e.target.value)}
-                  />
-                  <div className="var-chips" style={{ marginTop: 6 }}>
-                    {VARS.map((v) => (
-                      <span className="chip" key={v.value} onClick={() => insertVarIn(v.value, headerRef, headerInput, setHeaderInput)}>{v.value}</span>
-                    ))}
-                  </div>
-                  <label className="field-label" style={{ marginTop: 14 }}>Pied de page HTML (optionnel)</label>
-                  <textarea
-                    className="html-area"
-                    ref={footerRef}
-                    style={{ minHeight: 80 }}
-                    placeholder={'<table><tr><td>© {{NomSite}} — <a href="{{LienDesinscription}}">Se désinscrire</a></td></tr></table>'}
-                    value={footerInput}
-                    onChange={(e) => setFooterInput(e.target.value)}
-                  />
-                  <div className="var-chips" style={{ marginTop: 6 }}>
-                    {VARS.map((v) => (
-                      <span className="chip" key={`f-${v.value}`} onClick={() => insertVarIn(v.value, footerRef, footerInput, setFooterInput)}>{v.value}</span>
-                    ))}
-                  </div>
-                </div>
-                <div className="sub-panel">
                   <h4>Pied de page (aperçu uniquement)</h4>
                   <p className="var-hint">Ces informations apparaissent en bas de chaque email envoyé. Modifiez-les librement pour l&apos;aperçu (la persistance du pied de page global est à venir).</p>
                   <div className="frow">
@@ -1040,41 +969,6 @@ export default function Emails() {
                     <select value={importLanguage} onChange={(e) => setImportLanguage(e.target.value)}>
                       {LANGUAGES.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
                     </select>
-                  </div>
-                </div>
-                <div className="sub-panel">
-                  <h4>En-tête &amp; pied de page personnalisés</h4>
-                  <p className="var-hint">
-                    Personnalisez l&apos;en-tête et le pied de page <b>pour ce template</b>. Laissez vide pour utiliser
-                    le design par défaut.
-                  </p>
-                  <label className="field-label" style={{ marginTop: 8 }}>En-tête HTML (optionnel)</label>
-                  <textarea
-                    className="html-area"
-                    ref={headerRef}
-                    style={{ minHeight: 70 }}
-                    placeholder="<table><tr><td>Bonjour depuis {{NomSite}}</td></tr></table>"
-                    value={headerInput}
-                    onChange={(e) => setHeaderInput(e.target.value)}
-                  />
-                  <div className="var-chips" style={{ marginTop: 6 }}>
-                    {VARS.map((v) => (
-                      <span className="chip" key={v.value} onClick={() => insertVarIn(v.value, headerRef, headerInput, setHeaderInput)}>{v.value}</span>
-                    ))}
-                  </div>
-                  <label className="field-label" style={{ marginTop: 14 }}>Pied de page HTML (optionnel)</label>
-                  <textarea
-                    className="html-area"
-                    ref={footerRef}
-                    style={{ minHeight: 70 }}
-                    placeholder={'<table><tr><td>© {{NomSite}} — <a href="{{LienDesinscription}}">Se désinscrire</a></td></tr></table>'}
-                    value={footerInput}
-                    onChange={(e) => setFooterInput(e.target.value)}
-                  />
-                  <div className="var-chips" style={{ marginTop: 6 }}>
-                    {VARS.map((v) => (
-                      <span className="chip" key={`f2-${v.value}`} onClick={() => insertVarIn(v.value, footerRef, footerInput, setFooterInput)}>{v.value}</span>
-                    ))}
                   </div>
                 </div>
                 <button className="btn btn-primary" onClick={importTemplate} disabled={saving || inlineEditing}>

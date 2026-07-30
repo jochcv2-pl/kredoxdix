@@ -342,8 +342,6 @@ model EmailTemplate {
   htmlContent   String?        @db.Text         // HTML sérialisé (éditeur blocs ou import)
   blocksJson    String?        @db.Text         // JSON des blocs éditeur visuel (pour réédition)
   bannerEnabled Boolean        @default(true)   // bannière Kredix en en-tête
-  headerHtml    String?        @db.Text         // en-tête personnalisé (HTML). null = header par défaut.
-  footerHtml    String?        @db.Text         // pied de page personnalisé (HTML). null = footer par défaut.
   isConfidential Boolean       @default(false)  // verrouillé : l'IA ne peut ni lire, ni modifier, ni supprimer
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt

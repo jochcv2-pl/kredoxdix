@@ -93,10 +93,6 @@ export interface WrapEmailOptions {
   unsubscribeUrl: string;
   /** Si false, masque le header avec logo (footer reste). Défaut: true. */
   bannerEnabled?: boolean;
-  /** En-tête HTML personnalisé (déjà interpolé). Si fourni, remplace le header par défaut. */
-  customHeader?: string;
-  /** Pied de page HTML personnalisé (déjà interpolé). Si fourni, remplace le footer par défaut. */
-  customFooter?: string;
   /** Objet de l'email (affiché en pré-header). */
   subject?: string;
 }
@@ -115,19 +111,13 @@ export interface WrapEmailOptions {
  *   </html>
  */
 export function wrapEmailHtml(opts: WrapEmailOptions): string {
-  const { bodyHtml, brand, unsubscribeUrl, bannerEnabled = true, customHeader, customFooter, subject } = opts;
+  const { bodyHtml, brand, unsubscribeUrl, bannerEnabled = true, subject } = opts;
 
-  // Header : custom > default (si bannerEnabled) > rien.
-  const header = customHeader
-    ? buildCustomSection(customHeader)
-    : bannerEnabled
-      ? buildHeader(brand)
-      : '';
+  const header = bannerEnabled
+    ? buildHeader(brand)
+    : '';
 
-  // Footer : custom > default.
-  const footer = customFooter
-    ? buildCustomSection(customFooter)
-    : buildFooter(brand, unsubscribeUrl);
+  const footer = buildFooter(brand, unsubscribeUrl);
 
   // Pre-header caché (aperçu dans la boîte de réception).
   const preheader = subject
@@ -165,22 +155,6 @@ ${footer}
   </table>
 </body>
 </html>`;
-}
-
-// --- Custom section (header/footer personnalisé par l'admin) ---
-
-/**
- * Enveloppe un fragment HTML personnalisé dans une cellule <tr><td>.
- * Utilisé quand l'admin définit son propre header ou footer par template.
- * Le HTML est inséré tel quel (déjà interpolé par le sender).
- */
-function buildCustomSection(html: string): string {
-  return `          <!-- CUSTOM SECTION -->
-          <tr>
-            <td>
-              ${html}
-            </td>
-          </tr>`;
 }
 
 // --- Header ---
@@ -249,9 +223,8 @@ function buildFooter(brand: EmailBrandData, unsubscribeUrl: string): string {
 // composeEmailHtml — Point d'entrée UNIQUE pour composer un email prêt à envoyer.
 // =============================================================================
 // Décide intelligemment entre :
-//   - Document HTML complet (template importé OU éditeur de blocs) → on PRÉSERVE
-//     le design original. On injecte uniquement un pied de page de désinscription
-//     RGPD discret avant </body>. AUCUN ré-emballage (sinon double <html>/header).
+//   - Document HTML complet (template importé OU éditeur de blocs) → on
+//     RENVOIE TEL QUEL. L'admin a conçu le HTML complet, on ne modifie rien.
 //   - Fragment HTML (texte brut / IA → textToHtml = simples <p>) → on applique
 //     wrapEmailHtml complet (header logo + footer branded).
 //
@@ -272,92 +245,23 @@ export interface ComposeOptions {
   unsubscribeUrl: string;
   /** Si false, masque le header avec logo (footer reste). Défaut: true. */
   bannerEnabled?: boolean;
-  /** En-tête HTML personnalisé (déjà interpolé). Remplace le header par défaut pour les fragments. */
-  customHeader?: string;
-  /** Pied de page HTML personnalisé (déjà interpolé). Remplace le footer par défaut. */
-  customFooter?: string;
   /** Objet de l'email (affiché en pré-header pour les fragments). */
   subject?: string;
 }
 
 /**
- * Compose un email prêt à l'envoi en préservant le design des templates HTML
- * complets, ou en enveloppant les fragments de texte avec un wrapper branded.
+ * Compose un email prêt à l'envoi.
+ *
+ * - Document HTML complet (importé) → renvoyé TEL QUEL, sans aucune modification.
+ * - Fragment HTML (texte) → enveloppé avec header + footer branded.
  *
  * À utiliser par TOUS les senders (cron, campaign, client-level, email-ack).
  */
 export function composeEmailHtml(opts: ComposeOptions): string {
   const isFullDocument = FULL_DOC_RE.test(opts.bodyHtml);
   return isFullDocument
-    ? injectUnsubscribeFooter(opts.bodyHtml, opts.brand, opts.unsubscribeUrl, opts.customFooter)
+    ? opts.bodyHtml
     : wrapEmailHtml(opts);
-}
-
-/**
- * Injecte un pied de page de désinscription RGPD discret dans un document HTML
- * complet, SANS modifier le design original du modèle.
- *
- * Le footer est inséré juste avant </body> (ou </html>, ou en fin de document).
- * Il contient le lien de désinscription (obligation RGPD) et les coordonnées.
- */
-function injectUnsubscribeFooter(
-  html: string,
-  brand: EmailBrandData,
-  unsubscribeUrl: string,
-  customFooter?: string,
-): string {
-  // Si l'admin a défini un footer personnalisé, on l'utilise à la place du footer RGPD par défaut.
-  const footer = customFooter || buildInlineFooter(brand, unsubscribeUrl);
-
-  // Injection avant </body> (cas le plus fréquent).
-  const bodyClose = html.match(/<\/body>\s*/i);
-  if (bodyClose && bodyClose.index !== undefined) {
-    return (
-      html.slice(0, bodyClose.index) +
-      footer +
-      html.slice(bodyClose.index)
-    );
-  }
-  // Fallback : avant </html>.
-  const htmlClose = html.match(/<\/html>\s*$/i);
-  if (htmlClose && htmlClose.index !== undefined) {
-    return (
-      html.slice(0, htmlClose.index) +
-      footer +
-      html.slice(htmlClose.index)
-    );
-  }
-  // Aucune balise de fermeture → on append.
-  return html + footer;
-}
-
-/**
- * Pied de page autonome (table-based, compatible tous clients mail) injecté
- * dans les documents HTML complets. Style sobre pour s'intégrer discrètement.
- */
-function buildInlineFooter(brand: EmailBrandData, unsubscribeUrl: string): string {
-  const contactParts: string[] = [];
-  if (brand.contactEmail) {
-    contactParts.push(`<a href="mailto:${escapeAttr(brand.contactEmail)}" style="color:#94a3b8;text-decoration:underline;">${escapeHtml(brand.contactEmail)}</a>`);
-  }
-  if (brand.agencyPhone) contactParts.push(escapeHtml(brand.agencyPhone));
-  const contactLine = contactParts.length
-    ? `<div style="margin-bottom:6px;">${contactParts.join(' · ')}</div>`
-    : '';
-
-  return `
-<!-- FOOTER DÉSINSCRIPTION RGPD (injecté automatiquement) -->
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:28px;padding:18px 24px;border-top:1px solid #e5e7eb;background:#fafbfc;">
-  <tr>
-    <td align="center" style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#94a3b8;line-height:1.6;">
-      ${contactLine}
-      <div>© ${new Date().getFullYear()} ${escapeHtml(brand.siteName)}.
-        <a href="${escapeAttr(unsubscribeUrl)}" style="color:#94a3b8;text-decoration:underline;">Se désinscrire</a>
-      </div>
-    </td>
-  </tr>
-</table>
-`;
 }
 
 // --- Utils ---

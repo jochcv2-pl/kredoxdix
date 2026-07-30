@@ -21,8 +21,6 @@ const createTemplateSchema = z.object({
   htmlContent: z.string().nullable().optional(),
   blocksJson: z.string().nullable().optional(),
   bannerEnabled: z.boolean().default(true),
-  headerHtml: z.string().nullable().optional(),
-  footerHtml: z.string().nullable().optional(),
   isConfidential: z.boolean().default(false),
 });
 

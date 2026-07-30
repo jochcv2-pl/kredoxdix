@@ -177,8 +177,6 @@ export async function sendClientLevelEmail(
     brand,
     unsubscribeUrl: buildUnsubscribeUrl(leadData, siteUrl),
     bannerEnabled: template.bannerEnabled,
-    customHeader: template.headerHtml ? interpolateTemplate(template.headerHtml, ctx) : undefined,
-    customFooter: template.footerHtml ? interpolateTemplate(template.footerHtml, ctx) : undefined,
     subject,
   });
 
