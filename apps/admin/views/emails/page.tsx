@@ -3,8 +3,6 @@
 import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
 import { Modal } from '@/components/Modal';
 import { Icon } from '@/components/Icon';
-import { EmailFooter, type EmailFooterData, DEFAULT_FOOTER } from '@/components/EmailFooter';
-import { EmailHeader } from '@/components/EmailHeader';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { EmailBlockEditor } from '@/components/email-editor/EmailBlockEditor';
 import {
@@ -131,59 +129,22 @@ function isFullHtmlDocument(html: string): boolean {
   return FULL_DOC_RE.test(html);
 }
 
-// Pied de page désinscription RGPD injecté dans l'aperçu des documents complets.
-// Reflète ce que le client recevra réellement (composeEmailHtml côté serveur).
-const PREVIEW_UNSUB_FOOTER = `
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:28px;padding:18px 24px;border-top:1px solid #e5e7eb;background:#fafbfc;">
-  <tr><td align="center" style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#94a3b8;line-height:1.6;">
-    <div>© ${new Date().getFullYear()} Kredix. <a style="color:#94a3b8;text-decoration:underline;">Se désinscrire</a></div>
-  </td></tr>
-</table>`;
-
 /**
  * Construit le document d'aperçu "Email envoyé" — fidèle au rendu réel.
  *
- * - Document HTML complet (importé / blocs) → on PRÉSERVE le design original
- *   et on injecte uniquement le footer de désinscription RGPD (comme le serveur).
- * - Fragment HTML (texte simple) → on applique le wrapper branded Kredix.
+ * - Document HTML complet (importé) → affiché TEL QUEL, sans injection.
+ * - Fragment HTML (texte simple) → document HTML minimal sans header/footer.
  */
-function buildPreviewDoc(rawHtml: string, opts: {
-  bannerVisible: boolean;
-  footer: EmailFooterData;
-}): string {
-  // Document complet : préserver le design, injecter le footer désinscription.
+function buildPreviewDoc(rawHtml: string): string {
+  // Document complet : affiché tel quel, aucune modification.
   if (isFullHtmlDocument(rawHtml)) {
-    const bodyClose = rawHtml.match(/<\/body>\s*/i);
-    if (bodyClose && bodyClose.index !== undefined) {
-      return rawHtml.slice(0, bodyClose.index) + PREVIEW_UNSUB_FOOTER + rawHtml.slice(bodyClose.index);
-    }
-    return rawHtml + PREVIEW_UNSUB_FOOTER;
+    return rawHtml;
   }
 
-  // Fragment : wrapper branded Kredix (comportement inchangé).
-  const body = extractBodyContent(rawHtml);
-  const banner = opts.bannerVisible
-    ? `<div style="width:100%;background:#0F2942;"><img src="/email-banner.jpg" alt="Kredix" style="width:100%;max-height:140px;object-fit:cover;display:block;" /></div>`
-    : '';
-  const f = opts.footer;
-  const footer = `
-  <div style="background:#0F2942;color:rgba(255,255,255,0.7);padding:20px 18px;font-family:'Montserrat',Arial,sans-serif;font-size:11px;line-height:1.7;">
-    <div style="font-size:14px;font-weight:700;color:#fff;margin-bottom:10px;letter-spacing:-0.01em;">${f.brand}<span style="color:#F97316;">${f.brandAccent}</span></div>
-    <div style="display:flex;flex-wrap:wrap;gap:8px 20px;margin-bottom:10px;font-size:11px;color:rgba(255,255,255,0.6);">
-      <span>${f.phone}</span><span>${f.email}</span><span>${f.orias}</span>
-    </div>
-    <div style="font-size:10px;color:rgba(255,255,255,0.4);line-height:1.6;padding-top:10px;border-top:1px solid rgba(255,255,255,0.1);">
-      ${f.legal}<br />
-      <a style="color:#2B8BDE;text-decoration:none;">${f.link1}</a> ·
-      <a style="color:#2B8BDE;text-decoration:none;">${f.link2}</a> ·
-      <a style="color:#2B8BDE;text-decoration:none;">${f.link3}</a>
-    </div>
-  </div>`;
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet"></head>
-<body style="margin:0;padding:0;font-family:'Montserrat',Arial,sans-serif;">
-  ${banner}
-  <div style="padding:24px 22px;font-size:14px;line-height:1.7;color:#0F172A;">${body}</div>
-  ${footer}
+  // Fragment : document HTML minimal (pas de header, pas de footer).
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;">
+${extractBodyContent(rawHtml)}
 </body></html>`;
 }
 
@@ -231,7 +192,6 @@ export default function Emails() {
   const [languageInput, setLanguageInput] = useState<string>('fr');
   const [subjInput, setSubjInput] = useState('Votre dossier a bien été reçu, {{Prénom}}');
   const [bodyInput, setBodyInput] = useState(DEFAULT_BODY);
-  const [bannerVisible, setBannerVisible] = useState(true);
 
   // Mode import HTML.
   const [htmlArea, setHtmlArea] = useState('');
@@ -240,9 +200,6 @@ export default function Emails() {
   const [importLanguage, setImportLanguage] = useState<string>('fr');
   const [dzFile, setDzFile] = useState('');
   const [dragging, setDragging] = useState(false);
-
-  // Footer (toujours éditable, mais stocké séparément — pas encore persisté en DB).
-  const [footerData, setFooterData] = useState<EmailFooterData>(DEFAULT_FOOTER);
 
   // IA — génération assistée.
   const [aiGenerating, setAiGenerating] = useState(false);
@@ -255,7 +212,6 @@ export default function Emails() {
   const [beTrigger, setBeTrigger] = useState<string>('reception_ack');
   const [beSubject, setBeSubject] = useState('');
   const [beLanguage, setBeLanguage] = useState<string>('fr');
-  const [beBanner, setBeBanner] = useState(true);
 
   // Liste des templates.
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -466,7 +422,7 @@ export default function Emails() {
     : '';
 
   const composedIframeDoc = interpolatedHtml
-    ? buildPreviewDoc(interpolatedHtml, { bannerVisible, footer: footerData })
+    ? buildPreviewDoc(interpolatedHtml)
     : '';
 
   const fullscreenIframeDoc = iframeRenderMode === 'composed' ? composedIframeDoc : importSrcDoc;
@@ -483,7 +439,6 @@ export default function Emails() {
     setLanguageInput(tpl.language);
     setSubjInput(tpl.subject);
     setBodyInput(tpl.bodyText);
-    setBannerVisible(tpl.bannerEnabled);
     // Si le template a du HTML importé, bascule en mode import.
     if (tpl.htmlContent) {
       setHtmlArea(tpl.htmlContent);
@@ -530,7 +485,7 @@ export default function Emails() {
         subject: subjInput,
         bodyText: bodyInput,
         htmlContent: null,
-        bannerEnabled: bannerVisible,
+        bannerEnabled: false,
       };
       // PATCH si on édite un template existant, POST sinon.
       const isEditing = !!editingId;
@@ -570,7 +525,7 @@ export default function Emails() {
     setSaving(true);
     setError(null);
     try {
-      const html = blocksToFullHtml(beBlocks, { bannerEnabled: beBanner });
+      const html = blocksToFullHtml(beBlocks, { bannerEnabled: false });
       const text = blocksToText(beBlocks);
       const blocksJson = JSON.stringify(beBlocks);
       const payload = {
@@ -582,7 +537,7 @@ export default function Emails() {
         bodyText: text,
         htmlContent: html,
         blocksJson,
-        bannerEnabled: beBanner,
+        bannerEnabled: false,
       };
       const res = await fetch('/api/templates', {
         method: 'POST',
@@ -625,7 +580,7 @@ export default function Emails() {
         subject: importName.trim() || 'Modèle importé',
         bodyText: extractBodyContent(htmlArea).replace(/<[^>]+>/g, ' ').trim().slice(0, 500),
         htmlContent: htmlArea,
-        bannerEnabled: bannerVisible,
+        bannerEnabled: false,
       };
       // PATCH si on édite un template existant, POST sinon.
       const url = isEditing ? `/api/templates/${editingId}` : '/api/templates';
@@ -832,34 +787,6 @@ export default function Emails() {
                     </div>
                   </div>
                   <textarea className="body-editor" ref={bodyRef} value={bodyInput} onChange={(e) => setBodyInput(e.target.value)} />
-                  <p className="var-hint" style={{ marginTop: 10, marginBottom: 0 }}>
-                    <b>Pied de page prédéfini :</b> un bloc signature Kredix (coordonnées, mentions légales ORIAS, liens
-                    de désinscription) est <b>ajouté automatiquement</b> à chaque envoi. Vous n&apos;avez pas à le saisir.
-                  </p>
-                  <div className="email-banner-toggle-row">
-                    <label>
-                      <input type="checkbox" checked={bannerVisible} onChange={(e) => setBannerVisible(e.target.checked)} />
-                      Bannière d&apos;en-tête Kredix (image)
-                    </label>
-                  </div>
-                </div>
-                <div className="sub-panel">
-                  <h4>Pied de page (aperçu uniquement)</h4>
-                  <p className="var-hint">Ces informations apparaissent en bas de chaque email envoyé. Modifiez-les librement pour l&apos;aperçu (la persistance du pied de page global est à venir).</p>
-                  <div className="frow">
-                    <div className="fg"><label>Nom de la marque</label><input value={footerData.brand} onChange={(e) => setFooterData({ ...footerData, brand: e.target.value })} /></div>
-                    <div className="fg"><label>Accent de couleur (lettre)</label><input value={footerData.brandAccent} onChange={(e) => setFooterData({ ...footerData, brandAccent: e.target.value })} /></div>
-                    <div className="fg"><label>Téléphone</label><input value={footerData.phone} onChange={(e) => setFooterData({ ...footerData, phone: e.target.value })} /></div>
-                    <div className="fg"><label>Email</label><input value={footerData.email} onChange={(e) => setFooterData({ ...footerData, email: e.target.value })} /></div>
-                    <div className="fg"><label>ORIAS / Agrément</label><input value={footerData.orias} onChange={(e) => setFooterData({ ...footerData, orias: e.target.value })} /></div>
-                    <div className="fg"><label>Lien 1</label><input value={footerData.link1} onChange={(e) => setFooterData({ ...footerData, link1: e.target.value })} /></div>
-                    <div className="fg"><label>Lien 2</label><input value={footerData.link2} onChange={(e) => setFooterData({ ...footerData, link2: e.target.value })} /></div>
-                    <div className="fg"><label>Lien 3</label><input value={footerData.link3} onChange={(e) => setFooterData({ ...footerData, link3: e.target.value })} /></div>
-                  </div>
-                  <div className="fg" style={{ marginTop: 10 }}>
-                    <label>Mentions légales</label>
-                    <textarea className="body-editor" style={{ minHeight: 80 }} value={footerData.legal} onChange={(e) => setFooterData({ ...footerData, legal: e.target.value })} />
-                  </div>
                 </div>
                 <div className="sub-panel">
                   <h4>Insérer une variable</h4>
@@ -895,9 +822,7 @@ export default function Emails() {
                   </button>
                 </div>
                 <div className="pv-body">
-                  <EmailHeader bannerVisible={bannerVisible} onRemoveBanner={() => setBannerVisible(false)} />
                   {renderFilled(bodyInput, previewMode)}
-                  <EmailFooter data={footerData} />
                 </div>
                 <div className="pv-toggle">
                   <span>Aperçu :</span>
@@ -1125,10 +1050,6 @@ export default function Emails() {
                   </select>
                 </div>
               </div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, fontSize: 13, cursor: 'pointer' }}>
-                <input type="checkbox" checked={beBanner} onChange={(e) => setBeBanner(e.target.checked)} />
-                Bannière d&apos;en-tête Kredix (image)
-              </label>
             </div>
           </div>
 
@@ -1144,7 +1065,6 @@ export default function Emails() {
               <EmailBlockEditor
                 blocks={beBlocks}
                 onChange={setBeBlocks}
-                bannerEnabled={beBanner}
               />
             </div>
             <div className="panel-foot" style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '12px 20px' }}>
@@ -1287,9 +1207,7 @@ export default function Emails() {
           <div className="pv-subj">{renderFilled(subjInput, previewMode)}</div>
         </div>
         <div className="fs-preview-body">
-          <EmailHeader bannerVisible={bannerVisible} />
           {renderFilled(bodyInput, previewMode)}
-          <EmailFooter data={footerData} />
         </div>
         <div className="modal-actions">
           <span className="pv-lang" style={{ marginLeft: 0, cursor: 'pointer' }} onClick={() => setPreviewMode(previewMode === 'data' ? 'raw' : 'data')}>
@@ -1313,11 +1231,6 @@ export default function Emails() {
               onClick={() => setIframeRenderMode('raw')}
             >HTML brut</span>
           </div>
-          {iframeRenderMode === 'composed' && !bannerVisible && (
-            <span className="fs-iframe-note" style={{ fontSize: 11, color: 'var(--slate-light)' }}>
-              Bannière désactivée
-            </span>
-          )}
         </div>
         {fullscreenIframeDoc && (
           <iframe srcDoc={fullscreenIframeDoc} title="Aperçu plein écran" className="fs-iframe" />
@@ -1345,9 +1258,7 @@ export default function Emails() {
               </div>
             </div>
             <div className="tpl-preview-body">
-              <EmailHeader bannerVisible={previewTpl.bannerEnabled} />
               <div className="tpl-preview-text">{renderFilled(previewTpl.bodyText ?? '', 'data')}</div>
-              <EmailFooter data={footerData} />
             </div>
           </div>
         )}

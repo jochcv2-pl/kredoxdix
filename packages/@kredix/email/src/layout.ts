@@ -98,31 +98,13 @@ export interface WrapEmailOptions {
 }
 
 /**
- * Entoure le corps HTML d'un email avec un header et footer branded.
+ * Enveloppe un fragment HTML dans un document HTML minimal.
  *
- * Le template HTML produit est :
- *   <!DOCTYPE html>
- *   <html>
- *     <body>
- *       [HEADER — logo + site name + couleur]
- *       [BODY  — contenu interpolé du template]
- *       [FOOTER — unsubscribe + contact + mentions]
- *     </body>
- *   </html>
+ * PAS de header branded, PAS de footer branded.
+ * Le corps du template est inséré tel quel dans <body>.
  */
 export function wrapEmailHtml(opts: WrapEmailOptions): string {
-  const { bodyHtml, brand, unsubscribeUrl, bannerEnabled = true, subject } = opts;
-
-  const header = bannerEnabled
-    ? buildHeader(brand)
-    : '';
-
-  const footer = buildFooter(brand, unsubscribeUrl);
-
-  // Pre-header caché (aperçu dans la boîte de réception).
-  const preheader = subject
-    ? `<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#fff;opacity:0;">${escapeHtml(subject)}</div>`
-    : '';
+  const { bodyHtml, subject } = opts;
 
   return `<!DOCTYPE html>
 <html lang="fr" xmlns="http://www.w3.org/1999/xhtml">
@@ -130,106 +112,22 @@ export function wrapEmailHtml(opts: WrapEmailOptions): string {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="x-apple-disable-message-reformatting">
-  <title>${escapeHtml(subject ?? brand.siteName)}</title>
-  <!--[if mso]>
-  <style type="text/css">
-    body, table, td { font-family: Arial, sans-serif !important; }
-  </style>
-  <![endif]-->
+  <title>${escapeHtml(subject ?? '')}</title>
 </head>
-<body style="margin:0;padding:0;background:#f0f2f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
-  ${preheader}
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f0f2f5;">
-    <tr>
-      <td align="center" style="padding:24px 12px;">
-        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:14px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-
-${header}
-${buildBody(bodyHtml)}
-${footer}
-
-        </table>
-      </td>
-    </tr>
-  </table>
+<body style="margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;">
+${bodyHtml}
 </body>
 </html>`;
-}
-
-// --- Header ---
-
-function buildHeader(brand: EmailBrandData): string {
-  const logoHtml = brand.logoUrl
-    ? `<img src="${escapeAttr(brand.logoUrl)}" alt="${escapeAttr(brand.siteName)}" style="height:36px;max-width:180px;object-fit:contain;display:inline-block;vertical-align:middle;" />`
-    : '';
-
-  const nameHtml = brand.logoUrl
-    ? ''  // Si logo, on n'affiche pas le nom à côté
-    : `<span style="font-size:20px;font-weight:800;color:#ffffff;letter-spacing:-0.02em;">${escapeHtml(brand.siteName)}</span>`;
-
-  return `          <!-- HEADER -->
-          <tr>
-            <td style="background:${escapeAttr(brand.primaryColor)};padding:20px 32px;text-align:left;">
-              ${logoHtml}${nameHtml}
-            </td>
-          </tr>`;
-}
-
-// --- Body ---
-
-function buildBody(bodyHtml: string): string {
-  return `          <!-- BODY -->
-          <tr>
-            <td style="padding:32px 32px 24px;">
-              ${bodyHtml}
-            </td>
-          </tr>`;
-}
-
-// --- Footer ---
-
-function buildFooter(brand: EmailBrandData, unsubscribeUrl: string): string {
-  const contactParts: string[] = [];
-  if (brand.contactEmail) {
-    contactParts.push(`<a href="mailto:${escapeAttr(brand.contactEmail)}" style="color:#94a3b8;text-decoration:underline;">${escapeHtml(brand.contactEmail)}</a>`);
-  }
-  if (brand.agencyPhone) {
-    contactParts.push(escapeHtml(brand.agencyPhone));
-  }
-  if (brand.agencyAddress) {
-    contactParts.push(escapeHtml(brand.agencyAddress));
-  }
-
-  const contactLine = contactParts.length > 0
-    ? `<div style="font-size:12px;color:#94a3b8;margin-bottom:12px;">${contactParts.join(' · ')}</div>`
-    : '';
-
-  return `          <!-- FOOTER -->
-          <tr>
-            <td style="padding:20px 32px 28px;border-top:1px solid #e5e7eb;background:#fafbfc;">
-              ${contactLine}
-              <div style="font-size:11px;color:#cbd5e1;line-height:1.6;">
-                © ${new Date().getFullYear()} ${escapeHtml(brand.siteName)}. Tous droits réservés.<br>
-                Vous recevez cet email car vous avez demandé une simulation de crédit.<br>
-                <a href="${escapeAttr(unsubscribeUrl)}" style="color:#94a3b8;text-decoration:underline;">Se désinscrire</a>
-                ${brand.siteUrl ? ` · <a href="${escapeAttr(brand.siteUrl)}" style="color:#94a3b8;text-decoration:underline;">${escapeHtml(brand.siteName)}</a>` : ''}
-              </div>
-            </td>
-          </tr>`;
 }
 
 // =============================================================================
 // composeEmailHtml — Point d'entrée UNIQUE pour composer un email prêt à envoyer.
 // =============================================================================
-// Décide intelligemment entre :
-//   - Document HTML complet (template importé OU éditeur de blocs) → on
-//     RENVOIE TEL QUEL. L'admin a conçu le HTML complet, on ne modifie rien.
-//   - Fragment HTML (texte brut / IA → textToHtml = simples <p>) → on applique
-//     wrapEmailHtml complet (header logo + footer branded).
+// Les header/footer branded sont RETIRÉS — les emails sont envoyés tels quels.
 //
-// La détection se base sur la présence de balises structurelles (<html>, <body>,
-// <!doctype>) qui n'existent QUE dans un document HTML complet.
+// - Document HTML complet (template importé) → renvoyé TEL QUEL.
+// - Fragment HTML (texte / IA) → enveloppé dans un document HTML minimal
+//   (sans header ni footer branded).
 // =============================================================================
 
 const FULL_DOC_RE = /<(!doctype\s+html|html[\s>]|body[\s>])/i;
@@ -253,7 +151,7 @@ export interface ComposeOptions {
  * Compose un email prêt à l'envoi.
  *
  * - Document HTML complet (importé) → renvoyé TEL QUEL, sans aucune modification.
- * - Fragment HTML (texte) → enveloppé avec header + footer branded.
+ * - Fragment HTML (texte) → enveloppé dans un document HTML minimal sans header/footer.
  *
  * À utiliser par TOUS les senders (cron, campaign, client-level, email-ack).
  */
@@ -272,8 +170,4 @@ function escapeHtml(s: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
-}
-
-function escapeAttr(s: string): string {
-  return escapeHtml(s).replace(/'/g, '&#39;');
 }

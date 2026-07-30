@@ -58,6 +58,7 @@ export async function POST(req: NextRequest) {
       timeouts: 0,
       suppressed: 0,
       welcomeSent: 0,
+      offerSent: 0,
       sent: 0,
       maxRelances: 0,
       errors: 0,
@@ -125,6 +126,7 @@ export async function POST(req: NextRequest) {
         annualRate: true,
         relanceCount: true,
         ackSentAt: true,
+        offerSentAt: true,
         unsubscribeToken: true,
         preferredLanguage: true,
       },
@@ -290,16 +292,116 @@ export async function POST(req: NextRequest) {
 
           console.log(`[CRON] Welcome envoyé → ${lead.email} (lead ${lead.id})`);
 
-          // Programme la première relance à J+3 (ackSentAt déjà setté par le claim atomique).
+          // Programme l'offre à T+15min (ackSentAt déjà setté par le claim atomique).
           await prisma.lead.update({
             where: { id: lead.id },
             data: {
-              nextRelanceAt: new Date(now.getTime() + 3 * DAY), // J+3
+              nextRelanceAt: new Date(now.getTime() + 15 * 60 * 1000), // 15 min → offer
             },
           });
 
           stats.welcomeSent++;
           continue; // ← passe au lead suivant, ne pas traiter de relance
+        }
+
+        // ================================================================
+        // c-bis) BRANCHE OFFRE — ackSentAt non-null + offerSentAt null → offer
+        // ================================================================
+        // T+15min après le welcome, on envoie l'offre de prêt (template `offer`)
+        // avec le tableau d'amortissement PDF en pièce jointe.
+        if (lead.ackSentAt && !lead.offerSentAt) {
+          // CLAIM ATOMIQUE — set offerSentAt immédiatement (anti-doublon concurrent).
+          const claimed = await prisma.lead.updateMany({
+            where: { id: lead.id, offerSentAt: null },
+            data: { offerSentAt: now },
+          });
+          if (claimed.count === 0) continue;
+
+          const leadLang = lead.preferredLanguage || 'fr';
+          let offerTemplate = await prisma.emailTemplate.findFirst({
+            where: { trigger: EmailTrigger.offer, status: 'active', language: leadLang },
+          });
+          if (!offerTemplate && leadLang !== 'fr') {
+            offerTemplate = await prisma.emailTemplate.findFirst({
+              where: { trigger: EmailTrigger.offer, status: 'active', language: 'fr' },
+            });
+          }
+
+          if (!offerTemplate) {
+            stats.skippedNoTemplate++;
+            // Reset offerSentAt pour réessayer plus tard si le template est créé
+            await prisma.lead.update({
+              where: { id: lead.id },
+              data: { offerSentAt: null },
+            });
+            continue;
+          }
+
+          const siteUrl = await getSetting('site_url', 'http://localhost:3100');
+          const ctx = { lead, siteUrl, brand: brandToContext(brand) };
+          const offerSubject = interpolateTemplate(offerTemplate.subject, ctx);
+          const offerBody = interpolateTemplate(offerTemplate.bodyText, ctx);
+          const offerRawHtml = offerTemplate.htmlContent
+            ? interpolateTemplate(offerTemplate.htmlContent, ctx)
+            : textToHtml(offerBody);
+
+          const offerHtml = composeEmailHtml({
+            bodyHtml: offerRawHtml,
+            bodyText: offerBody,
+            brand,
+            unsubscribeUrl: buildUnsubscribeUrl(lead, siteUrl),
+            bannerEnabled: offerTemplate.bannerEnabled,
+            subject: offerSubject,
+          });
+
+          // Tableau d'amortissement PDF en pièce jointe.
+          const pdfAttachment = await getOfferAttachment(lead.id, lead.firstName, lead.lastName);
+          const offerAttachments = pdfAttachment ? [pdfAttachment] : undefined;
+
+          const offerResult = await sendEmail(gateway, {
+            to: lead.email,
+            subject: offerSubject,
+            html: offerHtml,
+            text: offerBody,
+            attachments: offerAttachments,
+          });
+
+          await prisma.emailLog.create({
+            data: {
+              leadId: lead.id,
+              email: lead.email,
+              trigger: 'offer',
+              templateName: offerTemplate.name,
+              subject: offerSubject,
+              bodyText: offerBody,
+              status: offerResult.success ? 'sent' : 'failed',
+              error: offerResult.success ? null : (offerResult.error || 'Unknown error'),
+            },
+          });
+
+          if (!offerResult.success) {
+            console.error(`[CRON] Échec offer → ${lead.email} (lead ${lead.id}):`, offerResult.error);
+            stats.errors++;
+            // Reset offerSentAt → le cron réessaiera au prochain passage.
+            await prisma.lead.update({
+              where: { id: lead.id },
+              data: { offerSentAt: null },
+            });
+            continue;
+          }
+
+          console.log(`[CRON] Offer envoyée → ${lead.email} (lead ${lead.id})`);
+
+          // Programme la première relance à J+3 (offerSentAt déjà setté par le claim).
+          await prisma.lead.update({
+            where: { id: lead.id },
+            data: {
+              nextRelanceAt: new Date(now.getTime() + 3 * DAY), // J+3 → relance_1
+            },
+          });
+
+          stats.offerSent++;
+          continue;
         }
 
         // ================================================================
@@ -386,12 +488,11 @@ export async function POST(req: NextRequest) {
           console.log(`[CRON RELANCE] Template envoyé${template.isConfidential ? ' (confidentiel — IA contournée)' : ' (fallback)'} (lead ${lead.id}, relance ${nextRelanceNum})`);
         }
 
-        // e) Envoi réel via le gateway actif
-        //    Cas défensif : si le template imposé est une offre (rare pour la
-        //    séquence de relance, mais possible si l'admin redéfinit les slots),
-        //    on joint le tableau d'amortissement PDF.
+        // e) Envoi réel via le gateway actif.
+        //    R1 et R2 : on renvoie l'offre (tableau d'amortissement PDF) en pièce
+        //    jointe au cas où le prospect ne l'aurait pas vue. R3 : pas de renvoi.
         let attachments;
-        if (template.trigger === EmailTrigger.offer) {
+        if (nextRelanceNum <= 2) {
           const pdf = await getOfferAttachment(lead.id, lead.firstName, lead.lastName);
           if (pdf) attachments = [pdf];
         }

@@ -140,8 +140,9 @@ export async function sendReceptionAck(lead: Lead): Promise<AckResult> {
  *
  * Chronologie garantie par le cron :
  *   T+5min : welcome email (reception_ack) → ackSentAt setté
- *   J+3    : relance_1
- *   J+6    : relance_2
+ *   T+20min: offer email (offer + PDF amortissement) → offerSentAt setté
+ *   J+3    : relance_1 (+ offre renvoyée en PJ)
+ *   J+6    : relance_2 (+ offre renvoyée en PJ)
  *   J+9    : relance_3 → sortie max_relances
  *
  * @param welcomeDelayMs Délai avant le welcome email (défaut 5 min).

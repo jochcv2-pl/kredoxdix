@@ -164,6 +164,7 @@ model Lead {
   //   validation admin · STOP (lien token) · bounce/plainte (webhook fournisseur)
   //   exclusion manuelle · 3 relances · timeout 10 jours.
   ackSentAt         DateTime?    // accusé Agent Accueil envoyé (J+0)
+  offerSentAt       DateTime?    // offre de prêt envoyée (T+15min après welcome)
   recallDueAt       DateTime?    // rappel annoncé à 48 h
   sequenceActive    Boolean      @default(false) // dans la file de relance ?
   relanceCount      Int          @default(0)     // 0 → 3

@@ -30,6 +30,7 @@ const KEYS = {
   whatsapp: 'whatsapp_number',
   email: 'contact_email',
   orias: 'orias_number',
+  siteUrl: 'site_url',
   activeLanguages: 'cms_active_languages',
 } as const
 
@@ -55,7 +56,7 @@ export default function CMS() {
     btnSecondaire: '',
   })
   const [services, setServices] = useState({ s1: '', s2: '', s3: '', s4: '' })
-  const [coord, setCoord] = useState({ tel: '', whatsapp: '', email: '', orias: '' })
+  const [coord, setCoord] = useState({ tel: '', whatsapp: '', email: '', orias: '', siteUrl: '' })
   const [languesActives, setLanguesActives] = useState<Record<string, boolean>>(
     Object.fromEntries(LANGUES.map((l) => [l, true])),
   )
@@ -96,6 +97,7 @@ export default function CMS() {
           whatsapp: byKey.get(KEYS.whatsapp) ?? '',
           email: byKey.get(KEYS.email) ?? '',
           orias: byKey.get(KEYS.orias) ?? '',
+          siteUrl: byKey.get(KEYS.siteUrl) ?? '',
         })
 
         const langsCsv = byKey.get(KEYS.activeLanguages) ?? 'fr,en,de,es,pt,it'
@@ -172,6 +174,7 @@ export default function CMS() {
         { key: KEYS.whatsapp, value: coord.whatsapp, category: 'contact', description: 'Numéro WhatsApp.' },
         { key: KEYS.email, value: coord.email, category: 'contact', description: 'Email de contact.' },
         { key: KEYS.orias, value: coord.orias, category: 'legal', description: "Numéro ORIAS (obligation d'affichage)." },
+        { key: KEYS.siteUrl, value: coord.siteUrl, category: 'general', description: 'URL du site (utilisée pour les liens de désinscription dans les emails).' },
         { key: KEYS.activeLanguages, value: activeLangs, category: 'cms.i18n', description: 'Langues actives sur le site (CSV de codes).' },
       ]
 
@@ -347,9 +350,13 @@ export default function CMS() {
                 <label>Email conseiller</label>
                 <input value={coord.email} onChange={(e) => setCoord({ ...coord, email: e.target.value })} />
               </div>
-              <div className="fg" style={{ marginBottom: 0 }}>
+              <div className="fg" style={{ marginBottom: 10 }}>
                 <label>Numéro ORIAS</label>
                 <input value={coord.orias} onChange={(e) => setCoord({ ...coord, orias: e.target.value })} />
+              </div>
+              <div className="fg" style={{ marginBottom: 0 }}>
+                <label>URL du site (pour les liens de désinscription)</label>
+                <input value={coord.siteUrl} onChange={(e) => setCoord({ ...coord, siteUrl: e.target.value })} placeholder="https://kredix.fr" />
               </div>
             </div>
           </div>
