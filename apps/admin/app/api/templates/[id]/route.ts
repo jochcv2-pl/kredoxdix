@@ -67,28 +67,10 @@ export async function PATCH(
       return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);
     }
 
-    // Règle métier : un seul template actif par déclencheur + langue.
-    const activating = data.status === 'active';
-    if (activating) {
-      const conflict = await prisma.emailTemplate.findFirst({
-        where: {
-          trigger: existing.trigger,
-          status: 'active',
-          language: existing.language,
-          NOT: { id },
-        },
-      });
-      if (conflict) {
-        return errorResponse(
-          `Un seul template actif par déclencheur + langue (${existing.language})`,
-          ERR.CONFLICT.code,
-          undefined,
-          409,
-        );
-      }
-    }
-
     // Mise à jour + désactivation des autres actifs pour ce trigger + langue (transaction).
+    // Pas de conflict check : si on active ce template, les autres du même trigger+langue
+    // sont automatiquement passés en draft.
+    const activating = data.status === 'active';
     const template = await prisma.$transaction(async (tx) => {
       if (activating) {
         await tx.emailTemplate.updateMany({

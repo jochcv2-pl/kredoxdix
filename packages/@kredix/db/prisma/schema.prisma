@@ -215,9 +215,9 @@ model BankPartner {
 // RATE — taux indicatifs par banque / type de prêt / palier de montant
 // -----------------------------------------------------------------------------
 model Rate {
-  id         String      @id @default(cuid())
-  bankId     String
-  bank       BankPartner @relation(fields: [bankId], references: [id])
+  id         String       @id @default(cuid())
+  bankId     String?      // nullable : un taux peut exister sans banque (taux générique)
+  bank       BankPartner? @relation(fields: [bankId], references: [id])
 
   loanType   String
 
@@ -225,14 +225,17 @@ model Rate {
   amountMax  Int // palier haut (inclusif)
 
   annualRate Float // taux annuel en % (ex: 4.95)
-  isActive   Boolean     @default(true)
-  validFrom  DateTime    @default(now()) // date d'entrée en vigueur (historique)
+  isActive   Boolean      @default(true)
+  validFrom  DateTime     @default(now()) // date d'entrée en vigueur (historique)
 
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
 
   // Un même palier ne peut exister qu'une fois par banque/type : empêche les
   // doublons qui rendraient le comparatif ambigu.
+  // NB : en PostgreSQL, les NULL sont considérés comme distincts dans une
+  // contrainte unique — l'unicité des taux génériques (bankId NULL) est donc
+  // également garantie côté applicative (POST /api/rates).
   @@unique([bankId, loanType, amountMin, amountMax])
   // Recherche des taux applicables pour un type donné (page comparatif).
   @@index([loanType, isActive])

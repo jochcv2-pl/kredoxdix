@@ -803,6 +803,34 @@ body {
 
 /* ===== BANK PARTNERS END ===== */
 
+/* ===== LOGO UPLOAD (modal banque) ===== */
+.bnk-logo-set {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.bnk-logo-preview-large {
+  width: 120px;
+  height: 64px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  flex-shrink: 0;
+}
+.bnk-logo-preview-large img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+.bnk-logo-actions {
+  display: flex;
+  gap: 6px;
+}
+
 /* ===== PANEL HEAD ===== */
 .panel-head h3 {
   font-size: 14px;

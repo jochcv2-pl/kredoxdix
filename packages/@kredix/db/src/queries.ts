@@ -23,7 +23,10 @@ export async function getActiveRates(loanType?: LoanType): Promise<ApplicableRat
     where: {
       isActive: true,
       ...(loanType ? { loanType } : {}),
-      bank: { isActive: true },
+      OR: [
+        { bank: { isActive: true } }, // taux liés à une banque active
+        { bankId: null },             // taux génériques (sans banque)
+      ],
     },
     include: {
       bank: { select: { id: true, name: true } },
@@ -32,8 +35,8 @@ export async function getActiveRates(loanType?: LoanType): Promise<ApplicableRat
   });
 
   return rates.map((r) => ({
-    bankId: r.bankId,
-    bankName: r.bank.name,
+    bankId: r.bankId ?? undefined,
+    bankName: r.bank?.name,
     loanType: r.loanType as LoanType,
     amountMin: r.amountMin,
     amountMax: r.amountMax,

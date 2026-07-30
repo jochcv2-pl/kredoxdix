@@ -19,8 +19,8 @@ interface Bank {
 
 interface Rate {
   id: string
-  bankId: string
-  bank?: { id: string; name: string; slug: string }
+  bankId: string | null
+  bank?: { id: string; name: string; slug: string } | null
   loanType: string
   amountMin: number
   amountMax: number
@@ -28,6 +28,9 @@ interface Rate {
   isActive: boolean
   validFrom: string
 }
+
+// Clé spéciale représentant les "taux génériques" (sans banque liée).
+const GENERIC_KEY = '__generic__'
 
 // Types de prêt connus (la liste est ouverte côté DB — string libre).
 const LOAN_TYPES = ['immo', 'conso', 'rachat', 'pro', 'autre'] as const
@@ -80,7 +83,7 @@ export default function Taux() {
         if (cancelled) return
         setBanks(bList)
         setRates(rList)
-        setSelectedBankId(bList[0]?.id ?? '')
+        setSelectedBankId(bList[0]?.id ?? GENERIC_KEY)
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Erreur inconnue')
       } finally {
@@ -92,10 +95,11 @@ export default function Taux() {
     }
   }, [])
 
-  // Rates filtrés par banque sélectionnée.
+  // Rates filtrés par banque sélectionnée (ou taux génériques si GENERIC_KEY).
+  const isGeneric = selectedBankId === GENERIC_KEY
   const ratesForBank = useMemo(
-    () => rates.filter((r) => r.bankId === selectedBankId),
-    [rates, selectedBankId],
+    () => rates.filter((r) => (isGeneric ? !r.bankId : r.bankId === selectedBankId)),
+    [rates, selectedBankId, isGeneric],
   )
 
   // Groupage par loanType pour l'affichage en tableaux séparés.
@@ -131,7 +135,10 @@ export default function Taux() {
       const res = await fetch('/api/rates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...payload, bankId: selectedBankId }),
+        body: JSON.stringify({
+          ...payload,
+          ...(isGeneric ? {} : { bankId: selectedBankId }),
+        }),
       })
       if (!res.ok) {
         const err = await res.json().catch(() => null)
@@ -198,10 +205,10 @@ export default function Taux() {
       )}
 
       <div className="rate-note">
-        <b>Ces taux alimentent directement le simulateur du site.</b> Chaque
-        banque partenaire définit ses propres paliers par type de prêt et par
-        tranche de montant. Le simulateur compare toutes les banques actives
-        pour afficher la meilleure offre au prospect.
+        <b>Ces taux alimentent directement le simulateur du site.</b> Vous pouvez
+        créer des taux <b>génériques</b> (sans banque) ou les rattacher à une
+        banque partenaire. Le simulateur compare tous les taux actifs pour
+        afficher la meilleure offre au prospect.
       </div>
 
       {/* Sélecteur de banque + actions */}
@@ -215,43 +222,39 @@ export default function Taux() {
         }}
       >
         <div className="fg" style={{ marginBottom: 0, minWidth: 280 }}>
-          <label>Banque partenaire</label>
+          <label>Source des taux</label>
           <select
             value={selectedBankId}
             onChange={(e) => setSelectedBankId(e.target.value)}
             style={{ minWidth: 260 }}
           >
-            {banks.length === 0 && <option value="">— Aucune banque —</option>}
-            {banks.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name} {b._count?.rates !== undefined ? `(${b._count.rates} taux)` : ''}
-              </option>
-            ))}
+            <option value={GENERIC_KEY}>⚡ Taux génériques (sans banque)</option>
+            {banks.length > 0 && (
+              <optgroup label="Banques partenaires">
+                {banks.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name} {b._count?.rates !== undefined ? `(${b._count.rates} taux)` : ''}
+                  </option>
+                ))}
+              </optgroup>
+            )}
           </select>
         </div>
         <button
           className="btn btn-primary"
           onClick={() => setNewRateModalOpen(true)}
-          disabled={!selectedBankId}
         >
           + Ajouter un taux
         </button>
-        {selectedBank && (
-          <span style={{ fontSize: 12, color: 'var(--slate)' }}>
-            {ratesForBank.length} taux · {groupedByType.size} type{groupedByType.size > 1 ? 's' : ''}
-          </span>
-        )}
+        <span style={{ fontSize: 12, color: 'var(--slate)' }}>
+          {ratesForBank.length} taux · {groupedByType.size} type{groupedByType.size > 1 ? 's' : ''}
+        </span>
       </div>
 
-      {banks.length === 0 && (
+      {ratesForBank.length === 0 && (
         <p className="field-hint" style={{ padding: '20px 0', fontStyle: 'italic' }}>
-          Aucune banque partenaire configurée. Ajoutez-en une via le seed ou une future interface d&apos;administration.
-        </p>
-      )}
-
-      {selectedBank && ratesForBank.length === 0 && (
-        <p className="field-hint" style={{ padding: '20px 0', fontStyle: 'italic' }}>
-          Aucun taux défini pour <b>{selectedBank.name}</b>. Cliquez sur « + Ajouter un taux » pour commencer.
+          Aucun taux {isGeneric ? 'générique' : <>défini pour <b>{selectedBank?.name}</b></>}.{' '}
+          Cliquez sur « + Ajouter un taux » pour commencer.
         </p>
       )}
 
@@ -335,7 +338,9 @@ export default function Taux() {
       <Modal
         isOpen={newRateModalOpen}
         onClose={() => setNewRateModalOpen(false)}
-        title={`Nouveau taux — ${selectedBank?.name ?? ''}`}
+        title={isGeneric
+          ? 'Nouveau taux générique (sans banque)'
+          : `Nouveau taux — ${selectedBank?.name ?? ''}`}
       >
         <NewRateForm
           onCancel={() => setNewRateModalOpen(false)}

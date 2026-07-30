@@ -38,28 +38,15 @@ export async function GET() {
   }
 }
 
-// POST /api/templates — crée un template (409 si un autre actif existe déjà pour le même trigger).
+// POST /api/templates — crée un template.
+// Si le statut est 'active', les autres templates actifs du même trigger+langue
+// sont automatiquement passés en 'draft' (transaction ci-dessous).
 export async function POST(req: NextRequest) {
   const [, deny] = await requireAuth();
   if (deny) return deny;
   try {
     const [data, error] = await parseBody(req, createTemplateSchema);
     if (error) return error;
-
-    // Règle métier : un seul template actif par déclencheur + langue.
-    if (data.status === 'active') {
-      const conflict = await prisma.emailTemplate.findFirst({
-        where: { trigger: data.trigger, status: 'active', language: data.language },
-      });
-      if (conflict) {
-        return errorResponse(
-          `Un seul template actif par déclencheur + langue (${data.language})`,
-          ERR.CONFLICT.code,
-          undefined,
-          409,
-        );
-      }
-    }
 
     // Création + désactivation des autres actifs pour ce trigger + langue (transaction).
     const template = await prisma.$transaction(async (tx) => {

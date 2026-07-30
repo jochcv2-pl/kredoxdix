@@ -9,9 +9,11 @@ import { prisma } from '@kredix/db';
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses';
 import { requireAuth } from '../_lib/auth-server';
 
-// Schéma de création — la contrainte d'unicité est (bankId, loanType, amountMin, amountMax).
+// Schéma de création — bankId optionnel (taux générique sans banque).
+// La contrainte d'unicité est (bankId, loanType, amountMin, amountMax) ; pour
+// les taux génériques (bankId null), l'unicité est vérifiée côté applicatif.
 const createRateSchema = z.object({
-  bankId: z.string().min(1),
+  bankId: z.string().min(1).optional().nullable(),
   loanType: z.string().min(1),
   amountMin: z.number().int().nonnegative(),
   amountMax: z.number().int().nonnegative(),
@@ -60,16 +62,21 @@ export async function POST(req: NextRequest) {
     const [data, error] = await parseBody(req, createRateSchema);
     if (error) return error;
 
-    // Vérifie l'existence de la banque.
-    const bank = await prisma.bankPartner.findUnique({ where: { id: data.bankId } });
-    if (!bank) {
-      return errorResponse('Banque introuvable', ERR.NOT_FOUND.code, undefined, 404);
+    // Vérifie l'existence de la banque (uniquement si bankId fourni).
+    const hasBank = !!data.bankId;
+    if (hasBank) {
+      const bank = await prisma.bankPartner.findUnique({ where: { id: data.bankId! } });
+      if (!bank) {
+        return errorResponse('Banque introuvable', ERR.NOT_FOUND.code, undefined, 404);
+      }
     }
 
     // Contrainte d'unicité (bankId, loanType, amountMin, amountMax).
+    // Pour les taux génériques (bankId null), on vérifie aussi côté applicatif
+    // car PostgreSQL traite les NULL comme distincts dans les contraintes unique.
     const existing = await prisma.rate.findFirst({
       where: {
-        bankId: data.bankId,
+        bankId: data.bankId ?? null,
         loanType: data.loanType,
         amountMin: data.amountMin,
         amountMax: data.amountMax,
@@ -77,7 +84,9 @@ export async function POST(req: NextRequest) {
     });
     if (existing) {
       return errorResponse(
-        'Un taux existe déjà pour ce palier (banque/type/montants)',
+        hasBank
+          ? 'Un taux existe déjà pour ce palier (banque/type/montants)'
+          : 'Un taux générique existe déjà pour ce palier (type/montants)',
         ERR.CONFLICT.code,
         undefined,
         409,

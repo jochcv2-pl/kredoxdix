@@ -270,10 +270,18 @@ export default function Emails() {
   const [deleteTarget, setDeleteTarget] = useState<Template | null>(null);
   const [previewTpl, setPreviewTpl] = useState<Template | null>(null);
 
+  // ID du template en cours d'édition (null = création nouvelle).
+  const [editingId, setEditingId] = useState<string | null>(null);
+
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const htmlAreaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewIframeRef = useRef<HTMLIFrameElement>(null);
+
+  // Mémorise la dernière position du curseur dans le textarea HTML (mode import).
+  // Sans ça, si l'utilisateur clique une variable sans avoir mis le curseur dans
+  // le textarea, selectionStart = 0 et la variable s'insère tout en haut.
+  const lastHtmlCursor = useRef<number>(0);
 
   // Édition WYSIWYG inline dans l'aperçu (mode import).
   const [inlineEditing, setInlineEditing] = useState(false);
@@ -408,16 +416,19 @@ export default function Emails() {
   }
 
   // Insertion au curseur dans la zone de code HTML (mode import).
+  // Utilise lastHtmlCursor pour ne pas insérer en position 0 si le textarea
+  // n'a pas le focus au moment du clic sur la variable.
   function insertVarImport(v: string) {
     const ta = htmlAreaRef.current;
-    if (!ta) return;
-    const s = ta.selectionStart;
-    const e = ta.selectionEnd;
+    // Récupère la position : curseur actuel si le textarea a le focus, sinon la dernière mémorisée.
+    const s = ta?.selectionStart ?? lastHtmlCursor.current;
+    const e = ta?.selectionEnd ?? lastHtmlCursor.current;
     const next = htmlArea.slice(0, s) + v + htmlArea.slice(e);
     setHtmlArea(next);
+    lastHtmlCursor.current = s + v.length;
     requestAnimationFrame(() => {
-      ta.focus();
-      ta.selectionStart = ta.selectionEnd = s + v.length;
+      ta?.focus();
+      if (ta) ta.selectionStart = ta.selectionEnd = s + v.length;
     });
   }
 
@@ -462,8 +473,9 @@ export default function Emails() {
   // Actions UI
   // ---------------------------------------------------------------------------
 
-  // Charge un template existant dans l'éditeur visuel pour modification.
+  // Charge un template existant dans l'éditeur pour modification.
   const editTemplate = (tpl: Template) => {
+    setEditingId(tpl.id);
     setNameInput(tpl.name);
     setTriggerInput(tpl.trigger);
     setLanguageInput(tpl.language);
@@ -484,11 +496,26 @@ export default function Emails() {
     setActiveSub('generer');
   };
 
+  // Réinitialise l'éditeur pour une nouvelle création.
+  const resetEditor = () => {
+    setEditingId(null);
+    setHtmlArea('');
+    setDzFile('');
+    setImportName('');
+    setBodyInput(DEFAULT_BODY);
+    setSubjInput('Votre dossier a bien été reçu, {{Prénom}}');
+    setNameInput('Confirmation de demande');
+    setTriggerInput('reception_ack');
+    setLanguageInput('fr');
+    setImportTrigger('reception_ack');
+    setImportLanguage('fr');
+  };
+
   // ---------------------------------------------------------------------------
   // Actions API
   // ---------------------------------------------------------------------------
 
-  // Crée un template (POST /api/templates) depuis le mode visuel.
+  // Crée ou met à jour un template (POST ou PATCH selon editingId).
   const saveTemplate = async () => {
     setSaving(true);
     setError(null);
@@ -503,17 +530,26 @@ export default function Emails() {
         htmlContent: null,
         bannerEnabled: bannerVisible,
       };
-      const res = await fetch('/api/templates', {
-        method: 'POST',
+      // PATCH si on édite un template existant, POST sinon.
+      const isEditing = !!editingId;
+      const url = isEditing ? `/api/templates/${editingId}` : '/api/templates';
+      const method = isEditing ? 'PATCH' : 'POST';
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => null);
-        throw new Error(err?.error ?? `Échec création (${res.status})`);
+        throw new Error(err?.error ?? `Échec ${isEditing ? 'mise à jour' : 'création'} (${res.status})`);
       }
-      const created: Template = (await res.json()).data ?? (await res.json());
-      setTemplates((prev) => [created, ...prev]);
+      const saved: Template = (await res.json()).data ?? (await res.json());
+      if (isEditing) {
+        setTemplates((prev) => prev.map((t) => (t.id === saved.id ? saved : t)));
+      } else {
+        setTemplates((prev) => [saved, ...prev]);
+      }
+      setEditingId(null);
       setSaveModalOpen(false);
       setActiveSub('liste');
     } catch (e) {
@@ -569,7 +605,7 @@ export default function Emails() {
     }
   };
 
-  // Importe un template HTML (POST /api/templates avec htmlContent).
+  // Importe ou met à jour un template HTML (POST ou PATCH selon editingId).
   const importTemplate = async () => {
     if (!htmlArea.trim()) {
       setError('Aucun contenu HTML à importer.');
@@ -578,28 +614,37 @@ export default function Emails() {
     setSaving(true);
     setError(null);
     try {
+      const isEditing = !!editingId;
       const payload = {
         name: importName.trim() || 'Modèle importé',
         trigger: importTrigger,
         language: importLanguage,
-        status: 'draft' as const,
+        status: 'active' as const,
         subject: importName.trim() || 'Modèle importé',
         bodyText: extractBodyContent(htmlArea).replace(/<[^>]+>/g, ' ').trim().slice(0, 500),
         htmlContent: htmlArea,
         bannerEnabled: bannerVisible,
       };
-      const res = await fetch('/api/templates', {
-        method: 'POST',
+      // PATCH si on édite un template existant, POST sinon.
+      const url = isEditing ? `/api/templates/${editingId}` : '/api/templates';
+      const method = isEditing ? 'PATCH' : 'POST';
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => null);
-        throw new Error(err?.error ?? `Échec import (${res.status})`);
+        throw new Error(err?.error ?? `Échec ${isEditing ? 'mise à jour' : 'import'} (${res.status})`);
       }
-      const created: Template = (await res.json()).data ?? (await res.json());
-      setTemplates((prev) => [created, ...prev]);
-      // Reset formulaire import.
+      const saved: Template = (await res.json()).data ?? (await res.json());
+      if (isEditing) {
+        setTemplates((prev) => prev.map((t) => (t.id === saved.id ? saved : t)));
+      } else {
+        setTemplates((prev) => [saved, ...prev]);
+      }
+      // Reset.
+      setEditingId(null);
       setHtmlArea(''); setDzFile(''); setImportName('');
       setActiveSub('liste');
     } catch (e) {
@@ -827,8 +872,13 @@ export default function Emails() {
                   ))}
                 </div>
                 <button className="btn btn-primary" onClick={() => setSaveModalOpen(true)} disabled={saving}>
-                  Enregistrer le modèle
+                  {editingId ? 'Mettre à jour le modèle' : 'Enregistrer le modèle'}
                 </button>
+                {editingId && (
+                  <button className="btn btn-ghost" style={{ marginLeft: 8 }} onClick={resetEditor}>
+                    Nouveau modèle
+                  </button>
+                )}
               </div>
 
               {/* PREVIEW avec bouton œil */}
@@ -880,7 +930,7 @@ export default function Emails() {
                   </div>
                   <input type="file" ref={fileInputRef} accept=".html,.htm,text/html" style={{ display: 'none' }} onChange={onFileChange} />
                   <div className="or-line"><span>ou collez le code HTML</span></div>
-                  <textarea className="html-area" ref={htmlAreaRef} placeholder="<html><body>Bonjour {{Prénom}}…</body></html>" value={htmlArea} onChange={(e) => setHtmlArea(e.target.value)} />
+                  <textarea className="html-area" ref={htmlAreaRef} placeholder="<html><body>Bonjour {{Prénom}}…</body></html>" value={htmlArea} onChange={(e) => setHtmlArea(e.target.value)} onClick={(e) => { const ta = e.currentTarget; lastHtmlCursor.current = ta.selectionStart; }} onKeyUp={(e) => { const ta = e.currentTarget; lastHtmlCursor.current = ta.selectionStart; }} onSelect={(e) => { const ta = e.currentTarget; lastHtmlCursor.current = ta.selectionStart; }} />
                   {detected.length > 0 && (
                     <div className="detected">
                       <h4>Variables détectées</h4>
@@ -920,8 +970,13 @@ export default function Emails() {
                   </div>
                 </div>
                 <button className="btn btn-primary" onClick={importTemplate} disabled={saving || inlineEditing}>
-                  {saving ? 'Import…' : 'Importer comme modèle'}
+                  {saving ? (editingId ? 'Mise à jour…' : 'Import…') : editingId ? 'Mettre à jour le modèle' : 'Importer comme modèle'}
                 </button>
+                {editingId && (
+                  <button className="btn btn-ghost" style={{ marginLeft: 8 }} onClick={resetEditor}>
+                    Nouveau modèle
+                  </button>
+                )}
               </div>
 
               {/* IFRAME PREVIEW */}
@@ -1204,9 +1259,11 @@ export default function Emails() {
       )}
 
       {/* ===== MODAL SAVE ===== */}
-      <Modal isOpen={saveModalOpen} onClose={() => setSaveModalOpen(false)} title="Enregistrer le modèle">
+      <Modal isOpen={saveModalOpen} onClose={() => setSaveModalOpen(false)} title={editingId ? 'Mettre à jour le modèle' : 'Enregistrer le modèle'}>
         <p className="field-hint">
-          Le modèle sera sauvegardé et activé. S&apos;il existe déjà un template actif pour le même déclencheur, il sera passé en brouillon.
+          {editingId
+            ? 'Le modèle sera mis à jour et activé.'
+            : 'Le modèle sera sauvegardé et activé. S\'il existe déjà un template actif pour le même déclencheur, il sera passé en brouillon.'}
         </p>
         <p style={{ fontSize: 13, color: 'var(--ink)', lineHeight: 1.6 }}>
           <b>Modèle :</b> {nameInput}<br />
@@ -1216,7 +1273,7 @@ export default function Emails() {
         <div className="modal-actions">
           <button className="btn btn-ghost" onClick={() => setSaveModalOpen(false)} disabled={saving}>Annuler</button>
           <button className="btn btn-primary" onClick={saveTemplate} disabled={saving}>
-            {saving ? 'Enregistrement…' : 'Confirmer l\'enregistrement'}
+            {saving ? 'Enregistrement…' : editingId ? 'Confirmer la mise à jour' : 'Confirmer l\'enregistrement'}
           </button>
         </div>
       </Modal>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { Modal } from '@/components/Modal'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { Icon } from '@/components/Icon'
@@ -46,6 +46,8 @@ export default function Partners() {
   const [creating, setCreating] = useState(false)
   const [form, setForm] = useState<FormState>(EMPTY)
   const [deleteTarget, setDeleteTarget] = useState<BankPartner | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const logoInputRef = useRef<HTMLInputElement>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -137,6 +139,27 @@ export default function Partners() {
       })
       await load()
     } catch { /* ignore */ }
+  }
+
+  const handleLogoUpload = async (file: File) => {
+    setUploading(true)
+    setError(null)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      fd.append('type', 'logo')
+      const res = await fetch('/api/cms/upload', { method: 'POST', body: fd })
+      const json = await res.json()
+      if (!res.ok) {
+        throw new Error(json?.error ?? 'Upload échoué')
+      }
+      const url: string = json.data?.url ?? json.url
+      setForm((prev) => ({ ...prev, logoUrl: url }))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erreur upload')
+    } finally {
+      setUploading(false)
+    }
   }
 
   return (
@@ -242,23 +265,84 @@ export default function Partners() {
               style={{ fontFamily: 'monospace' }}
             />
           </label>
-          <label className="form-field">
-            <span className="form-label">Logo (URL)</span>
-            <input
-              type="url"
-              value={form.logoUrl}
-              onChange={(e) => setForm({ ...form, logoUrl: e.target.value })}
-              placeholder="https://exemple.com/logo.png"
-              className="form-input"
-            />
-            <div className="bnk-preview">
-              {form.logoUrl ? (
-                <img src={form.logoUrl} alt="Aperçu logo" />
-              ) : (
-                <span className="bnk-preview-empty">Aperçu du logo apparaîtra ici</span>
-              )}
-            </div>
-          </label>
+          {/* Logo — upload depuis la machine OU URL (optionnel) */}
+          <div className="form-field">
+             <span className="form-label">Logo (optionnel)</span>
+
+             {/* Aperçu si logo déjà présent */}
+             {form.logoUrl ? (
+               <div className="bnk-logo-set">
+                 <div className="bnk-logo-preview-large">
+                   <img src={form.logoUrl} alt="Logo" />
+                 </div>
+                 <div className="bnk-logo-actions">
+                   <button
+                     type="button"
+                     className="btn btn-ghost btn-sm"
+                     onClick={() => logoInputRef.current?.click()}
+                     disabled={uploading}
+                   >
+                     <Icon name="upload" size={14} /> Changer
+                   </button>
+                   <button
+                     type="button"
+                     className="btn btn-ghost btn-sm"
+                     onClick={() => setForm((prev) => ({ ...prev, logoUrl: '' }))}
+                   >
+                     <Icon name="x" size={14} /> Retirer
+                   </button>
+                 </div>
+               </div>
+             ) : (
+               <>
+                 {/* Zone d'upload (clic ou drag) */}
+                 <div
+                   className="dropzone"
+                   onClick={() => logoInputRef.current?.click()}
+                   onDragOver={(e) => { e.preventDefault() }}
+                   onDrop={(e) => {
+                     e.preventDefault()
+                     const f = e.dataTransfer.files[0]
+                     if (f) handleLogoUpload(f)
+                   }}
+                   style={uploading ? { opacity: 0.5, pointerEvents: 'none' } : undefined}
+                 >
+                   <Icon name="upload" size={32} className="dz-ico" />
+                   <div className="dz-title">
+                     {uploading ? 'Upload en cours…' : 'Cliquer ou glisser un logo ici'}
+                   </div>
+                   <div className="dz-sub">PNG, JPG ou ICO · 500 Ko max · ~400×100px conseillé</div>
+                 </div>
+
+                 {/* Séparateur « ou » */}
+                 <div className="or-line">
+                   <span>ou coller une URL</span>
+                 </div>
+
+                 {/* Champ URL optionnel */}
+                 <input
+                   type="url"
+                   value={form.logoUrl}
+                   onChange={(e) => setForm({ ...form, logoUrl: e.target.value })}
+                   placeholder="https://exemple.com/logo.png"
+                   className="form-input"
+                 />
+               </>
+             )}
+
+             {/* Input file caché */}
+             <input
+               ref={logoInputRef}
+               type="file"
+               accept="image/png,image/jpeg,image/x-icon,image/vnd.microsoft.icon"
+               style={{ display: 'none' }}
+               onChange={(e) => {
+                 const f = e.target.files?.[0]
+                 if (f) handleLogoUpload(f)
+                 e.target.value = ''
+               }}
+             />
+          </div>
           <div style={{ display: 'flex', gap: 14 }}>
             <label className="form-field" style={{ flex: 1 }}>
               <span className="form-label">Email contact</span>

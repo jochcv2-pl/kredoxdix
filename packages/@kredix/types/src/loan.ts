@@ -37,8 +37,8 @@ export interface LoanTypeOption {
  * Format minimal nécessaire au simulateur pour choisir le meilleur taux.
  */
 export interface ApplicableRate {
-  bankId: string;
-  bankName?: string;
+  bankId?: string;       // absent pour un taux générique (sans banque)
+  bankName?: string;     // absent pour un taux générique
   loanType: LoanType;
   amountMin: number; // palier bas (inclusif)
   amountMax: number; // palier haut (inclusif)
