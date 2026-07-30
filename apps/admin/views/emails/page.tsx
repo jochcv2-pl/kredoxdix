@@ -420,9 +420,11 @@ export default function Emails() {
   // n'a pas le focus au moment du clic sur la variable.
   function insertVarImport(v: string) {
     const ta = htmlAreaRef.current;
-    // Récupère la position : curseur actuel si le textarea a le focus, sinon la dernière mémorisée.
-    const s = ta?.selectionStart ?? lastHtmlCursor.current;
-    const e = ta?.selectionEnd ?? lastHtmlCursor.current;
+    // Si le textarea a le focus, on utilise sa position de curseur actuelle.
+    // Sinon, on utilise la dernière position mémorisée (ou la fin du texte par défaut).
+    const hasFocus = ta && document.activeElement === ta;
+    const s = hasFocus ? ta!.selectionStart : (lastHtmlCursor.current || htmlArea.length);
+    const e = hasFocus ? ta!.selectionEnd : (lastHtmlCursor.current || htmlArea.length);
     const next = htmlArea.slice(0, s) + v + htmlArea.slice(e);
     setHtmlArea(next);
     lastHtmlCursor.current = s + v.length;
