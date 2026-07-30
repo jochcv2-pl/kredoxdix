@@ -93,6 +93,8 @@ export async function sendReceptionAck(lead: Lead): Promise<AckResult> {
     brand,
     unsubscribeUrl: buildUnsubscribeUrl(lead, siteUrl),
     bannerEnabled: template.bannerEnabled,
+    customHeader: template.headerHtml ? interpolateTemplate(template.headerHtml, ctx) : undefined,
+    customFooter: template.footerHtml ? interpolateTemplate(template.footerHtml, ctx) : undefined,
     subject,
   });
 

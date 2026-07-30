@@ -253,6 +253,8 @@ export async function POST(req: NextRequest) {
             brand,
             unsubscribeUrl: buildUnsubscribeUrl(lead, siteUrl),
             bannerEnabled: welcomeTemplate.bannerEnabled,
+            customHeader: welcomeTemplate.headerHtml ? interpolateTemplate(welcomeTemplate.headerHtml, ctx) : undefined,
+            customFooter: welcomeTemplate.footerHtml ? interpolateTemplate(welcomeTemplate.footerHtml, ctx) : undefined,
             subject: finalSubject,
           });
 
@@ -377,6 +379,8 @@ export async function POST(req: NextRequest) {
           brand,
           unsubscribeUrl: buildUnsubscribeUrl(lead, siteUrl),
           bannerEnabled: template.bannerEnabled,
+          customHeader: template.headerHtml ? interpolateTemplate(template.headerHtml, ctx) : undefined,
+          customFooter: template.footerHtml ? interpolateTemplate(template.footerHtml, ctx) : undefined,
           subject,
         });
 

@@ -93,6 +93,10 @@ export interface WrapEmailOptions {
   unsubscribeUrl: string;
   /** Si false, masque le header avec logo (footer reste). Défaut: true. */
   bannerEnabled?: boolean;
+  /** En-tête HTML personnalisé (déjà interpolé). Si fourni, remplace le header par défaut. */
+  customHeader?: string;
+  /** Pied de page HTML personnalisé (déjà interpolé). Si fourni, remplace le footer par défaut. */
+  customFooter?: string;
   /** Objet de l'email (affiché en pré-header). */
   subject?: string;
 }
@@ -111,13 +115,19 @@ export interface WrapEmailOptions {
  *   </html>
  */
 export function wrapEmailHtml(opts: WrapEmailOptions): string {
-  const { bodyHtml, brand, unsubscribeUrl, bannerEnabled = true, subject } = opts;
+  const { bodyHtml, brand, unsubscribeUrl, bannerEnabled = true, customHeader, customFooter, subject } = opts;
 
-  const header = bannerEnabled
-    ? buildHeader(brand)
-    : '';
+  // Header : custom > default (si bannerEnabled) > rien.
+  const header = customHeader
+    ? buildCustomSection(customHeader)
+    : bannerEnabled
+      ? buildHeader(brand)
+      : '';
 
-  const footer = buildFooter(brand, unsubscribeUrl);
+  // Footer : custom > default.
+  const footer = customFooter
+    ? buildCustomSection(customFooter)
+    : buildFooter(brand, unsubscribeUrl);
 
   // Pre-header caché (aperçu dans la boîte de réception).
   const preheader = subject
@@ -155,6 +165,22 @@ ${footer}
   </table>
 </body>
 </html>`;
+}
+
+// --- Custom section (header/footer personnalisé par l'admin) ---
+
+/**
+ * Enveloppe un fragment HTML personnalisé dans une cellule <tr><td>.
+ * Utilisé quand l'admin définit son propre header ou footer par template.
+ * Le HTML est inséré tel quel (déjà interpolé par le sender).
+ */
+function buildCustomSection(html: string): string {
+  return `          <!-- CUSTOM SECTION -->
+          <tr>
+            <td>
+              ${html}
+            </td>
+          </tr>`;
 }
 
 // --- Header ---
@@ -246,6 +272,10 @@ export interface ComposeOptions {
   unsubscribeUrl: string;
   /** Si false, masque le header avec logo (footer reste). Défaut: true. */
   bannerEnabled?: boolean;
+  /** En-tête HTML personnalisé (déjà interpolé). Remplace le header par défaut pour les fragments. */
+  customHeader?: string;
+  /** Pied de page HTML personnalisé (déjà interpolé). Remplace le footer par défaut. */
+  customFooter?: string;
   /** Objet de l'email (affiché en pré-header pour les fragments). */
   subject?: string;
 }
@@ -259,7 +289,7 @@ export interface ComposeOptions {
 export function composeEmailHtml(opts: ComposeOptions): string {
   const isFullDocument = FULL_DOC_RE.test(opts.bodyHtml);
   return isFullDocument
-    ? injectUnsubscribeFooter(opts.bodyHtml, opts.brand, opts.unsubscribeUrl)
+    ? injectUnsubscribeFooter(opts.bodyHtml, opts.brand, opts.unsubscribeUrl, opts.customFooter)
     : wrapEmailHtml(opts);
 }
 
@@ -274,8 +304,10 @@ function injectUnsubscribeFooter(
   html: string,
   brand: EmailBrandData,
   unsubscribeUrl: string,
+  customFooter?: string,
 ): string {
-  const footer = buildInlineFooter(brand, unsubscribeUrl);
+  // Si l'admin a défini un footer personnalisé, on l'utilise à la place du footer RGPD par défaut.
+  const footer = customFooter || buildInlineFooter(brand, unsubscribeUrl);
 
   // Injection avant </body> (cas le plus fréquent).
   const bodyClose = html.match(/<\/body>\s*/i);
