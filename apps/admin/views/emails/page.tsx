@@ -226,6 +226,12 @@ export default function Emails() {
   const [deleteTarget, setDeleteTarget] = useState<Template | null>(null);
   const [previewTpl, setPreviewTpl] = useState<Template | null>(null);
 
+  // Test send
+  const [testTarget, setTestTarget] = useState<Template | null>(null);
+  const [testEmail, setTestEmail] = useState('');
+  const [testSending, setTestSending] = useState(false);
+  const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
+
   // ID du template en cours d'édition (null = création nouvelle).
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -677,6 +683,36 @@ export default function Emails() {
       setDeleteTarget(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erreur inconnue');
+    }
+  };
+
+  // --- Test send ---
+  const openTestModal = (tpl: Template) => {
+    setTestTarget(tpl);
+    setTestEmail('');
+    setTestResult(null);
+  };
+
+  const handleTestSend = async () => {
+    if (!testTarget || !testEmail.trim()) return;
+    setTestSending(true);
+    setTestResult(null);
+    try {
+      const res = await fetch(`/api/templates/${testTarget.id}/test`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: testEmail.trim() }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        const errData = json?.data ?? json;
+        throw new Error(errData?.error ?? errData?.message ?? `Échec (${res.status})`);
+      }
+      setTestResult({ ok: true, msg: `Email de test envoyé à ${testEmail.trim()}` });
+    } catch (e) {
+      setTestResult({ ok: false, msg: e instanceof Error ? e.message : 'Erreur inconnue' });
+    } finally {
+      setTestSending(false);
     }
   };
 
@@ -1139,6 +1175,14 @@ export default function Emails() {
                       Aperçu
                     </button>
                     <button
+                      className="tpl2-btn tpl2-btn-test"
+                      onClick={() => openTestModal(tpl)}
+                      title="Envoyer un email de test"
+                    >
+                      <Icon name="mail" size={15} />
+                      Tester
+                    </button>
+                    <button
                       className="tpl2-btn tpl2-btn-edit"
                       onClick={() => editTemplate(tpl)}
                       title="Modifier le modèle"
@@ -1287,6 +1331,47 @@ export default function Emails() {
         onConfirm={() => { if (deleteTarget) deleteTemplate(deleteTarget); }}
         onClose={() => setDeleteTarget(null)}
       />
+
+      {/* ===== TEST SEND MODAL ===== */}
+      <Modal
+        isOpen={!!testTarget}
+        onClose={() => setTestTarget(null)}
+        title={`Test d'envoi — ${testTarget?.name ?? ''}`}
+      >
+        <div className="test-send-modal">
+          <p className="test-send-hint">
+            L&apos;email sera envoyé avec des <b>données de démonstration</b> (Jean Dupont, 250 000 €, immobilier).
+            L&apos;objet sera préfixé par <code>[TEST]</code>.
+          </p>
+          <div className="test-send-field">
+            <label>Adresse email du destinataire de test</label>
+            <input
+              type="email"
+              value={testEmail}
+              onChange={(e) => setTestEmail(e.target.value)}
+              placeholder="vous@exemple.com"
+              autoFocus
+              onKeyDown={(e) => { if (e.key === 'Enter' && testEmail.trim() && !testSending) handleTestSend(); }}
+            />
+          </div>
+          {testResult && (
+            <div className={`test-send-result ${testResult.ok ? 'ok' : 'err'}`}>
+              <Icon name={testResult.ok ? 'check-circle' : 'alert-triangle'} size={16} />
+              {testResult.msg}
+            </div>
+          )}
+          <div className="test-send-actions">
+            <button className="btn btn-ghost" onClick={() => setTestTarget(null)}>Fermer</button>
+            <button
+              className="btn btn-primary"
+              onClick={handleTestSend}
+              disabled={!testEmail.trim() || testSending}
+            >
+              {testSending ? 'Envoi en cours…' : 'Envoyer le test'}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </section>
   );
 }

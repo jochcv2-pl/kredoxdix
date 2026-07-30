@@ -172,6 +172,12 @@ export default function Campaigns({ onNavigate }: { onNavigate?: (view: string) 
   const [creating, setCreating] = useState(false)
   const [sending, setSending] = useState(false)
 
+  // ---- Test send ----
+  const [testModalId, setTestModalId] = useState<string | null>(null)
+  const [testEmail, setTestEmail] = useState('')
+  const [testSending, setTestSending] = useState(false)
+  const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null)
+
   // ---- Multi-step modal ----
   const [createStep, setCreateStep] = useState<1 | 2>(1)
 
@@ -504,6 +510,36 @@ export default function Campaigns({ onNavigate }: { onNavigate?: (view: string) 
     }
   }
 
+  // ---- Test send ----
+  function openCampaignTest(id: string) {
+    setTestModalId(id)
+    setTestEmail('')
+    setTestResult(null)
+  }
+
+  async function handleCampaignTest() {
+    if (!testModalId || !testEmail.trim()) return
+    setTestSending(true)
+    setTestResult(null)
+    try {
+      const res = await fetch(`/api/campaigns/${testModalId}/test`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: testEmail.trim() }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        const errData = json?.data ?? json
+        throw new Error(errData?.error ?? errData?.message ?? `Échec (${res.status})`)
+      }
+      setTestResult({ ok: true, msg: `Email de test envoyé à ${testEmail.trim()}` })
+    } catch (e) {
+      setTestResult({ ok: false, msg: e instanceof Error ? e.message : 'Erreur inconnue' })
+    } finally {
+      setTestSending(false)
+    }
+  }
+
   async function cancelCampaign(id: string) {
     try {
       const res = await fetch(`/api/campaigns/${id}/cancel`, { method: 'POST' })
@@ -816,6 +852,13 @@ export default function Campaigns({ onNavigate }: { onNavigate?: (view: string) 
                       {SOURCE_LABELS[c.recipientSource] ?? c.recipientSource}
                     </span>
                     <div className="camp-card-actions">
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => openCampaignTest(c.id)}
+                        title="Envoyer un email de test"
+                      >
+                        Tester
+                      </button>
                       {c.status === 'draft' && (
                         <button
                           className="btn btn-primary btn-sm"
@@ -1581,6 +1624,46 @@ export default function Campaigns({ onNavigate }: { onNavigate?: (view: string) 
         }}
         onClose={() => setDeleteTarget(null)}
       />
+
+      {/* ===================== MODAL TEST ENVOI ===================== */}
+      <Modal
+        isOpen={!!testModalId}
+        onClose={() => setTestModalId(null)}
+        title="Test d'envoi de campagne"
+      >
+        <div className="test-send-modal">
+          <p className="test-send-hint">
+            L&apos;email sera envoyé avec des <b>données de démonstration</b> (Jean Dupont, 250 000 €, immobilier).
+            L&apos;objet sera préfixé par <code>[TEST]</code>.
+          </p>
+          <div className="test-send-field">
+            <label>Adresse email du destinataire de test</label>
+            <input
+              type="email"
+              value={testEmail}
+              onChange={(e) => setTestEmail(e.target.value)}
+              placeholder="vous@exemple.com"
+              autoFocus
+              onKeyDown={(e) => { if (e.key === 'Enter' && testEmail.trim() && !testSending) handleCampaignTest() }}
+            />
+          </div>
+          {testResult && (
+            <div className={`test-send-result ${testResult.ok ? 'ok' : 'err'}`}>
+              {testResult.ok ? '✓' : '⚠'} {testResult.msg}
+            </div>
+          )}
+          <div className="test-send-actions">
+            <button className="btn btn-ghost" onClick={() => setTestModalId(null)}>Fermer</button>
+            <button
+              className="btn btn-primary"
+              onClick={handleCampaignTest}
+              disabled={!testEmail.trim() || testSending}
+            >
+              {testSending ? 'Envoi en cours…' : 'Envoyer le test'}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </section>
   )
 }

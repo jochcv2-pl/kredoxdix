@@ -4983,3 +4983,81 @@ body {
   max-width: 380px;
   margin: 0 auto;
 }
+
+/* ===== TEST SEND MODAL ===== */
+.test-send-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.test-send-hint {
+  font-size: 13px;
+  color: #475569;
+  line-height: 1.6;
+  padding: 12px 14px;
+  background: #f0f7ff;
+  border-radius: 8px;
+  border: 1px solid #c7dbf5;
+  margin: 0;
+}
+.test-send-hint code {
+  font-family: monospace;
+  font-size: 12px;
+  background: #e0ecfc;
+  padding: 1px 5px;
+  border-radius: 4px;
+  color: #1d4ed8;
+}
+.test-send-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.test-send-field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+}
+.test-send-field input {
+  padding: 10px 14px;
+  border: 1px solid #dde3ec;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #1e293b;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.test-send-field input:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(43, 139, 222, 0.12);
+}
+.test-send-result {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.test-send-result.ok {
+  background: #dcfce7;
+  border: 1px solid #86efac;
+  color: #16a34a;
+}
+.test-send-result.err {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+}
+.test-send-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.tpl2-btn-test {
+  color: #2563eb;
+}
+.tpl2-btn-test:hover {
+  background: #eff6ff;
+}
