@@ -104,7 +104,7 @@ export default async function HomePage({
             <p className="hero-sub">{t("subtitle")}</p>
             <div className="hero-ctas">
               <a href="#simulateur" className="btn btn-orange">{heroCtaPrimary ?? t("cta1")}</a>
-              <a href="#contact" className="btn btn-ghost">{heroCtaSecondary ?? t("cta2")}</a>
+              <a href={waLink} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">{heroCtaSecondary ?? t("cta2")}</a>
             </div>
             <div className="hero-stats">
               <div className="hstat"><b>{t("stat1Value")}</b><span>{t("stat1Label")}</span></div>
