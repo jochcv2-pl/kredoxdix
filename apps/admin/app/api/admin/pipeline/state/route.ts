@@ -13,7 +13,7 @@
 import { prisma } from '@kredix/db';
 import { successResponse, errorResponse, ERR } from '../../../_lib/responses';
 import { requireAdmin } from '../../../_lib/auth-server';
-import { getSetting, getSettingNumber, getActiveGateway } from '../../../_lib/settings';
+import { getSetting, getSettingNumber, getPrimaryGateway } from '../../../_lib/settings';
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -32,7 +32,7 @@ export async function GET() {
     const timeoutDays = await getSettingNumber('cadence_timeout_days', 10);
 
     // --- Gateway actif ---
-    const gateway = await getActiveGateway();
+    const gateway = await getPrimaryGateway();
     const providerName = gateway?.label || null;
 
     // --- Compteur envois du jour ---

@@ -368,11 +368,15 @@ model EmailGateway {
   label       String                          // "Resend", "SMTP Hostinger"
   apiKey      String?                          // secret — usage serveur uniquement
   config      Json             @default("{}") // domaine, hôte, mode, identifiant
-  isActive    Boolean          @default(false) // UN seul actif à la fois (contrainte app)
+  isActive    Boolean          @default(false) // actif (plusieurs peuvent l'être)
+  isPrimary   Boolean          @default(false) // SMTP principal pour prospects/relances (un seul)
   createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  updatedAt   DateTime @updatedAt
+
+  campaigns   Campaign[]
 
   @@index([provider])
+  @@index([isActive])
 }
 
 // -----------------------------------------------------------------------------
@@ -427,6 +431,8 @@ model Campaign {
   name            String                          // "Offre spéciale été"
   templateId      String
   template        EmailTemplate  @relation(fields: [templateId], references: [id])
+  gatewayId       String?                         // SMTP spécifique pour cette campagne (null = primary)
+  gateway         EmailGateway?  @relation(fields: [gatewayId], references: [id])
   domainId        String?                         // domaine d'envoi (FK Domain type=mail), null = global from_email
   domain          Domain?        @relation(fields: [domainId], references: [id])
   status          CampaignStatus @default(draft)
@@ -437,7 +443,7 @@ model Campaign {
   startedAt       DateTime?
   completedAt     DateTime?
   createdAt       DateTime       @default(now())
-  updatedAt       DateTime @updatedAt
+  updatedAt       DateTime       @updatedAt
 
   recipients      CampaignRecipient[]
 

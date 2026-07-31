@@ -15,7 +15,7 @@ import {
   textToHtml,
   buildUnsubscribeUrl,
   getSetting,
-  getActiveGateway,
+  getPrimaryGateway,
   getActiveTemplate,
   composeEmailHtml,
   loadBrandData,
@@ -55,7 +55,7 @@ export async function sendReceptionAck(lead: Lead): Promise<AckResult> {
   const brand = await loadBrandData();
 
   const [gateway, template] = await Promise.all([
-    getActiveGateway(),
+    getPrimaryGateway(),
     getActiveTemplate('reception_ack', lead.preferredLanguage || 'fr'),
   ]);
 

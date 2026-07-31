@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma, EmailTrigger, SequenceExitReason, createNotification } from '@kredix/db';
 import { generateEmail } from '@kredix/ai';
 import { successResponse, errorResponse, ERR } from '../../_lib/responses';
-import { getSetting, getSettingNumber, getActiveGateway } from '../../_lib/settings';
+import { getSetting, getSettingNumber, getPrimaryGateway } from '../../_lib/settings';
 import { sendEmail } from '../../_lib/email-sender';
 import { interpolateTemplate, textToHtml, buildUnsubscribeUrl } from '../../_lib/template-interpolation';
 import { composeEmailHtml, loadBrandData, brandToContext } from '@kredix/email';
@@ -136,7 +136,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Vérifie qu'un gateway actif existe (sinon on skippe avec un log).
-    const gateway = await getActiveGateway();
+    const gateway = await getPrimaryGateway();
     if (!gateway) {
       stats.skippedNoGateway = dueLeads.length;
       return successResponse({ ...stats, note: 'Aucun gateway actif — envois skipés' }, 200);

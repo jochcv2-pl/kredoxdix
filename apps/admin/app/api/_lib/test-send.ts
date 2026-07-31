@@ -17,7 +17,7 @@ import {
   loadBrandData,
   brandToContext,
   getSetting,
-  getActiveGateway,
+  getPrimaryGateway,
   sendEmail,
   type InterpolationContext,
 } from '@kredix/email';
@@ -67,7 +67,7 @@ export async function sendTestEmail(
   testEmail: string,
 ): Promise<TestSendResult> {
   // 1. Gateway actif obligatoire.
-  const gateway = await getActiveGateway();
+  const gateway = await getPrimaryGateway();
   if (!gateway) {
     return { success: false, error: 'Aucun gateway email actif. Configurez un fournisseur dans Paramètres → Emails.' };
   }

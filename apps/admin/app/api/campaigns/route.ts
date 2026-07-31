@@ -30,6 +30,7 @@ const createCampaignSchema = z.object({
   name: z.string(),
   templateId: z.string(),
   domainId: z.string().nullable().optional(),             // domaine d'envoi (null = global)
+  gatewayId: z.string().nullable().optional(),            // SMTP spécifique (null = primaire)
   recipientSource: recipientSourceSchema,
   leadIds: z.array(z.string()).optional(),           // requis pour "manual"
   recipients: z.array(importedRecipientSchema).optional(), // requis pour "import_file" ou "manual"
@@ -87,6 +88,7 @@ export async function GET() {
       include: {
         template: { select: { name: true } },
         domain: { select: { domain: true, fromEmail: true } },
+        gateway: { select: { id: true, label: true } },
       },
     });
     return successResponse(campaigns);
@@ -173,6 +175,7 @@ export async function POST(req: NextRequest) {
           name: data.name,
           templateId: data.templateId,
           domainId: data.domainId || null,
+          gatewayId: data.gatewayId || null,
           recipientSource: data.recipientSource,
           totalRecipients: recipientsData.length,
           recipients: {

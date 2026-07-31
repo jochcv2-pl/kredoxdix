@@ -1,6 +1,7 @@
 // =============================================================================
 // /api/gateways — Liste et création des passerelles d'envoi email.
-// Règle métier : une seule passerelle active à la fois (contrainte app).
+// Plusieurs passerelles peuvent être actives simultanément.
+// Une seule peut être isPrimary (SMTP principal pour prospects/relances).
 // =============================================================================
 
 import { NextRequest } from 'next/server';
@@ -17,6 +18,7 @@ const createGatewaySchema = z.object({
   apiKey: z.string().nullable().optional(), // secret — défini via l'admin
   config: z.record(z.any()).default({}),
   isActive: z.boolean().default(false),
+  isPrimary: z.boolean().default(false),
 });
 
 // GET /api/gateways — liste toutes les passerelles, triées par label.
@@ -39,7 +41,7 @@ export async function GET() {
 }
 
 // POST /api/gateways — crée une passerelle.
-// Si isActive = true, désactive toutes les autres passerelles (transaction).
+// Si isPrimary = true, retire le flag primary de toutes les autres (transaction).
 export async function POST(req: NextRequest) {
   const [, deny] = await requireAuth();
   if (deny) return deny;
@@ -50,12 +52,12 @@ export async function POST(req: NextRequest) {
     // Chiffrer la clé API avant stockage (AES-256-GCM).
     const encryptedApiKey = data.apiKey ? encryptSecret(data.apiKey) : null;
 
-    // Règle métier : une seule passerelle active à la fois (transaction).
+    // Règle métier : un seul isPrimary à la fois (transaction).
     const gateway = await prisma.$transaction(async (tx) => {
-      if (data.isActive) {
+      if (data.isPrimary) {
         await tx.emailGateway.updateMany({
-          where: { isActive: true },
-          data: { isActive: false },
+          where: { isPrimary: true },
+          data: { isPrimary: false },
         });
       }
       return tx.emailGateway.create({

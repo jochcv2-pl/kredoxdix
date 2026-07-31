@@ -25,9 +25,35 @@ export async function getSettingNumber(key: string, fallback: number): Promise<n
   return Number.isNaN(n) ? fallback : n;
 }
 
-/** Récupère le gateway d'envoi actif (un seul). */
+/** Récupère le gateway d'envoi actif (le premier trouvé).
+ *  Utilisé pour la rétro-compatibilité — préférez getPrimaryGateway(). */
 export async function getActiveGateway() {
   return prisma.emailGateway.findFirst({ where: { isActive: true } });
+}
+
+/** Récupère le gateway PRIMAIRE (prospects, relances, parcours client).
+ *  Si aucun n'est marqué isPrimary, fallback sur le premier actif. */
+export async function getPrimaryGateway() {
+  const primary = await prisma.emailGateway.findFirst({ where: { isPrimary: true } });
+  if (primary) return primary;
+  // Fallback rétro-compat : premier gateway actif.
+  return prisma.emailGateway.findFirst({ where: { isActive: true } });
+}
+
+/** Récupère le gateway pour une campagne spécifique.
+ *  Si la campagne a un gatewayId → utilise ce gateway.
+ *  Sinon → fallback sur le gateway primaire. */
+export async function getGatewayForCampaign(campaignId: string) {
+  const campaign = await prisma.campaign.findUnique({
+    where: { id: campaignId },
+    select: { gatewayId: true },
+  });
+  if (campaign?.gatewayId) {
+    const gw = await prisma.emailGateway.findUnique({ where: { id: campaign.gatewayId } });
+    if (gw?.isActive) return gw;
+  }
+  // Fallback : gateway primaire.
+  return getPrimaryGateway();
 }
 
 /** Récupère le template d'email actif pour un trigger + langue donnés.

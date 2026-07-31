@@ -24,7 +24,27 @@ export async function getSettingNumber(key: string, fallback: number): Promise<n
   return Number.isNaN(n) ? fallback : n;
 }
 
-/** Récupère le gateway d'envoi actif (un seul). */
+/** Récupère le gateway d'envoi actif (rétro-compat). */
 export async function getActiveGateway() {
   return prisma.emailGateway.findFirst({ where: { isActive: true } });
+}
+
+/** Récupère le gateway PRIMAIRE (prospects, relances, parcours client). */
+export async function getPrimaryGateway() {
+  const primary = await prisma.emailGateway.findFirst({ where: { isPrimary: true } });
+  if (primary) return primary;
+  return prisma.emailGateway.findFirst({ where: { isActive: true } });
+}
+
+/** Récupère le gateway pour une campagne (spécifique ou primaire). */
+export async function getGatewayForCampaign(campaignId: string) {
+  const campaign = await prisma.campaign.findUnique({
+    where: { id: campaignId },
+    select: { gatewayId: true },
+  });
+  if (campaign?.gatewayId) {
+    const gw = await prisma.emailGateway.findUnique({ where: { id: campaign.gatewayId } });
+    if (gw?.isActive) return gw;
+  }
+  return getPrimaryGateway();
 }

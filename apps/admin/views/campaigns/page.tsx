@@ -46,6 +46,7 @@ interface Campaign {
   templateId: string
   templateName: string
   domainName: string | null
+  gatewayLabel: string | null
   status: CampaignStatus
   recipientSource: RecipientSource
   totalRecipients: number
@@ -92,6 +93,7 @@ const EMPTY_FORM = {
   name: '',
   templateId: '',
   domainId: '' as string,
+  gatewayId: '' as string,
   source: 'validated_today' as RecipientSource,
 }
 
@@ -140,6 +142,7 @@ function mapCampaign(raw: any): Campaign {
     templateId: raw.templateId,
     templateName: raw.template?.name ?? 'Modèle supprimé',
     domainName: raw.domain?.domain ?? null,
+    gatewayLabel: raw.gateway?.label ?? null,
     status: raw.status,
     recipientSource: raw.recipientSource,
     totalRecipients: raw.totalRecipients,
@@ -160,6 +163,7 @@ export default function Campaigns({ onNavigate }: { onNavigate?: (view: string) 
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [templates, setTemplates] = useState<Template[]>([])
   const [mailDomains, setMailDomains] = useState<MailDomain[]>([])
+  const [gateways, setGateways] = useState<{ id: string; label: string }[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [detailCampaign, setDetailCampaign] = useState<CampaignDetail | null>(null)
@@ -241,12 +245,29 @@ export default function Campaigns({ onNavigate }: { onNavigate?: (view: string) 
     }
   }, [])
 
+  // ---- Fetch passerelles actives ----
+  const fetchGateways = useCallback(async () => {
+    try {
+      const res = await fetch('/api/gateways')
+      const json = await res.json()
+      const all = json.data ?? json
+      if (Array.isArray(all)) {
+        setGateways(all
+          .filter((g: any) => g.isActive)
+          .map((g: any) => ({ id: g.id, label: g.label })))
+      }
+    } catch (e) {
+      console.error('fetchGateways:', e)
+    }
+  }, [])
+
   // ---- Chargement initial ----
   useEffect(() => {
     fetchCampaigns()
     fetchTemplates()
     fetchMailDomains()
-  }, [fetchCampaigns, fetchTemplates, fetchMailDomains])
+    fetchGateways()
+  }, [fetchCampaigns, fetchTemplates, fetchMailDomains, fetchGateways])
 
   // ---- Polling quand une campagne est "sending" ----
   useEffect(() => {
@@ -316,6 +337,7 @@ export default function Campaigns({ onNavigate }: { onNavigate?: (view: string) 
         name: newCampaign.name || 'Campagne sans nom',
         templateId: newCampaign.templateId,
         domainId: newCampaign.domainId || null,
+        gatewayId: newCampaign.gatewayId || null,
         recipientSource: newCampaign.source,
       }
 
@@ -838,6 +860,7 @@ export default function Campaigns({ onNavigate }: { onNavigate?: (view: string) 
                       <div className="camp-card-name">{c.name}</div>
                       <div className="camp-card-meta">
                         {c.templateName} · créée le {formatDate(c.createdAt)}
+                        {c.gatewayLabel && ` · SMTP: ${c.gatewayLabel}`}
                       </div>
                     </div>
                     <div className="camp-card-actions">
@@ -1141,6 +1164,25 @@ export default function Campaigns({ onNavigate }: { onNavigate?: (view: string) 
               </div>
               <small style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, display: 'block' }}>
                 Sélectionnez le domaine qui apparaîtra comme expéditeur. Si vide, l'adresse globale configurée dans les paramètres est utilisée.
+              </small>
+            </div>
+
+            {/* Passerelle SMTP */}
+            <div className="nc-field">
+              <label className="nc-label">Passerelle d'envoi (SMTP)</label>
+              <select
+                className="nc-input"
+                value={newCampaign.gatewayId}
+                onChange={(e) => setNewCampaign({ ...newCampaign, gatewayId: e.target.value })}
+                style={{ cursor: 'pointer' }}
+              >
+                <option value="">Passerelle principale (par défaut)</option>
+                {gateways.map((g) => (
+                  <option key={g.id} value={g.id}>{g.label}</option>
+                ))}
+              </select>
+              <small style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, display: 'block' }}>
+                Sélectionnez une passerelle spécifique pour cette campagne. Si vide, la passerelle principale définie dans les paramètres est utilisée.
               </small>
             </div>
 

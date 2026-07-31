@@ -17,6 +17,7 @@ const updateGatewaySchema = z.object({
   apiKey: z.string().nullable().optional(),
   config: z.record(z.any()).optional(),
   isActive: z.boolean().optional(),
+  isPrimary: z.boolean().optional(),
 });
 
 // GET /api/gateways/[id] — passerelle seule.
@@ -71,13 +72,13 @@ export async function PATCH(
       delete updateData.apiKey;
     }
 
-    // Règle métier : une seule passerelle active à la fois (transaction).
-    const activating = data.isActive === true;
+    // Règle métier : un seul isPrimary à la fois (transaction).
+    const makingPrimary = data.isPrimary === true;
     const gateway = await prisma.$transaction(async (tx) => {
-      if (activating) {
+      if (makingPrimary) {
         await tx.emailGateway.updateMany({
-          where: { isActive: true, NOT: { id } },
-          data: { isActive: false },
+          where: { isPrimary: true, NOT: { id } },
+          data: { isPrimary: false },
         });
       }
       return tx.emailGateway.update({ where: { id }, data: updateData });

@@ -15,7 +15,7 @@ import {
   type EmailGateway,
   type EmailTemplate,
 } from '@kredix/db';
-import { getSetting, getSettingNumber, getActiveGateway } from './settings';
+import { getSetting, getSettingNumber, getGatewayForCampaign } from './settings';
 import { sendEmail, type EmailAttachment } from './email-sender';
 import { interpolateTemplate, textToHtml, buildUnsubscribeUrl } from './template-interpolation';
 import { composeEmailHtml, loadBrandData, brandToContext } from '@kredix/email';
@@ -105,8 +105,8 @@ export async function processCampaign(campaignId: string): Promise<void> {
     //      Sinon, sendEmail() utilisera le from_email global (fallback).
     const fromAddress = campaign.domain?.fromEmail || undefined;
 
-    // 2 — Gateway actif (échec fatal si aucun).
-    const gateway = (await getActiveGateway()) as EmailGateway | null;
+    // 2 — Gateway pour cette campagne (spécifique si défini, sinon primaire).
+    const gateway = (await getGatewayForCampaign(campaignId)) as EmailGateway | null;
     if (!gateway) {
       await prisma.campaign.update({
         where: { id: campaignId },

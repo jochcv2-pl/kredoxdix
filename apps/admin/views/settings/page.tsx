@@ -24,6 +24,7 @@ interface Gateway {
   apiKey: string | null
   config: Record<string, unknown>
   isActive: boolean
+  isPrimary: boolean
 }
 
 // =============================================================================
@@ -275,21 +276,34 @@ export default function Settings() {
     }
   }
 
-  // Active une passerelle (PATCH /api/gateways/[id] isActive=true — déclenche la
-  // désactivation transactionnelle des autres côté serveur).
-  const activateGateway = async (id: string) => {
+  // Bascule isActive d'une passerelle (multi-actif — ne désactive pas les autres).
+  const toggleGatewayActive = async (id: string, active: boolean) => {
     setError(null)
     try {
       const res = await fetch(`/api/gateways/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isActive: true }),
+        body: JSON.stringify({ isActive: active }),
       })
-      if (!res.ok) throw new Error('Échec activation')
+      if (!res.ok) throw new Error('Échec mise à jour')
       const updated: Gateway = (await res.json()).data ?? (await res.json())
-      setGateways((prev) =>
-        prev.map((g) => ({ ...g, isActive: g.id === updated.id })),
-      )
+      setGateways((prev) => prev.map((g) => (g.id === id ? updated : g)))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erreur inconnue')
+    }
+  }
+
+  // Définit une passerelle comme primaire (une seule à la fois — transaction côté serveur).
+  const setPrimaryGateway = async (id: string) => {
+    setError(null)
+    try {
+      const res = await fetch(`/api/gateways/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isPrimary: true }),
+      })
+      if (!res.ok) throw new Error('Échec définition primaire')
+      setGateways((prev) => prev.map((g) => ({ ...g, isPrimary: g.id === id })))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erreur inconnue')
     }
@@ -324,6 +338,8 @@ export default function Settings() {
   ) => {
     setError(null)
     try {
+      // Si aucune passerelle n'existe encore, la première devient primaire par défaut.
+      const makePrimary = gateways.length === 0
       const res = await fetch('/api/gateways', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -332,12 +348,16 @@ export default function Settings() {
           label: label || PROVIDER_LABEL[provider],
           apiKey: apiKey || null,
           config: config || {},
-          isActive: false,
+          isActive: true,
+          isPrimary: makePrimary,
         }),
       })
       if (!res.ok) throw new Error('Échec création passerelle')
       const created: Gateway = (await res.json()).data ?? (await res.json())
-      setGateways((prev) => [...prev, created])
+      setGateways((prev) => makePrimary
+        ? prev.map((g) => ({ ...g, isPrimary: false })).concat(created)
+        : [...prev, created],
+      )
       setNewGatewayModalOpen(false)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erreur inconnue')
@@ -683,7 +703,7 @@ export default function Settings() {
             </div>
             <div className="panel-body" style={{ paddingTop: '14px' }}>
               <p className="field-hint">
-                Configurez plusieurs fournisseurs. L&apos;admin remplit la clé API de chacun ; seul le fournisseur <b>coché « Actif »</b> est utilisé pour l&apos;envoi.
+                Configurez plusieurs fournisseurs. Cochez <b>« Actif »</b> sur chaque passerelle utilisée. Une seule peut être <b>« Principale »</b> (utilisée par défaut pour les prospects et relances). Les campagnes peuvent cibler une passerelle spécifique.
               </p>
 
               {gateways.length === 0 && (
@@ -696,7 +716,8 @@ export default function Settings() {
                 <GatewayCard
                   key={g.id}
                   gateway={g}
-                  onActivate={activateGateway}
+                  onToggleActive={toggleGatewayActive}
+                  onSetPrimary={setPrimaryGateway}
                   onSave={updateGateway}
                   onDelete={setDeleteGatewayTarget}
                 />
@@ -1153,12 +1174,14 @@ function NewGatewayForm({
 
 function GatewayCard({
   gateway,
-  onActivate,
+  onToggleActive,
+  onSetPrimary,
   onSave,
   onDelete,
 }: {
   gateway: Gateway
-  onActivate: (id: string) => void
+  onToggleActive: (id: string, active: boolean) => void
+  onSetPrimary: (id: string) => void
   onSave: (id: string, patch: Partial<Pick<Gateway, 'apiKey' | 'config' | 'label'>>) => void
   onDelete: (g: Gateway) => void
 }) {
@@ -1236,14 +1259,18 @@ function GatewayCard({
   return (
     <div className={gateway.isActive ? 'prov active-prov' : 'prov'}>
       <div className="prov-head">
-        <label className="prov-radio">
+        <label className="prov-radio" style={{ cursor: 'pointer' }}>
           <input
-            type="radio"
-            name="prov"
+            type="checkbox"
             checked={gateway.isActive}
-            onChange={() => onActivate(gateway.id)}
+            onChange={(e) => onToggleActive(gateway.id, e.target.checked)}
           />
           <b>{gateway.label}</b>
+          {gateway.isPrimary && (
+            <span className="prov-badge" style={{ marginLeft: 8, background: '#2563eb' }}>
+              ⭐ Principale
+            </span>
+          )}
         </label>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button
@@ -1254,6 +1281,16 @@ function GatewayCard({
           >
             {testing ? 'Test…' : 'Tester'}
           </button>
+          {!gateway.isPrimary && gateway.isActive && (
+            <button
+              className="btn btn-ghost btn-sm"
+              style={{ fontSize: 12, padding: '4px 10px', color: '#2563eb' }}
+              onClick={() => onSetPrimary(gateway.id)}
+              title="Utiliser cette passerelle par défaut pour les prospects et relances"
+            >
+              Définir principale
+            </button>
+          )}
           {gateway.isActive ? (
             <span className="prov-badge">Actif</span>
           ) : (

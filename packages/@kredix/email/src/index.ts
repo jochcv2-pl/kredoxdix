@@ -40,5 +40,7 @@ export {
   getSetting,
   getSettingNumber,
   getActiveGateway,
+  getPrimaryGateway,
+  getGatewayForCampaign,
   getActiveTemplate,
 } from './settings';

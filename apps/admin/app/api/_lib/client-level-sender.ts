@@ -17,7 +17,7 @@ import {
   type EmailTemplate,
   type DocumentTemplate,
 } from '@kredix/db';
-import { getSetting, getActiveGateway } from './settings';
+import { getSetting, getPrimaryGateway } from './settings';
 import { sendEmail, type EmailAttachment } from './email-sender';
 import { interpolateTemplate, textToHtml, buildUnsubscribeUrl } from './template-interpolation';
 import { composeEmailHtml, loadBrandData, brandToContext } from '@kredix/email';
@@ -142,7 +142,7 @@ export async function sendClientLevelEmail(
   }
 
   // 5 — Gateway actif (échec fatal si aucun) + paramètres marque.
-  const gateway = (await getActiveGateway()) as EmailGateway | null;
+  const gateway = (await getPrimaryGateway()) as EmailGateway | null;
   if (!gateway) {
     return { success: false, error: 'Aucune passerelle d\'envoi configurée' };
   }
