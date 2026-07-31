@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
 
     if (type === 'fb_pixel') {
       // Facebook Pixel ID : 15-16 chiffres
-      if (/^\d{14,18}$/.test(trimmed)) {
+      if (/^\d{15,16}$/.test(trimmed)) {
         return successResponse({ valid: true, message: `ID Pixel valide (${trimmed.length} chiffres).` });
       }
       return successResponse({ valid: false, message: 'Format invalide — un Facebook Pixel ID contient 15 à 16 chiffres.' });

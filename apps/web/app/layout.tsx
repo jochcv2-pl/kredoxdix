@@ -23,9 +23,10 @@ export default async function RootLayout({
   return (
     <html className={montserrat.variable}>
       <body>
-        {children}
-        {/* Tracking (FB Pixel + GA) — injecté seulement si les IDs sont configurés */}
+        {/* Tracking (FB Pixel + GA) — injecté AVANT le contenu pour fire au plus tôt.
+            N'injecte rien si les IDs ne sont pas configurés dans Settings (admin). */}
         <TrackingHead />
+        {children}
       </body>
     </html>
   );
