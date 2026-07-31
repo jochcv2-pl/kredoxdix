@@ -110,6 +110,10 @@ export function interpolateTemplate(text: string, ctx: InterpolationContext): st
   const dateEnvoiOffre = lead.offerSentAt
     ? new Date(lead.offerSentAt).toLocaleDateString(locale)
     : '';
+  // L'offre expire 14 jours après l'envoi (couvre les 3 relances J+3, J+6, J+9).
+  const dateExpirationOffre = lead.offerSentAt
+    ? new Date(new Date(lead.offerSentAt).getTime() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString(locale)
+    : '';
 
   // Prénom du conseiller : priorité au paramètre global, fallback traduit.
   const prenomConseiller = brand?.advisorName || lead.advisorName || (ADVISOR_FALLBACK_I18N[lang] ?? ADVISOR_FALLBACK_I18N.fr);
@@ -147,6 +151,7 @@ export function interpolateTemplate(text: string, ctx: InterpolationContext): st
     '{{reference_demande}}': reference,
     '{{date_soumission}}': dateSoumission,
     '{{date_envoi_offre}}': dateEnvoiOffre,
+    '{{date_expiration_offre}}': dateExpirationOffre,
     '{{type_pret}}': loanTypeLabel,
     '{{montant_pret}}': formatEuro(lead.amount, locale),
     '{{prenom_conseiller}}': prenomConseiller,
