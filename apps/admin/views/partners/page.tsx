@@ -51,6 +51,7 @@ export default function Partners() {
   const [form, setForm] = useState<FormState>(EMPTY)
   const [deleteTarget, setDeleteTarget] = useState<BankPartner | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const logoInputRef = useRef<HTMLInputElement>(null)
@@ -149,7 +150,7 @@ export default function Partners() {
     } catch { /* ignore */ }
   }
 
-  // --- Upload logo ---
+  // --- Upload logo (avec barre de progression via XMLHttpRequest) ---
   const handleLogoUpload = async (file: File) => {
     setUploadError(null)
 
@@ -166,22 +167,48 @@ export default function Partners() {
     }
 
     setUploading(true)
-    try {
-      const fd = new FormData()
-      fd.append('file', file)
-      fd.append('type', 'logo')
-      const res = await fetch('/api/cms/upload', { method: 'POST', body: fd })
-      const json = await res.json()
-      if (!res.ok) {
-        throw new Error(json?.error ?? json?.message ?? 'Upload échoué')
+    setUploadProgress(0)
+
+    const fd = new FormData()
+    fd.append('file', file)
+    fd.append('type', 'logo')
+
+    const xhr = new XMLHttpRequest()
+    xhr.open('POST', '/api/cms/upload')
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        setUploadProgress(Math.round((e.loaded / e.total) * 100))
       }
-      const url: string = json.data?.url ?? json.url
-      setForm((prev) => ({ ...prev, logoUrl: url }))
-    } catch (e) {
-      setUploadError(e instanceof Error ? e.message : 'Erreur upload')
-    } finally {
-      setUploading(false)
     }
+
+    xhr.onload = () => {
+      setUploading(false)
+      setUploadProgress(null)
+      try {
+        const json = JSON.parse(xhr.responseText)
+        if (xhr.status >= 200 && xhr.status < 300) {
+          const url: string = json.data?.url ?? json.url
+          if (url) {
+            setForm((prev) => ({ ...prev, logoUrl: url }))
+          } else {
+            setUploadError('Réponse invalide du serveur (URL manquante)')
+          }
+        } else {
+          setUploadError(json?.error ?? json?.message ?? `Upload échoué (${xhr.status})`)
+        }
+      } catch {
+        setUploadError(`Réponse illisible du serveur (${xhr.status})`)
+      }
+    }
+
+    xhr.onerror = () => {
+      setUploading(false)
+      setUploadProgress(null)
+      setUploadError('Erreur réseau — le serveur est injoignable')
+    }
+
+    xhr.send(fd)
   }
 
   return (
@@ -364,8 +391,17 @@ export default function Partners() {
                     )}
                   </div>
                   <div className="bp-dz-title">
-                    {uploading ? 'Chargement…' : 'Glisser le logo ici ou cliquer pour parcourir'}
+                    {uploading
+                      ? uploadProgress !== null && uploadProgress < 100
+                        ? `Envoi… ${uploadProgress}%`
+                        : 'Traitement…'
+                      : 'Glisser le logo ici ou cliquer pour parcourir'}
                   </div>
+                  {uploading && uploadProgress !== null && (
+                    <div className="bp-progress-bar">
+                      <div className="bp-progress-fill" style={{ width: `${uploadProgress}%` }} />
+                    </div>
+                  )}
                   <div className="bp-dz-sub">PNG · JPG · WebP · GIF · ICO — 500 Ko max — ~400×100px conseillé</div>
                 </div>
 

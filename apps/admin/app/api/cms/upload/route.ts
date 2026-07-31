@@ -7,7 +7,6 @@
 import { NextRequest } from 'next/server';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
-import sharp from 'sharp';
 import { successResponse, errorResponse, ERR } from '../../_lib/responses';
 import { requireAuth } from '../../_lib/auth-server';
 
@@ -87,6 +86,9 @@ async function checkImageDimensions(
   }
 
   try {
+    // Dynamic import : si sharp n'est pas disponible (Alpine sans bindings natifs),
+    // l'upload réussit quand même — juste sans vérification des dimensions.
+    const sharp = (await import('sharp')).default;
     const metadata = await sharp(buffer).metadata();
     const width = metadata.width;
     const height = metadata.height;
@@ -113,8 +115,8 @@ async function checkImageDimensions(
 
     return { width, height, warnings };
   } catch {
-    // sharp n'a pas pu lire l'image (format corrompu ?) — on ne bloque pas
-    return { warnings: ['Impossible d\'analyser les dimensions (format non reconnu).'] };
+    // sharp indisponible ou image illisible — on ne bloque pas l'upload.
+    return { warnings: [] };
   }
 }
 
@@ -193,7 +195,8 @@ export async function POST(req: NextRequest) {
       },
       201,
     );
-  } catch {
-    return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return errorResponse(`Upload échoué: ${msg}`, ERR.INTERNAL.code, undefined, 500);
   }
 }
