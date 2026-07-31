@@ -88,6 +88,7 @@ export async function sendClientLevelEmail(
       unsubscribeToken: true,
       preferredLanguage: true,
       createdAt: true,
+      offerSentAt: true,
       assignedTo: { select: { displayName: true } },
     },
   });
@@ -164,6 +165,7 @@ export async function sendClientLevelEmail(
     loanType: lead.loanType,
     companyName: lead.companyName,
     createdAt: lead.createdAt,
+    offerSentAt: lead.offerSentAt,
     unsubscribeToken: lead.unsubscribeToken,
     preferredLanguage: lead.preferredLanguage,
     advisorName: lead.assignedTo?.displayName ?? null,

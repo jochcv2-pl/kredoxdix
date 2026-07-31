@@ -222,6 +222,7 @@ export async function processCampaign(campaignId: string): Promise<void> {
           loanType: 'autre',
           companyName: null,
           createdAt: new Date(),
+          offerSentAt: null,
           unsubscribeToken: '',
           preferredLanguage: 'fr',
         },

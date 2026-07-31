@@ -36,6 +36,7 @@ const TEST_LEAD: InterpolationContext['lead'] = {
   loanType: 'immo',
   companyName: null,
   createdAt: new Date('2026-07-30'),
+  offerSentAt: new Date('2026-07-30T10:30:00'),
   unsubscribeToken: 'test-token-preview',
   preferredLanguage: 'fr',
   advisorName: 'Marie Lefèvre',

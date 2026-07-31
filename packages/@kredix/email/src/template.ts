@@ -28,6 +28,7 @@ export interface InterpolationContext {
     | 'companyName'
     | 'id'
     | 'createdAt'
+    | 'offerSentAt'
     | 'unsubscribeToken'
     | 'preferredLanguage'
   > & {
@@ -96,6 +97,9 @@ export function interpolateTemplate(text: string, ctx: InterpolationContext): st
     '{{nom_entreprise}}': lead.companyName ?? '',
     '{{reference_demande}}': reference,
     '{{date_soumission}}': dateSoumission,
+    '{{date_envoi_offre}}': lead.offerSentAt
+      ? new Date(lead.offerSentAt).toLocaleDateString('fr-FR')
+      : '',
     '{{type_pret}}': LOAN_TYPE_LABELS[lead.loanType] ?? lead.loanType,
     '{{montant_pret}}': formatEuro(lead.amount),
     '{{prenom_conseiller}}': prenomConseiller,
