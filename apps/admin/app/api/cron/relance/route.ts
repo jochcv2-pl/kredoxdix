@@ -250,7 +250,7 @@ export async function POST(req: NextRequest) {
 
           const welcomeRawHtml = welcomeTemplate.htmlContent && !generated
             ? interpolateTemplate(welcomeTemplate.htmlContent, ctx)
-            : textToHtml(finalBody);
+            : textToHtml(finalBody, lead.preferredLanguage || 'fr');
 
           const welcomeHtml = composeEmailHtml({
             bodyHtml: welcomeRawHtml,
@@ -346,7 +346,7 @@ export async function POST(req: NextRequest) {
           const offerBody = interpolateTemplate(offerTemplate.bodyText, ctx);
           const offerRawHtml = offerTemplate.htmlContent
             ? interpolateTemplate(offerTemplate.htmlContent, ctx)
-            : textToHtml(offerBody);
+            : textToHtml(offerBody, lead.preferredLanguage || 'fr');
 
           const offerHtml = composeEmailHtml({
             bodyHtml: offerRawHtml,
@@ -474,7 +474,7 @@ export async function POST(req: NextRequest) {
         }
         const relanceRawHtml = template.htmlContent && !generated
           ? interpolateTemplate(template.htmlContent, ctx)
-          : textToHtml(bodyText);
+          : textToHtml(bodyText, lead.preferredLanguage || 'fr');
 
         const htmlContent = composeEmailHtml({
           bodyHtml: relanceRawHtml,

@@ -85,7 +85,7 @@ export async function sendReceptionAck(lead: Lead): Promise<AckResult> {
   const bodyText = interpolateTemplate(template.bodyText, ctx);
   const rawHtml = template.htmlContent
     ? interpolateTemplate(template.htmlContent, ctx)
-    : textToHtml(bodyText);
+    : textToHtml(bodyText, lead.preferredLanguage || 'fr');
 
   const html = composeEmailHtml({
     bodyHtml: rawHtml,

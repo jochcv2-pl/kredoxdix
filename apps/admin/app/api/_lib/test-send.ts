@@ -86,7 +86,7 @@ export async function sendTestEmail(
   const bodyText = interpolateTemplate(template.bodyText, ctx);
   const rawHtml = template.htmlContent
     ? interpolateTemplate(template.htmlContent, ctx)
-    : textToHtml(bodyText);
+    : textToHtml(bodyText, 'fr');
 
   // 4. Composition finale (sans header/footer — les emails sont envoyés tels quels).
   const html = composeEmailHtml({

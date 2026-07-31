@@ -175,7 +175,7 @@ export async function sendClientLevelEmail(
   const textBody = interpolateTemplate(template.bodyText, ctx);
   const rawHtml = template.htmlContent
     ? interpolateTemplate(template.htmlContent, ctx)
-    : textToHtml(textBody);
+    : textToHtml(textBody, lead.preferredLanguage || 'fr');
 
   // Composition HTML : préserve le design des templates importés (document
   // complet), enveloppe les fragments de texte (textToHtml) avec le wrapper.

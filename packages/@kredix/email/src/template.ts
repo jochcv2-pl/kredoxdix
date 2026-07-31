@@ -16,9 +16,39 @@ const LOAN_TYPE_I18N: Record<string, Record<string, string>> = {
   it: { immo: 'mutuo immobiliare', conso: 'consumo', rachat: 'consolidamento debiti', pro: 'aziendale', autre: 'personale' },
 };
 
+// Locale BCP47 par code langue (pour formatage dates et montants).
+const LOCALE_BY_LANG: Record<string, string> = {
+  fr: 'fr-FR',
+  de: 'de-DE',
+  en: 'en-IE', // en-IE : format européen (€ après le nombre, point comme séparateur)
+  es: 'es-ES',
+  pt: 'pt-PT',
+  it: 'it-IT',
+};
+
+// Unités de durée par langue.
+const DURATION_UNIT_I18N: Record<string, string> = {
+  fr: 'ans', de: 'Jahre', en: 'years', es: 'años', pt: 'anos', it: 'anni',
+};
+
+// Suffixe mensualité par langue.
+const MONTHLY_SUFFIX_I18N: Record<string, string> = {
+  fr: '/mois', de: '/Monat', en: '/month', es: '/mes', pt: '/mês', it: '/mese',
+};
+
+// Fallback du nom du conseiller par langue.
+const ADVISOR_FALLBACK_I18N: Record<string, string> = {
+  fr: 'votre conseiller', de: 'Ihr Berater', en: 'your advisor',
+  es: 'su asesor', pt: 'seu conselheiro', it: 'il tuo consulente',
+};
+
 function translateLoanType(loanType: string, lang: string): string {
   const labels = LOAN_TYPE_I18N[lang] ?? LOAN_TYPE_I18N.fr;
   return labels[loanType] ?? LOAN_TYPE_I18N.fr[loanType] ?? loanType;
+}
+
+function getLocale(lang: string): string {
+  return LOCALE_BY_LANG[lang] ?? 'fr-FR';
 }
 
 export interface InterpolationContext {
@@ -67,20 +97,27 @@ export function interpolateTemplate(text: string, ctx: InterpolationContext): st
   const { lead, siteUrl, customMessage, brand } = ctx;
   const unsubscribeUrl = buildUnsubscribeUrl(lead, siteUrl);
 
+  const lang = lead.preferredLanguage || 'fr';
+  const locale = getLocale(lang);
+
   // Référence demande : prefix + 8 premiers chars du CUID.
   const reference = `KREDIX-${lead.id.slice(-8).toUpperCase()}`;
 
-  // Date de soumission formatée (ex: 30/07/2026).
+  // Dates formatées selon la locale du lead.
   const dateSoumission = lead.createdAt
-    ? new Date(lead.createdAt).toLocaleDateString('fr-FR')
+    ? new Date(lead.createdAt).toLocaleDateString(locale)
+    : '';
+  const dateEnvoiOffre = lead.offerSentAt
+    ? new Date(lead.offerSentAt).toLocaleDateString(locale)
     : '';
 
-  // Prénom du conseiller : priorité au paramètre global, fallback au conseiller assigné.
-  const prenomConseiller = brand?.advisorName || lead.advisorName || 'votre conseiller';
+  // Prénom du conseiller : priorité au paramètre global, fallback traduit.
+  const prenomConseiller = brand?.advisorName || lead.advisorName || (ADVISOR_FALLBACK_I18N[lang] ?? ADVISOR_FALLBACK_I18N.fr);
 
-  // Type de prêt traduit dans la langue du lead.
-  const lang = lead.preferredLanguage || 'fr';
+  // Type de prêt + unités traduites.
   const loanTypeLabel = translateLoanType(lead.loanType, lang);
+  const durationUnit = DURATION_UNIT_I18N[lang] ?? DURATION_UNIT_I18N.fr;
+  const monthlySuffix = MONTHLY_SUFFIX_I18N[lang] ?? MONTHLY_SUFFIX_I18N.fr;
 
   const replacements: Record<string, string> = {
     // Variables lead — PascalCase FR (originales)
@@ -88,10 +125,10 @@ export function interpolateTemplate(text: string, ctx: InterpolationContext): st
     '{{Nom}}': lead.lastName,
     '{{Email}}': lead.email ?? '',
     '{{Téléphone}}': lead.phone,
-    '{{Montant}}': formatEuro(lead.amount),
+    '{{Montant}}': formatEuro(lead.amount, locale),
     '{{TypePrêt}}': loanTypeLabel,
-    '{{Durée}}': `${lead.durationYears} ans`,
-    '{{Mensualité}}': lead.monthlyPayment ? `${formatEuro(lead.monthlyPayment)}/mois` : '—',
+    '{{Durée}}': `${lead.durationYears} ${durationUnit}`,
+    '{{Mensualité}}': lead.monthlyPayment ? `${formatEuro(lead.monthlyPayment, locale)}${monthlySuffix}` : '—',
     '{{TAEG}}': lead.annualRate ? `${lead.annualRate.toFixed(2)}%` : '—',
     '{{LienDesinscription}}': unsubscribeUrl,
     '{{Message}}': customMessage ?? '',
@@ -109,11 +146,9 @@ export function interpolateTemplate(text: string, ctx: InterpolationContext): st
     '{{nom_entreprise}}': lead.companyName ?? '',
     '{{reference_demande}}': reference,
     '{{date_soumission}}': dateSoumission,
-    '{{date_envoi_offre}}': lead.offerSentAt
-      ? new Date(lead.offerSentAt).toLocaleDateString('fr-FR')
-      : '',
+    '{{date_envoi_offre}}': dateEnvoiOffre,
     '{{type_pret}}': loanTypeLabel,
-    '{{montant_pret}}': formatEuro(lead.amount),
+    '{{montant_pret}}': formatEuro(lead.amount, locale),
     '{{prenom_conseiller}}': prenomConseiller,
     '{{telephone_conseiller}}': brand?.agencyPhone ?? '',
     '{{email_conseiller}}': brand?.contactEmail ?? '',
@@ -128,22 +163,22 @@ export function interpolateTemplate(text: string, ctx: InterpolationContext): st
   return result;
 }
 
-export function formatEuro(amount: number): string {
-  return new Intl.NumberFormat('fr-FR', {
+export function formatEuro(amount: number, locale: string = 'fr-FR'): string {
+  return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency: 'EUR',
     maximumFractionDigits: 0,
   }).format(amount);
 }
 
-export function textToHtml(text: string): string {
+export function textToHtml(text: string, lang: string = 'fr'): string {
   const escaped = text
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
 
   return `<!DOCTYPE html>
-<html lang="fr">
+<html lang="${lang}">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #1a1a1a; line-height: 1.6;">
 ${escaped.split('\n').map((line) => `<p style="margin: 0 0 12px;">${line || '&nbsp;'}</p>`).join('\n')}
