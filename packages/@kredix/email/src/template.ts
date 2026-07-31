@@ -5,13 +5,21 @@ import type { Lead } from '@kredix/db';
 // =============================================================================
 // Extrait depuis apps/admin/app/api/_lib/template-interpolation.ts.
 
-const LOAN_TYPE_LABELS: Record<string, string> = {
-  immo: 'immobilier',
-  conso: 'consommation',
-  rachat: 'rachat de crédit',
-  pro: 'professionnel',
-  autre: 'personnel',
+// Traductions des types de prêt par langue.
+// Fallback sur le français si la langue n'est pas trouvée.
+const LOAN_TYPE_I18N: Record<string, Record<string, string>> = {
+  fr: { immo: 'immobilier', conso: 'consommation', rachat: 'rachat de crédit', pro: 'professionnel', autre: 'personnel' },
+  de: { immo: 'Immobilien', conso: 'Konsum', rachat: 'Umschuldung', pro: 'Geschäft', autre: 'Sonstiges' },
+  en: { immo: 'mortgage', conso: 'consumer', rachat: 'debt consolidation', pro: 'business', autre: 'personal' },
+  es: { immo: 'hipoteca', conso: 'consumo', rachat: 'reunificación de deudas', pro: 'empresarial', autre: 'personal' },
+  pt: { immo: 'habitação', conso: 'consumo', rachat: 'consolidação de dívidas', pro: 'empresarial', autre: 'pessoal' },
+  it: { immo: 'mutuo immobiliare', conso: 'consumo', rachat: 'consolidamento debiti', pro: 'aziendale', autre: 'personale' },
 };
+
+function translateLoanType(loanType: string, lang: string): string {
+  const labels = LOAN_TYPE_I18N[lang] ?? LOAN_TYPE_I18N.fr;
+  return labels[loanType] ?? LOAN_TYPE_I18N.fr[loanType] ?? loanType;
+}
 
 export interface InterpolationContext {
   lead: Pick<
@@ -70,6 +78,10 @@ export function interpolateTemplate(text: string, ctx: InterpolationContext): st
   // Prénom du conseiller : priorité au paramètre global, fallback au conseiller assigné.
   const prenomConseiller = brand?.advisorName || lead.advisorName || 'votre conseiller';
 
+  // Type de prêt traduit dans la langue du lead.
+  const lang = lead.preferredLanguage || 'fr';
+  const loanTypeLabel = translateLoanType(lead.loanType, lang);
+
   const replacements: Record<string, string> = {
     // Variables lead — PascalCase FR (originales)
     '{{Prénom}}': lead.firstName,
@@ -77,7 +89,7 @@ export function interpolateTemplate(text: string, ctx: InterpolationContext): st
     '{{Email}}': lead.email ?? '',
     '{{Téléphone}}': lead.phone,
     '{{Montant}}': formatEuro(lead.amount),
-    '{{TypePrêt}}': LOAN_TYPE_LABELS[lead.loanType] ?? lead.loanType,
+    '{{TypePrêt}}': loanTypeLabel,
     '{{Durée}}': `${lead.durationYears} ans`,
     '{{Mensualité}}': lead.monthlyPayment ? `${formatEuro(lead.monthlyPayment)}/mois` : '—',
     '{{TAEG}}': lead.annualRate ? `${lead.annualRate.toFixed(2)}%` : '—',
@@ -100,7 +112,7 @@ export function interpolateTemplate(text: string, ctx: InterpolationContext): st
     '{{date_envoi_offre}}': lead.offerSentAt
       ? new Date(lead.offerSentAt).toLocaleDateString('fr-FR')
       : '',
-    '{{type_pret}}': LOAN_TYPE_LABELS[lead.loanType] ?? lead.loanType,
+    '{{type_pret}}': loanTypeLabel,
     '{{montant_pret}}': formatEuro(lead.amount),
     '{{prenom_conseiller}}': prenomConseiller,
     '{{telephone_conseiller}}': brand?.agencyPhone ?? '',
