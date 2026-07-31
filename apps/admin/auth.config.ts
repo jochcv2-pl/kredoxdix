@@ -43,7 +43,8 @@ export const authConfig: NextAuthConfig = {
         pathname.startsWith('/login') ||
         pathname === '/' ||
         pathname.startsWith('/_next') ||
-        pathname.startsWith('/favicon')
+        pathname.startsWith('/favicon') ||
+        pathname.startsWith('/uploads')     // Fichiers uploadés (logos, favicons) — publics
 
       if (isPublic) return true
 
