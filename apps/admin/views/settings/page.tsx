@@ -72,7 +72,7 @@ export default function Settings() {
   const [error, setError] = useState<string | null>(null)
   const [sectionSaving, setSectionSaving] = useState<string | null>(null)
   const [sectionSaved, setSectionSaved] = useState<string | null>(null)
-  const [trackingTest, setTrackingTest] = useState<{ key: string; loading: boolean; result?: { success: boolean; message: string } } | null>(null)
+  const [trackingTest, setTrackingTest] = useState<{ key: string; loading: boolean; result?: { success: boolean; message: string; status?: 'success' | 'warning' | 'error' } } | null>(null)
   const [testModalOpen, setTestModalOpen] = useState(false)
   const [testLoading, setTestLoading] = useState(false)
   const [testResult, setTestResult] = useState<{ success: boolean; model?: string; engine?: string; endpoint?: string; latencyMs?: number; error?: string } | null>(null)
@@ -220,7 +220,7 @@ export default function Settings() {
     { key: TRACKING_KEYS.gaTracking, value: settings[TRACKING_KEYS.gaTracking] ?? '', category: 'tracking' },
   ])
 
-  // Test de tracking (FB Pixel / GA4) — valide le format de l'ID.
+  // Test de tracking (FB Pixel / GA4) — valide le format + vérifie l'injection live (FB).
   const testTracking = async (type: 'fb_pixel' | 'ga4') => {
     const key = type === 'fb_pixel' ? TRACKING_KEYS.fbPixel : TRACKING_KEYS.gaTracking
     const value = settings[key] ?? ''
@@ -233,11 +233,15 @@ export default function Settings() {
       })
       const json = await res.json()
       const data = json.data ?? json
+      // Détermine le statut d'affichage : success (vert) / warning (orange) / error (rouge).
+      let status: 'success' | 'warning' | 'error' = data.valid ? 'success' : 'error'
+      if (data.valid && data.liveCheck && data.liveCheck !== 'found') status = 'warning'
       setTrackingTest({
         key: type,
         loading: false,
         result: {
           success: data.valid,
+          status,
           message: data.message || (data.valid ? 'ID valide' : 'ID invalide'),
         },
       })
@@ -245,7 +249,7 @@ export default function Settings() {
       setTrackingTest({
         key: type,
         loading: false,
-        result: { success: false, message: 'Erreur réseau' },
+        result: { success: false, status: 'error', message: 'Erreur réseau' },
       })
     }
   }
@@ -876,8 +880,8 @@ export default function Settings() {
                 />
               </div>
               {trackingTest?.key === 'fb_pixel' && trackingTest.result && (
-                <div style={{ fontSize: 12, marginTop: '-8px', marginBottom: '8px', color: trackingTest.result.success ? 'var(--green)' : 'var(--red, #dc2626)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <Icon name={trackingTest.result.success ? 'check-circle' : 'x-circle'} size={14} /> {trackingTest.result.message}
+                <div style={{ fontSize: 12, marginTop: '-8px', marginBottom: '8px', color: trackingTest.result.status === 'success' ? 'var(--green)' : trackingTest.result.status === 'warning' ? '#B45309' : 'var(--red, #dc2626)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <Icon name={trackingTest.result.status === 'success' ? 'check-circle' : trackingTest.result.status === 'warning' ? 'alert-circle' : 'x-circle'} size={14} /> {trackingTest.result.message}
                 </div>
               )}
               <div className="set-row">
