@@ -146,6 +146,11 @@ export default function Contacts() {
   const [pendingId, setPendingId] = useState<string | null>(null)
 
   const [fileName, setFileName] = useState<string>('')
+  const [csvHeaders, setCsvHeaders] = useState<string[]>([])
+  const [csvRows, setCsvRows] = useState<Record<string, string>[]>([])
+  const [csvMapping, setCsvMapping] = useState<Record<string, string>>({})
+  const [importing, setImporting] = useState(false)
+  const [importResult, setImportResult] = useState<{ imported: number; duplicates: number; errors: number; message: string } | null>(null)
   const [filterModalOpen, setFilterModalOpen] = useState(false)
   const [triInstructions, setTriInstructions] = useState(
     "Priorise les prospects avec un montant supérieur à 150 000 € et une situation Salarié CDI. Classe en second les indépendants. Écarte les demandes sans email valide. Marque en priorité haute les prêts immobiliers."
@@ -218,6 +223,131 @@ export default function Contacts() {
     await patchStatus(id, newStatus)
   }
 
+  // ---- CSV parsing (même logique que campagnes) ----
+  function parseCSV(text: string): { headers: string[]; rows: Record<string, string>[] } {
+    const lines = text.split(/\r?\n/).filter((l) => l.trim())
+    if (lines.length < 2) return { headers: [], rows: [] }
+    const sep = (lines[0].match(/;/g)?.length ?? 0) > (lines[0].match(/,/g)?.length ?? 0) ? ';' : ','
+    function parseLine(line: string): string[] {
+      const result: string[] = []
+      let current = ''
+      let inQuotes = false
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i]
+        if (ch === '"') {
+          if (inQuotes && line[i + 1] === '"') { current += '"'; i++ }
+          else inQuotes = !inQuotes
+        } else if (ch === sep && !inQuotes) {
+          result.push(current.trim())
+          current = ''
+        } else {
+          current += ch
+        }
+      }
+      result.push(current.trim())
+      return result
+    }
+    const headers = parseLine(lines[0])
+    const rows = lines.slice(1).map((line) => {
+      const values = parseLine(line)
+      const obj: Record<string, string> = {}
+      headers.forEach((h, i) => { obj[h] = values[i] ?? '' })
+      return obj
+    })
+    return { headers, rows }
+  }
+
+  function handleImportFile(file: File | undefined) {
+    if (!file) return
+    setFileName(file.name)
+    setImportResult(null)
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const text = String(e.target?.result ?? '')
+      const { headers, rows } = parseCSV(text)
+      setCsvHeaders(headers)
+      setCsvRows(rows)
+      // Auto-detect column mapping
+      const findCol = (patterns: RegExp[]): string => {
+        for (const p of patterns) {
+          const found = headers.find((h) => p.test(h.toLowerCase()))
+          if (found) return found
+        }
+        return ''
+      }
+      setCsvMapping({
+        firstName: findCol([/^pr[éeè]nom/, /^first.?name/, /^given/]),
+        lastName: findCol([/^nom$/, /^nom\b/, /^last.?name/, /^surname/]),
+        email: findCol([/^e-?mail/, /^courriel/, /^mail/]),
+        phone: findCol([/^t[éeè]l/, /^phone/, /^mobile/, /^portable/]),
+        city: findCol([/^ville/, /^city/]),
+        amount: findCol([/^montant/, /^amount/]),
+        loanType: findCol([/^type.*pr[eêè]t/, /^loan.?type/, /^produit/]),
+      })
+    }
+    reader.readAsText(file)
+  }
+
+  function getMappedLeads() {
+    return csvRows
+      .filter((row) => row[csvMapping.firstName]?.trim() || row[csvMapping.lastName]?.trim())
+      .map((row) => ({
+        firstName: csvMapping.firstName ? (row[csvMapping.firstName]?.trim() || 'Prénom') : 'Prénom',
+        lastName: csvMapping.lastName ? (row[csvMapping.lastName]?.trim() || 'Nom') : 'Nom',
+        email: csvMapping.email ? (row[csvMapping.email]?.trim() || '') : '',
+        phone: csvMapping.phone ? (row[csvMapping.phone]?.trim() || '') : '',
+        city: csvMapping.city ? (row[csvMapping.city]?.trim() || '') : '',
+        amount: csvMapping.amount ? (row[csvMapping.amount]?.trim() || '') : '',
+        loanType: csvMapping.loanType ? (row[csvMapping.loanType]?.trim() || '') : '',
+      }))
+  }
+
+  async function handleImport() {
+    const mapped = getMappedLeads()
+    if (mapped.length === 0) return
+    setImporting(true)
+    setImportResult(null)
+    try {
+      const res = await fetch('/api/leads/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leads: mapped }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => null)
+        throw new Error(err?.error || `HTTP ${res.status}`)
+      }
+      const json = await res.json()
+      setImportResult(json.data)
+      if (json.data.imported > 0) {
+        // Recharger la liste des contacts
+        fetchContacts()
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erreur lors de l\'import')
+    } finally {
+      setImporting(false)
+    }
+  }
+
+  function resetImport() {
+    setFileName('')
+    setCsvHeaders([])
+    setCsvRows([])
+    setCsvMapping({})
+    setImportResult(null)
+  }
+
+  const MAPPABLE_FIELDS = [
+    { key: 'firstName', label: 'Prénom', required: true },
+    { key: 'lastName', label: 'Nom', required: true },
+    { key: 'email', label: 'Email', required: false },
+    { key: 'phone', label: 'Téléphone', required: false },
+    { key: 'city', label: 'Ville', required: false },
+    { key: 'amount', label: 'Montant', required: false },
+    { key: 'loanType', label: 'Type de prêt', required: false },
+  ]
+
   const filteredContacts = statusFilter === 'all'
     ? contacts
     : contacts.filter((c) => c.status === statusFilter)
@@ -284,27 +414,121 @@ export default function Contacts() {
         <div className="panel" style={{ marginBottom: 0 }}>
           <div className="panel-head">
             <h3>Importer des prospects</h3>
+            {fileName && <span className="link" onClick={resetImport}>Réinitialiser</span>}
           </div>
           <div className="panel-body" style={{ paddingTop: 16 }}>
-            <label className="dropzone" style={{ marginBottom: 0, cursor: 'pointer' }}>
-              <svg className="dz-ico" viewBox="0 0 24 24">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <path d="M17 8l-5-5-5 5" />
-                <path d="M12 3v12" />
-              </svg>
-              <div className="dz-title">Déposez un fichier .csv ou .xlsx</div>
-              <div className="dz-sub">Colonnes attendues : nom, email, téléphone, ville, montant…</div>
-              <div className="dz-file">{fileName && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon name="check" size={16} /> {fileName}</span>}</div>
-              <input
-                type="file"
-                accept=".csv,.xlsx,.xls"
-                style={{ display: 'none' }}
-                onChange={(e) => {
-                  const f = e.target.files?.[0]
-                  if (f) setFileName(f.name)
-                }}
-              />
-            </label>
+            {!fileName ? (
+              <label className="dropzone" style={{ marginBottom: 0, cursor: 'pointer' }}>
+                <svg className="dz-ico" viewBox="0 0 24 24">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <path d="M17 8l-5-5-5 5" />
+                  <path d="M12 3v12" />
+                </svg>
+                <div className="dz-title">Déposez un fichier .csv</div>
+                <div className="dz-sub">Colonnes attendues : prénom, nom, email, téléphone, ville, montant…</div>
+                <input
+                  type="file"
+                  accept=".csv"
+                  style={{ display: 'none' }}
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImportFile(f) }}
+                />
+              </label>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {/* Fichier sélectionné */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--slate)' }}>
+                  <Icon name="file-text" size={16} />
+                  <b>{fileName}</b>
+                  <span style={{ color: 'var(--slate-light)' }}>— {csvRows.length} ligne(s) détectée(s)</span>
+                </div>
+
+                {/* Mapping colonnes */}
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, color: 'var(--slate)' }}>
+                    Association des colonnes
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {MAPPABLE_FIELDS.map((field) => (
+                      <div key={field.key} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <label style={{ width: 90, fontSize: 12, fontWeight: 500, flexShrink: 0, color: field.required ? 'var(--slate)' : 'var(--slate-light)' }}>
+                          {field.label} {field.required && <span style={{ color: 'var(--red, #dc2626)' }}>*</span>}
+                        </label>
+                        <select
+                          value={csvMapping[field.key] || ''}
+                          onChange={(e) => setCsvMapping((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                          style={{ flex: 1, padding: '6px 10px', borderRadius: 6, border: '1px solid var(--line-soft)', background: 'var(--bg-card, #fff)', fontSize: 12 }}
+                        >
+                          <option value="">— Non mappé —</option>
+                          {csvHeaders.map((h) => (
+                            <option key={h} value={h}>{h}</option>
+                          ))}
+                        </select>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Preview */}
+                {getMappedLeads().length > 0 && (
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, color: 'var(--slate)' }}>
+                      Aperçu ({Math.min(getMappedLeads().length, 5)} sur {getMappedLeads().length})
+                    </div>
+                    <div style={{ overflowX: 'auto', borderRadius: 6, border: '1px solid var(--line-soft)' }}>
+                      <table style={{ width: '100%', fontSize: 11, borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr style={{ background: 'var(--bg-soft, rgba(0,0,0,0.02))' }}>
+                            <th style={{ padding: '6px 8px', textAlign: 'left', fontWeight: 600, color: 'var(--slate)' }}>Prénom</th>
+                            <th style={{ padding: '6px 8px', textAlign: 'left', fontWeight: 600, color: 'var(--slate)' }}>Nom</th>
+                            <th style={{ padding: '6px 8px', textAlign: 'left', fontWeight: 600, color: 'var(--slate)' }}>Email</th>
+                            <th style={{ padding: '6px 8px', textAlign: 'left', fontWeight: 600, color: 'var(--slate)' }}>Tél</th>
+                            <th style={{ padding: '6px 8px', textAlign: 'left', fontWeight: 600, color: 'var(--slate)' }}>Ville</th>
+                            <th style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 600, color: 'var(--slate)' }}>Montant</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {getMappedLeads().slice(0, 5).map((row, i) => (
+                            <tr key={i} style={{ borderTop: '1px solid var(--line-soft)' }}>
+                              <td style={{ padding: '6px 8px' }}>{row.firstName}</td>
+                              <td style={{ padding: '6px 8px' }}>{row.lastName}</td>
+                              <td style={{ padding: '6px 8px', color: row.email ? 'var(--slate)' : 'var(--slate-light)' }}>{row.email || '—'}</td>
+                              <td style={{ padding: '6px 8px', color: row.phone ? 'var(--slate)' : 'var(--slate-light)' }}>{row.phone || '—'}</td>
+                              <td style={{ padding: '6px 8px' }}>{row.city || '—'}</td>
+                              <td style={{ padding: '6px 8px', textAlign: 'right' }}>{row.amount ? `${Number(row.amount).toLocaleString('fr-FR')} €` : '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Résultat */}
+                {importResult && (
+                  <div style={{
+                    padding: '10px 14px', borderRadius: 8, fontSize: 13,
+                    background: importResult.imported > 0 ? 'rgba(46,204,113,0.08)' : 'rgba(241,196,15,0.08)',
+                    color: importResult.imported > 0 ? '#27ae60' : '#f39c12',
+                  }}>
+                    <b>{importResult.message}</b>
+                    {importResult.duplicates > 0 && (
+                      <div style={{ fontSize: 11, marginTop: 4, opacity: 0.8 }}>
+                        Les doublons (email déjà en base) ont été ignorés automatiquement.
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Bouton importer */}
+                <button
+                  className="btn btn-primary"
+                  disabled={importing || getMappedLeads().length === 0}
+                  onClick={handleImport}
+                >
+                  {importing ? 'Import en cours…' : `Importer ${getMappedLeads().length} prospect(s)`}
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
