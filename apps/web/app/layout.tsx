@@ -17,6 +17,8 @@ const montserrat = Montserrat({
 // override celui du parent. La lecture DB des SEO settings se fait donc
 // dans [locale]/layout.tsx (qui gagne réellement pour toutes les locales).
 
+export const dynamic = 'force-dynamic';
+
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
