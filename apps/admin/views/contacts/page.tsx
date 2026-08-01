@@ -151,12 +151,13 @@ export default function Contacts() {
   const [csvMapping, setCsvMapping] = useState<Record<string, string>>({})
   const [importing, setImporting] = useState(false)
   const [importResult, setImportResult] = useState<{ imported: number; duplicates: number; errors: number; message: string } | null>(null)
+  const [csvSortLoading, setCsvSortLoading] = useState(false)
+  const [csvSortResults, setCsvSortResults] = useState<Array<{
+    index: number; firstName: string; lastName: string; email: string; phone: string
+    city: string; amount: number; loanType: string; score: number; scoreReason: string; retained: boolean
+  }> | null>(null)
+  const [selectedForImport, setSelectedForImport] = useState<Set<number>>(new Set())
   const [filterModalOpen, setFilterModalOpen] = useState(false)
-  const [triInstructions, setTriInstructions] = useState(
-    "Priorise les prospects avec un montant supérieur à 150 000 € et une situation Salarié CDI. Classe en second les indépendants. Écarte les demandes sans email valide. Marque en priorité haute les prêts immobiliers."
-  )
-  const [triResult, setTriResult] = useState<{ leads: Array<{ id: string; firstName: string; lastName: string; amount: number; score: number; scoreReason: string; email: string | null }> } | null>(null)
-  const [triLoading, setTriLoading] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [validateTarget, setValidateTarget] = useState<{ id: string; name: string } | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
@@ -336,6 +337,93 @@ export default function Contacts() {
     setCsvRows([])
     setCsvMapping({})
     setImportResult(null)
+    setCsvSortResults(null)
+    setSelectedForImport(new Set())
+  }
+
+  async function handleSortCsv(instructions: string) {
+    const mapped = getMappedLeads()
+    if (mapped.length === 0 || !instructions.trim()) return
+    setCsvSortLoading(true)
+    setCsvSortResults(null)
+    setSelectedForImport(new Set())
+    setImportResult(null)
+    try {
+      const res = await fetch('/api/leads/sort-csv', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leads: mapped, instructions: instructions.trim() }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => null)
+        throw new Error(err?.error || `HTTP ${res.status}`)
+      }
+      const json = await res.json()
+      setCsvSortResults(json.data.leads)
+      // Auto-select les retained
+      const retained = new Set<number>()
+      json.data.leads.forEach((l: { index: number; retained: boolean }) => {
+        if (l.retained) retained.add(l.index)
+      })
+      setSelectedForImport(retained)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erreur lors du tri IA')
+    } finally {
+      setCsvSortLoading(false)
+    }
+  }
+
+  function toggleCsvSelect(index: number) {
+    setSelectedForImport((prev) => {
+      const next = new Set(prev)
+      if (next.has(index)) next.delete(index)
+      else next.add(index)
+      return next
+    })
+  }
+
+  function selectAllRetained() {
+    if (!csvSortResults) return
+    const retained = new Set<number>()
+    csvSortResults.forEach((l) => { if (l.retained) retained.add(l.index) })
+    setSelectedForImport(retained)
+  }
+
+  function deselectAll() {
+    setSelectedForImport(new Set())
+  }
+
+  async function handleImportSelected() {
+    if (!csvSortResults || selectedForImport.size === 0) return
+    const toImport = csvSortResults.filter((l) => selectedForImport.has(l.index)).map((l) => ({
+      firstName: l.firstName,
+      lastName: l.lastName,
+      email: l.email,
+      phone: l.phone,
+      city: l.city,
+      amount: l.amount,
+      loanType: l.loanType,
+    }))
+    setImporting(true)
+    setImportResult(null)
+    try {
+      const res = await fetch('/api/leads/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leads: toImport }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => null)
+        throw new Error(err?.error || `HTTP ${res.status}`)
+      }
+      const json = await res.json()
+      setImportResult(json.data)
+      if (json.data.imported > 0) fetchContacts()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erreur lors de l\'import')
+    } finally {
+      setImporting(false)
+    }
   }
 
   const MAPPABLE_FIELDS = [
@@ -410,240 +498,223 @@ export default function Contacts() {
         </div>
       </div>
 
-      <div className="grid-2" style={{ marginBottom: 20 }}>
-        <div className="panel" style={{ marginBottom: 0 }}>
-          <div className="panel-head">
-            <h3>Importer des prospects</h3>
-            {fileName && <span className="link" onClick={resetImport}>Réinitialiser</span>}
-          </div>
-          <div className="panel-body" style={{ paddingTop: 16 }}>
-            {!fileName ? (
-              <label className="dropzone" style={{ marginBottom: 0, cursor: 'pointer' }}>
-                <svg className="dz-ico" viewBox="0 0 24 24">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <path d="M17 8l-5-5-5 5" />
-                  <path d="M12 3v12" />
-                </svg>
-                <div className="dz-title">Déposez un fichier .csv</div>
-                <div className="dz-sub">Colonnes attendues : prénom, nom, email, téléphone, ville, montant…</div>
-                <input
-                  type="file"
-                  accept=".csv"
-                  style={{ display: 'none' }}
-                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImportFile(f) }}
-                />
-              </label>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {/* Fichier sélectionné */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--slate)' }}>
-                  <Icon name="file-text" size={16} />
-                  <b>{fileName}</b>
-                  <span style={{ color: 'var(--slate-light)' }}>— {csvRows.length} ligne(s) détectée(s)</span>
-                </div>
+      {/* ===== FLUX UNIFIÉ : Import CSV + Tri IA ===== */}
+      <div className="panel" style={{ marginBottom: 20 }}>
+        <div className="panel-head">
+          <h3>Importer des prospects</h3>
+          {fileName && <span className="link" onClick={resetImport}>Réinitialiser</span>}
+        </div>
+        <div className="panel-body" style={{ paddingTop: 16 }}>
+          {!fileName ? (
+            /* --- Étape 1 : Déposer le CSV --- */
+            <label className="dropzone" style={{ marginBottom: 0, cursor: 'pointer' }}>
+              <svg className="dz-ico" viewBox="0 0 24 24">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <path d="M17 8l-5-5-5 5" />
+                <path d="M12 3v12" />
+              </svg>
+              <div className="dz-title">Déposez un fichier .csv</div>
+              <div className="dz-sub">Colonnes attendues : prénom, nom, email, téléphone, ville, montant…</div>
+              <input
+                type="file"
+                accept=".csv"
+                style={{ display: 'none' }}
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImportFile(f) }}
+              />
+            </label>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {/* Fichier sélectionné */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--slate)' }}>
+                <Icon name="file-text" size={16} />
+                <b>{fileName}</b>
+                <span style={{ color: 'var(--slate-light)' }}>— {csvRows.length} ligne(s) détectée(s)</span>
+              </div>
 
-                {/* Mapping colonnes */}
-                <div>
-                  <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, color: 'var(--slate)' }}>
-                    Association des colonnes
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {MAPPABLE_FIELDS.map((field) => (
-                      <div key={field.key} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <label style={{ width: 90, fontSize: 12, fontWeight: 500, flexShrink: 0, color: field.required ? 'var(--slate)' : 'var(--slate-light)' }}>
-                          {field.label} {field.required && <span style={{ color: 'var(--red, #dc2626)' }}>*</span>}
-                        </label>
-                        <select
-                          value={csvMapping[field.key] || ''}
-                          onChange={(e) => setCsvMapping((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                          style={{ flex: 1, padding: '6px 10px', borderRadius: 6, border: '1px solid var(--line-soft)', background: 'var(--bg-card, #fff)', fontSize: 12 }}
-                        >
-                          <option value="">— Non mappé —</option>
-                          {csvHeaders.map((h) => (
-                            <option key={h} value={h}>{h}</option>
-                          ))}
-                        </select>
-                      </div>
-                    ))}
-                  </div>
+              {/* Mapping colonnes */}
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, color: 'var(--slate)' }}>
+                  1. Association des colonnes
                 </div>
-
-                {/* Preview */}
-                {getMappedLeads().length > 0 && (
-                  <div>
-                    <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, color: 'var(--slate)' }}>
-                      Aperçu ({Math.min(getMappedLeads().length, 5)} sur {getMappedLeads().length})
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {MAPPABLE_FIELDS.map((field) => (
+                    <div key={field.key} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <label style={{ width: 90, fontSize: 12, fontWeight: 500, flexShrink: 0, color: field.required ? 'var(--slate)' : 'var(--slate-light)' }}>
+                        {field.label} {field.required && <span style={{ color: 'var(--red, #dc2626)' }}>*</span>}
+                      </label>
+                      <select
+                        value={csvMapping[field.key] || ''}
+                        onChange={(e) => { setCsvMapping((prev) => ({ ...prev, [field.key]: e.target.value })); setCsvSortResults(null); setSelectedForImport(new Set()) }}
+                        style={{ flex: 1, padding: '6px 10px', borderRadius: 6, border: '1px solid var(--line-soft)', background: 'var(--bg-card, #fff)', fontSize: 12 }}
+                      >
+                        <option value="">— Non mappé —</option>
+                        {csvHeaders.map((h) => (
+                          <option key={h} value={h}>{h}</option>
+                        ))}
+                      </select>
                     </div>
-                    <div style={{ overflowX: 'auto', borderRadius: 6, border: '1px solid var(--line-soft)' }}>
+                  ))}
+                </div>
+              </div>
+
+              {/* Étape 2 : Tri IA */}
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, color: 'var(--slate)' }}>
+                  2. Filtrer avec l&apos;IA <span style={{ fontWeight: 400, color: 'var(--slate-light)' }}>(optionnel)</span>
+                </div>
+                <p className="field-hint" style={{ marginBottom: 8 }}>
+                  Décrivez les critères de filtrage. Ex : &quot;uniquement les montants supérieurs à 150 000 €&quot;, &quot;prêts immobiliers uniquement&quot;, &quot;écarter les demandes sans email&quot;.
+                </p>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+                  <textarea
+                    className="body-editor"
+                    style={{ minHeight: 80, flex: 1 }}
+                    placeholder="Conserver uniquement les prospects avec un montant supérieur à 150 000 € et un prêt immobilier..."
+                    id="csv-tri-instructions"
+                  />
+                  <button
+                    className="btn btn-primary"
+                    style={{ flexShrink: 0, height: 'fit-content', padding: '8px 16px' }}
+                    disabled={csvSortLoading || getMappedLeads().length === 0}
+                    onClick={() => {
+                      const el = document.getElementById('csv-tri-instructions') as HTMLTextAreaElement | null
+                      const instructions = el?.value || ''
+                      if (instructions.trim()) {
+                        handleSortCsv(instructions)
+                      } else {
+                        // Sans instructions → importer tout directement
+                        handleImport()
+                      }
+                    }}
+                  >
+                    {csvSortLoading ? 'Tri en cours…' : 'Filtrer'}
+                  </button>
+                </div>
+
+                {/* Résultats du tri IA */}
+                {csvSortResults && (
+                  <div style={{ marginTop: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--slate)' }}>
+                        {csvSortResults.filter((l) => l.retained).length} retenu(s) sur {csvSortResults.length}
+                        <span style={{ fontWeight: 400, color: 'var(--slate-light)' }}> — sélection à importer</span>
+                      </span>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <span className="link" style={{ fontSize: 11 }} onClick={selectAllRetained}>Sélectionner tous les retenus</span>
+                        <span className="link" style={{ fontSize: 11 }} onClick={deselectAll}>Tout désélectionner</span>
+                      </div>
+                    </div>
+                    <div style={{ maxHeight: 320, overflowY: 'auto', borderRadius: 6, border: '1px solid var(--line-soft)' }}>
                       <table style={{ width: '100%', fontSize: 11, borderCollapse: 'collapse' }}>
                         <thead>
-                          <tr style={{ background: 'var(--bg-soft, rgba(0,0,0,0.02))' }}>
-                            <th style={{ padding: '6px 8px', textAlign: 'left', fontWeight: 600, color: 'var(--slate)' }}>Prénom</th>
-                            <th style={{ padding: '6px 8px', textAlign: 'left', fontWeight: 600, color: 'var(--slate)' }}>Nom</th>
+                          <tr style={{ background: 'var(--bg-soft, rgba(0,0,0,0.02))', position: 'sticky', top: 0, zIndex: 1 }}>
+                            <th style={{ padding: '6px 8px', width: 30, textAlign: 'center' }}>
+                              <input
+                                type="checkbox"
+                                checked={selectedForImport.size === csvSortResults.length && csvSortResults.length > 0}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedForImport(new Set(csvSortResults.map((l) => l.index)))
+                                  } else {
+                                    deselectAll()
+                                  }
+                                }}
+                              />
+                            </th>
+                            <th style={{ padding: '6px 8px', textAlign: 'left', fontWeight: 600, color: 'var(--slate)' }}>Prénom Nom</th>
                             <th style={{ padding: '6px 8px', textAlign: 'left', fontWeight: 600, color: 'var(--slate)' }}>Email</th>
-                            <th style={{ padding: '6px 8px', textAlign: 'left', fontWeight: 600, color: 'var(--slate)' }}>Tél</th>
-                            <th style={{ padding: '6px 8px', textAlign: 'left', fontWeight: 600, color: 'var(--slate)' }}>Ville</th>
                             <th style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 600, color: 'var(--slate)' }}>Montant</th>
+                            <th style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 600, color: 'var(--slate)' }}>Score</th>
+                            <th style={{ padding: '6px 8px', textAlign: 'left', fontWeight: 600, color: 'var(--slate)' }}>Raison</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {getMappedLeads().slice(0, 5).map((row, i) => (
-                            <tr key={i} style={{ borderTop: '1px solid var(--line-soft)' }}>
-                              <td style={{ padding: '6px 8px' }}>{row.firstName}</td>
-                              <td style={{ padding: '6px 8px' }}>{row.lastName}</td>
-                              <td style={{ padding: '6px 8px', color: row.email ? 'var(--slate)' : 'var(--slate-light)' }}>{row.email || '—'}</td>
-                              <td style={{ padding: '6px 8px', color: row.phone ? 'var(--slate)' : 'var(--slate-light)' }}>{row.phone || '—'}</td>
-                              <td style={{ padding: '6px 8px' }}>{row.city || '—'}</td>
-                              <td style={{ padding: '6px 8px', textAlign: 'right' }}>{row.amount ? `${Number(row.amount).toLocaleString('fr-FR')} €` : '—'}</td>
-                            </tr>
-                          ))}
+                          {csvSortResults.map((row) => {
+                            const isSelected = selectedForImport.has(row.index)
+                            const scoreColor = row.score >= 70 ? '#27ae60' : row.score >= 40 ? '#f39c12' : '#95a5a6'
+                            const scoreBg = row.score >= 70 ? 'rgba(46,204,113,0.12)' : row.score >= 40 ? 'rgba(241,196,15,0.12)' : 'rgba(149,165,166,0.12)'
+                            return (
+                              <tr key={row.index} style={{
+                                borderTop: '1px solid var(--line-soft)',
+                                opacity: row.retained ? 1 : 0.5,
+                                background: isSelected ? 'rgba(52,152,219,0.04)' : 'transparent',
+                              }}>
+                                <td style={{ padding: '6px 8px', textAlign: 'center' }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={() => toggleCsvSelect(row.index)}
+                                  />
+                                </td>
+                                <td style={{ padding: '6px 8px' }}>
+                                  <b>{row.firstName} {row.lastName}</b>
+                                  {row.city && <div style={{ fontSize: 10, color: 'var(--slate-light)' }}>{row.city}</div>}
+                                </td>
+                                <td style={{ padding: '6px 8px', color: row.email ? 'var(--slate)' : 'var(--slate-light)' }}>
+                                  {row.email || '—'}
+                                </td>
+                                <td style={{ padding: '6px 8px', textAlign: 'right' }}>
+                                  {row.amount > 0 ? `${row.amount.toLocaleString('fr-FR')} €` : '—'}
+                                </td>
+                                <td style={{ padding: '6px 8px', textAlign: 'center' }}>
+                                  <span style={{
+                                    display: 'inline-block', padding: '2px 8px', borderRadius: 10,
+                                    fontSize: 11, fontWeight: 700,
+                                    background: scoreBg, color: scoreColor,
+                                  }}>
+                                    {row.score}
+                                  </span>
+                                </td>
+                                <td style={{ padding: '6px 8px', color: 'var(--slate-light)', fontSize: 10 }}>
+                                  {row.scoreReason}
+                                </td>
+                              </tr>
+                            )
+                          })}
                         </tbody>
                       </table>
                     </div>
                   </div>
                 )}
+              </div>
 
-                {/* Résultat */}
-                {importResult && (
-                  <div style={{
-                    padding: '10px 14px', borderRadius: 8, fontSize: 13,
-                    background: importResult.imported > 0 ? 'rgba(46,204,113,0.08)' : 'rgba(241,196,15,0.08)',
-                    color: importResult.imported > 0 ? '#27ae60' : '#f39c12',
-                  }}>
-                    <b>{importResult.message}</b>
-                    {importResult.duplicates > 0 && (
-                      <div style={{ fontSize: 11, marginTop: 4, opacity: 0.8 }}>
-                        Les doublons (email déjà en base) ont été ignorés automatiquement.
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Bouton importer */}
+              {/* Étape 3 : Importer */}
+              {!csvSortResults && (
                 <button
                   className="btn btn-primary"
                   disabled={importing || getMappedLeads().length === 0}
                   onClick={handleImport}
                 >
-                  {importing ? 'Import en cours…' : `Importer ${getMappedLeads().length} prospect(s)`}
+                  {importing ? 'Import en cours…' : `Importer les ${getMappedLeads().length} prospect(s) sans filtrage`}
                 </button>
-              </div>
-            )}
-          </div>
-        </div>
+              )}
+              {csvSortResults && (
+                <button
+                  className="btn btn-primary"
+                  disabled={importing || selectedForImport.size === 0}
+                  onClick={handleImportSelected}
+                >
+                  {importing ? 'Import en cours…' : `Importer ${selectedForImport.size} prospect(s) sélectionné(s)`}
+                </button>
+              )}
 
-        <div className="panel" style={{ marginBottom: 0 }}>
-          <div className="panel-head">
-            <h3>Instructions de tri (IA)</h3>
-          </div>
-          <div className="panel-body" style={{ paddingTop: 16 }}>
-            <p className="field-hint">
-              Décrivez comment l&apos;IA doit trier et prioriser les prospects importés. Elle
-              applique ces règles sans jamais contacter le prospect sans validation.
-            </p>
-            <textarea
-              className="body-editor"
-              style={{ minHeight: 120 }}
-              value={triInstructions}
-              onChange={(e) => setTriInstructions(e.target.value)}
-            />
-            <button
-              className="btn btn-primary"
-              style={{ marginTop: 12 }}
-              disabled={triLoading}
-              onClick={async () => {
-                setTriLoading(true)
-                setTriResult(null)
-                try {
-                  const res = await fetch('/api/leads/sort', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ instructions: triInstructions }),
-                  })
-                  if (!res.ok) throw new Error(`HTTP ${res.status}`)
-                  const json = await res.json()
-                  setTriResult({ leads: json.data.leads })
-                } catch {
-                  setError('Erreur lors du tri IA')
-                } finally {
-                  setTriLoading(false)
-                }
-              }}
-            >
-              {triLoading ? 'Tri en cours…' : 'Trier avec l\'IA'}
-            </button>
-            {triResult && triResult.leads.length > 0 && (
-              <div style={{ marginTop: 16 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: 'var(--slate)' }}>
-                  {triResult.leads.length} prospects classés par priorité
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {triResult.leads.slice(0, 10).map((lead, i) => (
-                    <div
-                      key={lead.id}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 10,
-                        padding: '8px 12px', borderRadius: 8,
-                        background: 'var(--bg-soft, rgba(0,0,0,0.02))',
-                        border: '1px solid var(--line-soft)',
-                      }}
-                    >
-                      <span style={{
-                        width: 28, height: 28, borderRadius: '50%',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 12, fontWeight: 700, flexShrink: 0,
-                        background: lead.score >= 70 ? 'rgba(46,204,113,0.15)' : lead.score >= 40 ? 'rgba(241,196,15,0.15)' : 'rgba(149,165,166,0.15)',
-                        color: lead.score >= 70 ? '#27ae60' : lead.score >= 40 ? '#f39c12' : '#7f8c8d',
-                      }}>
-                        {i + 1}
-                      </span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <b style={{ fontSize: 13 }}>{lead.firstName} {lead.lastName}</b>
-                        <span style={{ fontSize: 12, color: 'var(--slate-light)', marginLeft: 8 }}>
-                          {lead.amount.toLocaleString('fr-FR')}€ {!lead.email && '· Sans email'}
-                        </span>
-                        {lead.scoreReason && (
-                          <div style={{ fontSize: 11, color: 'var(--slate-light)' }}>{lead.scoreReason}</div>
-                        )}
-                      </div>
-                      <span style={{
-                        fontSize: 13, fontWeight: 700,
-                        color: lead.score >= 70 ? '#27ae60' : lead.score >= 40 ? '#f39c12' : '#7f8c8d',
-                      }}>
-                        {lead.score}
-                      </span>
-                      <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                        <button
-                          className="btn btn-sm"
-                          style={{ fontSize: 11, padding: '3px 8px', background: 'rgba(34,197,94,0.1)', color: '#15803d', border: '1px solid rgba(34,197,94,0.2)' }}
-                          title="Convertir en client"
-                          onClick={() => patchStatus(lead.id, 'client').then((ok) => {
-                            if (ok) {
-                              setTriResult((prev) => prev ? { ...prev, leads: prev.leads.filter((l) => l.id !== lead.id) } : null)
-                            }
-                          })}
-                        >
-                          Client
-                        </button>
-                        <button
-                          className="btn btn-sm"
-                          style={{ fontSize: 11, padding: '3px 8px', background: 'rgba(43,139,222,0.1)', color: '#1E6FB8', border: '1px solid rgba(43,139,222,0.2)' }}
-                          title="Garder en prospect actif"
-                          onClick={() => patchStatus(lead.id, 'contacted').then((ok) => {
-                            if (ok) {
-                              setTriResult((prev) => prev ? { ...prev, leads: prev.leads.filter((l) => l.id !== lead.id) } : null)
-                            }
-                          })}
-                        >
-                          Prospect
-                        </button>
-                      </div>
+              {/* Résultat import */}
+              {importResult && (
+                <div style={{
+                  padding: '10px 14px', borderRadius: 8, fontSize: 13,
+                  background: importResult.imported > 0 ? 'rgba(46,204,113,0.08)' : 'rgba(241,196,15,0.08)',
+                  color: importResult.imported > 0 ? '#27ae60' : '#f39c12',
+                }}>
+                  <b>{importResult.message}</b>
+                  {importResult.duplicates > 0 && (
+                    <div style={{ fontSize: 11, marginTop: 4, opacity: 0.8 }}>
+                      Les doublons (email déjà en base) ont été ignorés automatiquement.
                     </div>
-                  ))}
+                  )}
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
