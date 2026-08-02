@@ -83,7 +83,7 @@ export default function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    // Intercepte TOUT sauf les assets statiques et les uploads publics.
-    '/((?!_next/static|_next/image|favicon.ico|uploads).*)',
+    // Intercepte TOUT sauf les assets statiques, les uploads publics et les routes cron.
+    '/((?!_next/static|_next/image|favicon.ico|uploads|api/cron).*)',
   ],
 }
