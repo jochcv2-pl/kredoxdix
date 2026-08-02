@@ -596,6 +596,7 @@ export default function Contacts() {
           annualRate: ptSimulation.annualRate,
           totalCost: ptSimulation.totalCost,
           notes: notes || undefined,
+          activateSequence: true,
         }),
       })
       if (!res.ok) {

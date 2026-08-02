@@ -17,6 +17,9 @@ import { prisma, LeadStatus, createNotification } from '@kredix/db';
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses';
 import { requireAuth } from '../_lib/auth-server';
 
+const DAY = 24 * 60 * 60 * 1000;
+const WELCOME_DELAY_MS = 5 * 60 * 1000; // 5 minutes
+
 const VALID_STATUSES: ReadonlySet<string> = new Set([
   'new',
   'contacted',
@@ -151,6 +154,8 @@ const createLeadAdminSchema = z.object({
   email: z.string().email().optional().or(z.literal('')),
   phone: z.string().min(1).max(40),
   city: z.string().min(1).max(120),
+  street: z.string().max(200).optional().or(z.literal('')),
+  zipCode: z.string().max(20).optional().or(z.literal('')),
   country: z.string().max(10).default('FR'),
   loanType: z.string().min(1).max(60),
   amount: z.number().int().min(1),
@@ -161,6 +166,7 @@ const createLeadAdminSchema = z.object({
   employmentStatus: z.string().max(120).default('Non précisé'),
   preferredLanguage: z.string().max(10).default('fr'),
   notes: z.string().optional(),
+  activateSequence: z.boolean().default(false),
 });
 
 export async function POST(req: NextRequest) {
@@ -171,6 +177,15 @@ export async function POST(req: NextRequest) {
   if (error) return error;
 
   try {
+    const now = new Date();
+    const seqDates = data.activateSequence ? {
+      recallDueAt: new Date(now.getTime() + 2 * DAY),
+      sequenceActive: true,
+      sequenceStartedAt: now,
+      nextRelanceAt: new Date(now.getTime() + WELCOME_DELAY_MS),
+      relanceCount: 0,
+    } : {};
+
     const lead = await prisma.lead.create({
       data: {
         firstName: data.firstName,
@@ -178,6 +193,8 @@ export async function POST(req: NextRequest) {
         email: data.email || null,
         phone: data.phone,
         city: data.city,
+        street: data.street || null,
+        zipCode: data.zipCode || null,
         country: data.country,
         loanType: data.loanType,
         amount: data.amount,
@@ -189,8 +206,8 @@ export async function POST(req: NextRequest) {
         preferredLanguage: data.preferredLanguage,
         notes: data.notes || null,
         status: LeadStatus.new,
-        // Pas de séquence de relance auto — l'admin décide
         assignedToId: admin!.id,
+        ...seqDates,
       },
     });
 
