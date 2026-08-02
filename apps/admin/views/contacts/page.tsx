@@ -63,6 +63,7 @@ interface Contact {
   totalCost: number | null
   status: ContactStatus
   validateur?: string
+  langue: string
 }
 
 interface ApiLead {
@@ -146,6 +147,7 @@ function mapLeadToContact(lead: ApiLead): Contact {
     annualRate: lead.annualRate ?? null,
     totalCost: lead.totalCost ?? null,
     status: lead.status,
+    langue: lead.preferredLanguage || 'de',
   }
 }
 
@@ -178,6 +180,7 @@ export default function Contacts() {
     firstName: '', lastName: '', email: '', phone: '',
     street: '', zipCode: '', city: '', country: 'FR',
     loanType: '', amount: '', durationYears: '',
+    preferredLanguage: 'de',
     notes: '',
   })
   const [editSaving, setEditSaving] = useState(false)
@@ -197,6 +200,7 @@ export default function Contacts() {
       loanType: c.loanType || '',
       amount: c.amount ? String(c.amount) : '',
       durationYears: '',
+      preferredLanguage: c.langue || 'de',
       notes: '',
     })
     setEditTarget(id)
@@ -216,8 +220,18 @@ export default function Contacts() {
   } | null>(null)
   const [ptLoanType, setPtLoanType] = useState('conso')
   const [ptDuration, setPtDuration] = useState(20)
+  const [ptLanguage, setPtLanguage] = useState('de')
   const [ptCreating, setPtCreating] = useState(false)
   const [ptCreated, setPtCreated] = useState(false)
+
+  const LANGUAGES = [
+    { value: 'de', label: 'Deutsch' },
+    { value: 'fr', label: 'Français' },
+    { value: 'en', label: 'English' },
+    { value: 'es', label: 'Español' },
+    { value: 'it', label: 'Italiano' },
+    { value: 'pt', label: 'Português' },
+  ]
 
   // Taux DB pour la simulation (fetch au chargement de la page)
   const [dbRates, setDbRates] = useState<ApplicableRate[]>([])
@@ -496,6 +510,7 @@ export default function Contacts() {
       if (editData.loanType) body.loanType = editData.loanType
       if (editData.amount) body.amount = Number(editData.amount) || 0
       if (editData.durationYears) body.durationYears = Number(editData.durationYears) || 20
+      body.preferredLanguage = editData.preferredLanguage || 'de'
       if (editData.notes) body.notes = editData.notes
 
       const res = await fetch(`/api/leads/${editTarget}`, {
@@ -596,6 +611,7 @@ export default function Contacts() {
           annualRate: ptSimulation.annualRate,
           totalCost: ptSimulation.totalCost,
           notes: notes || undefined,
+          preferredLanguage: ptLanguage,
           activateSequence: true,
         }),
       })
@@ -1310,6 +1326,21 @@ export default function Contacts() {
               onChange={(e) => setEditData(d => ({ ...d, durationYears: e.target.value }))}
             />
           </div>
+          <div className="modal-fg">
+            <label>Langue</label>
+            <select
+              value={editData.preferredLanguage}
+              onChange={(e) => setEditData(d => ({ ...d, preferredLanguage: e.target.value }))}
+              style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--line-soft)', background: 'var(--bg-card, #fff)', fontSize: 12, width: '100%' }}
+            >
+              <option value="de">Deutsch</option>
+              <option value="fr">Français</option>
+              <option value="en">English</option>
+              <option value="es">Español</option>
+              <option value="it">Italiano</option>
+              <option value="pt">Português</option>
+            </select>
+          </div>
           <div className="modal-fg full">
             <label>Notes</label>
             <textarea
@@ -1440,6 +1471,20 @@ export default function Contacts() {
                     Champs non détectés : {ptResult.missingFields.map(f => FIELD_LABELS[f] || f).join(', ')}
                   </div>
                 )}
+
+                {/* Langue + Simulation */}
+                <div style={{ marginTop: 16 }}>
+                  <div className="modal-fg" style={{ marginBottom: 10 }}>
+                    <label>Langue du prospect</label>
+                    <select
+                      value={ptLanguage}
+                      onChange={(e) => setPtLanguage(e.target.value)}
+                      style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--line-soft)', background: 'var(--bg-card, #fff)', fontSize: 12, width: 200 }}
+                    >
+                      {LANGUAGES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
+                    </select>
+                  </div>
+                </div>
 
                 {/* Simulation : type de prêt + durée + mensualité */}
                 <div style={{ marginTop: 20, padding: '14px', borderRadius: 8, background: 'var(--bg-soft, rgba(0,0,0,0.02))', border: '1px solid var(--line-soft)' }}>
