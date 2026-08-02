@@ -80,6 +80,7 @@ export async function generateMetadata({
   const faviconValid = favicon && (favicon.startsWith('/uploads/') || favicon.startsWith('http') || favicon.startsWith('data:'));
 
   return {
+    metadataBase: new URL(SITE_URL),
     title,
     description,
     ...(faviconValid ? { icons: { icon: favicon } } : {}),

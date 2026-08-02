@@ -1,14 +1,6 @@
-import type { Metadata } from "next";
 import "./globals.css";
 import { Montserrat } from "next/font/google";
 import { TrackingHead } from "@/components/Tracking";
-
-// Base URL utilisée par Next.js pour résoudre les URLs relatives dans les
-// métadonnées (canonical, OG images, sitemap, etc.). Sans cela, Next.js
-// utilise http://localhost:3000 par défaut → URLs cassées en production.
-export const metadata: Metadata = {
-  metadataBase: new URL("https://kredix.fr"),
-};
 
 // next/font/google — self-hosted, pas de render-blocking, display:swap automatique.
 // Remplace les 3 <link> Google Fonts (preconnect + stylesheet) qui bloquaient le render.
