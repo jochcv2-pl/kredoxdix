@@ -10,6 +10,36 @@
 // =============================================================================
 
 import PDFDocument from 'pdfkit';
+import { join } from 'path';
+
+// =============================================================================
+// Fonts PDFKit — fix Docker/standalone : les .afm ne sont pas trouvés par
+// pdfkit dans le build Next.js standalone. On les résout explicitement
+// depuis les données internes du package pdfkit.
+// =============================================================================
+function resolvePdfkitFont(name: string): string {
+  // 1. Essai : données internes pdfkit (node_modules/pdfkit/js/data/)
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const pdfkitDir = require.resolve('pdfkit');
+    const jsDataDir = join(pdfkitDir, '..', 'js', 'data');
+    // pdfkit stocke les fonts dans js/data/ (Helvetica.afm, Helvetica-Bold.afm, etc.)
+    const fs = require('fs');
+    if (fs.existsSync(join(jsDataDir, `${name}.afm`))) {
+      return join(jsDataDir, `${name}.afm`);
+    }
+  } catch { /* next */ }
+
+  // 2. Fallback : laisser pdfkit chercher (marche en local dev)
+  return name;
+}
+
+// Pré-résolution des fonts utilisées dans ce module
+const FONTS = {
+  helvetica: resolvePdfkitFont('Helvetica'),
+  helveticaBold: resolvePdfkitFont('Helvetica-Bold'),
+  helveticaOblique: resolvePdfkitFont('Helvetica-Oblique'),
+};
 
 export interface AmortizationParams {
   amount: number;          // montant du prêt en €
@@ -95,19 +125,19 @@ export function generateAmortizationPDF(params: AmortizationParams): Promise<Buf
     doc.on('end', () => resolve(Buffer.concat(buffers)));
 
     // ----- En-tête marque -----
-    doc.fontSize(20).font('Helvetica-Bold').fillColor('#0f2942');
+    doc.fontSize(20).font(FONTS.helveticaBold).fillColor('#0f2942');
     doc.text(siteName || 'Kredix', { align: 'left' });
-    doc.fontSize(10).font('Helvetica').fillColor('#64748b');
+    doc.fontSize(10).font(FONTS.helvetica).fillColor('#64748b');
     doc.text("Tableau d'amortissement détaillé", { align: 'left' });
     doc.moveDown(1);
 
     // ----- Bloc infos du prêt -----
-    doc.fillColor('#0f2942').fontSize(14).font('Helvetica-Bold');
+    doc.fillColor('#0f2942').fontSize(14).font(FONTS.helveticaBold);
     doc.text('Détails de votre prêt');
     doc.moveDown(0.5);
 
     const infoY = doc.y;
-    doc.fontSize(10).font('Helvetica').fillColor('#333333');
+    doc.fontSize(10).font(FONTS.helvetica).fillColor('#333333');
     doc.text(`Emprunteur : ${firstName || ''} ${lastName || ''}`.trim(), 50, infoY);
     doc.text(`Montant emprunté : ${amount.toLocaleString('fr-FR')} €`, 50, infoY + 16);
     doc.text(`Taux annuel : ${annualRate.toFixed(2)} %`, 50, infoY + 32);
@@ -119,7 +149,7 @@ export function generateAmortizationPDF(params: AmortizationParams): Promise<Buf
     doc.moveDown(3);
 
     // ----- Titre de l'échéancier -----
-    doc.fillColor('#0f2942').fontSize(14).font('Helvetica-Bold');
+    doc.fillColor('#0f2942').fontSize(14).font(FONTS.helveticaBold);
     doc.text('Échéancier mensuel');
     doc.moveDown(0.5);
 
@@ -130,7 +160,7 @@ export function generateAmortizationPDF(params: AmortizationParams): Promise<Buf
     const headers = ['Mois', 'Mensualité', 'Intérêts', 'Capital remboursé', 'Capital restant'];
 
     const drawHeader = (topY: number) => {
-      doc.fontSize(8).font('Helvetica-Bold');
+      doc.fontSize(8).font(FONTS.helveticaBold);
       doc.rect(50, topY, 495, 18).fill('#0f2942');
       headers.forEach((h, i) => {
         doc.fillColor('white').text(h, colX[i], topY + 5, { width: colWidths[i] });
@@ -142,7 +172,7 @@ export function generateAmortizationPDF(params: AmortizationParams): Promise<Buf
 
     // ----- Lignes du tableau -----
     let y = tableTop + 20;
-    doc.font('Helvetica').fontSize(7).fillColor('#333333');
+    doc.font(FONTS.helvetica).fontSize(7).fillColor('#333333');
 
     rows.forEach((row, idx) => {
       // Couleur alternée pour la lisibilité.
@@ -167,14 +197,14 @@ export function generateAmortizationPDF(params: AmortizationParams): Promise<Buf
       if (y > 780) {
         doc.addPage();
         drawHeader(50);
-        doc.font('Helvetica').fontSize(7).fillColor('#333333');
+        doc.font(FONTS.helvetica).fontSize(7).fillColor('#333333');
         y = 72;
       }
     });
 
     // ----- Pied de page (dernière page) -----
     doc.moveDown(2);
-    doc.fontSize(8).fillColor('#94a3b8').font('Helvetica-Oblique');
+    doc.fontSize(8).fillColor('#94a3b8').font(FONTS.helveticaOblique);
     doc.text(
       `Document généré par ${siteName || 'Kredix'} le ${new Date().toLocaleDateString('fr-FR')}. ` +
         "Ce tableau est fourni à titre indicatif. Les mensualités définitives seront communiquées lors de l'offre de prêt formelle.",
