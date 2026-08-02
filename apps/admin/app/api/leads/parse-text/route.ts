@@ -41,20 +41,22 @@ const REQUIRED_FOR_HIGH = ['firstName', 'lastName', 'email']
 // Regex extraction
 // ---------------------------------------------------------------------------
 
-/** Patterns de date multi-langues dans un header de notification. */
+/** Patterns de date multi-langues dans un header de notification.
+ *  Note : [\w\u00C0-\u024F] au lieu de \w seul car \w ne matche pas
+ *  les lettres accentuées (é, û, ü, ä, etc.) en JS regex. */
 const DATE_PATTERNS: RegExp[] = [
   // FR: "Envoyé le Samedi 1 août 2026 16:36"
-  /Envoy[ée]\s+le\s+(?:Lundi|Lundi|Mardi|Mercredi|Jeudi|Vendredi|Samedi|Dimanche)?\s*(\d{1,2})\s+(\w+)\s+(\d{4})\s+(\d{1,2}:\d{2})/i,
+  /Envoy[ée]\s+le\s+(?:Lundi|Lundi|Mardi|Mercredi|Jeudi|Vendredi|Samedi|Dimanche)?\s*(\d{1,2})\s+([\w\u00C0-\u024F]+)\s+(\d{4})\s+(\d{1,2}:\d{2})/i,
   // EN: "Submitted on Saturday, August 1, 2026 4:36 PM"
-  /Submitted\s+on\s+\w+,\s+(\w+)\s+(\d{1,2}),?\s+(\d{4})\s+(\d{1,2}:\d{2}(?:\s*[AP]M)?)/i,
+  /Submitted\s+on\s+[\w\u00C0-\u024F]+,\s+([\w\u00C0-\u024F]+)\s+(\d{1,2}),?\s+(\d{4})\s+(\d{1,2}:\d{2}(?:\s*[AP]M)?)/i,
   // DE: "Gesendet am Samstag, 1. August 2026, 16:36"
-  /Gesendet\s+am\s+\w+,\s+(\d{1,2})\.\s+(\w+)\s+(\d{4}),?\s+(\d{1,2}:\d{2})/i,
+  /Gesendet\s+am\s+[\w\u00C0-\u024F]+,\s+(\d{1,2})\.\s+([\w\u00C0-\u024F]+)\s+(\d{4}),?\s+(\d{1,2}:\d{2})/i,
   // ES: "Enviado el Sábado 1 agosto 2026 16:36"
-  /Enviado\s+el\s+\w+\s+(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})\s+(\d{1,2}:\d{2})/i,
+  /Enviado\s+el\s+[\w\u00C0-\u024F]+\s+(\d{1,2})\s+de\s+([\w\u00C0-\u024F]+)\s+de\s+(\d{4})\s+(\d{1,2}:\d{2})/i,
   // IT: "Inviato il Sabato 1 agosto 2026 16:36"
-  /Inviato\s+il\s+\w+\s+(\d{1,2})\s+(\w+)\s+(\d{4})\s+(\d{1,2}:\d{2})/i,
+  /Inviato\s+il\s+[\w\u00C0-\u024F]+\s+(\d{1,2})\s+([\w\u00C0-\u024F]+)\s+(\d{4})\s+(\d{1,2}:\d{2})/i,
   // PT: "Enviado Sábado 1 agosto 2026 16:36"
-  /Enviado\s+\w+\s+(\d{1,2})\s+(?:de\s+)?(\w+)\s+(?:de\s+)?(\d{4})\s+(\d{1,2}:\d{2})/i,
+  /Enviado\s+[\w\u00C0-\u024F]+\s+(\d{1,2})\s+(?:de\s+)?([\w\u00C0-\u024F]+)\s+(?:de\s+)?(\d{4})\s+(\d{1,2}:\d{2})/i,
   // Generic: "2026-08-01 16:36" or "01/08/2026 16:36" or "01.08.2026 16:36"
   /(\d{4}[-/]\d{2}[-/]\d{2})\s+(\d{1,2}:\d{2})/,
   /(\d{1,2}[-/]\d{2}[-/]\d{4})\s+(\d{1,2}:\d{2})/,
