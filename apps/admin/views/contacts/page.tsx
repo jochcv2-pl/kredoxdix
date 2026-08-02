@@ -162,6 +162,21 @@ export default function Contacts() {
   const [validateTarget, setValidateTarget] = useState<{ id: string; name: string } | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
 
+  // ----- Parse-text : créer prospect depuis texte collé -----
+  const [ptModalOpen, setPtModalOpen] = useState(false)
+  const [ptRawText, setPtRawText] = useState('')
+  const [ptParsing, setPtParsing] = useState(false)
+  const [ptResult, setPtResult] = useState<{
+    lead: {
+      firstName: string; lastName: string; email: string; phone: string
+      amount: number | null; submittedAt: string | null
+      confidence: 'high' | 'medium' | 'low'; method: 'regex' | 'ai'
+    }
+    detectedFields: string[]; missingFields: string[]
+  } | null>(null)
+  const [ptCreating, setPtCreating] = useState(false)
+  const [ptCreated, setPtCreated] = useState(false)
+
   // ----- Chargement initial -----
   const fetchContacts = useCallback(async () => {
     setLoading(true)
@@ -393,6 +408,70 @@ export default function Contacts() {
     setSelectedForImport(new Set())
   }
 
+  // ----- Parse-text handlers -----
+  function resetPtModal() {
+    setPtRawText('')
+    setPtParsing(false)
+    setPtResult(null)
+    setPtCreating(false)
+    setPtCreated(false)
+  }
+
+  async function handleParseText() {
+    if (!ptRawText.trim()) return
+    setPtParsing(true)
+    setPtResult(null)
+    try {
+      const res = await fetch('/api/leads/parse-text', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: ptRawText.trim() }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => null)
+        throw new Error(err?.error || `HTTP ${res.status}`)
+      }
+      const json = await res.json()
+      setPtResult(json.data)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erreur d\'extraction')
+    } finally {
+      setPtParsing(false)
+    }
+  }
+
+  async function handleCreateFromParsed() {
+    if (!ptResult) return
+    setPtCreating(true)
+    try {
+      const lead = ptResult.lead
+      const res = await fetch('/api/leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: lead.firstName,
+          lastName: lead.lastName,
+          email: lead.email || '',
+          phone: lead.phone || '0000000000',
+          city: '',
+          loanType: 'autre',
+          amount: lead.amount || 1000,
+          durationYears: 20,
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => null)
+        throw new Error(err?.error || `HTTP ${res.status}`)
+      }
+      setPtCreated(true)
+      fetchContacts()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erreur de création')
+    } finally {
+      setPtCreating(false)
+    }
+  }
+
   async function handleImportSelected() {
     if (!csvSortResults || selectedForImport.size === 0) return
     const toImport = csvSortResults.filter((l) => selectedForImport.has(l.index)).map((l) => ({
@@ -502,7 +581,13 @@ export default function Contacts() {
       <div className="panel" style={{ marginBottom: 20 }}>
         <div className="panel-head">
           <h3>Importer des prospects</h3>
-          {fileName && <span className="link" onClick={resetImport}>Réinitialiser</span>}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <button className="btn btn-ghost btn-sm" onClick={() => { resetPtModal(); setPtModalOpen(true) }}>
+              <Icon name="file-text" size={14} style={{ marginRight: 4 }} />
+              Créer depuis texte
+            </button>
+            {fileName && <span className="link" onClick={resetImport}>Réinitialiser</span>}
+          </div>
         </div>
         <div className="panel-body" style={{ paddingTop: 16 }}>
           {!fileName ? (
@@ -767,7 +852,8 @@ export default function Contacts() {
                           <div className="ini">{c.initials}</div>
                           <div>
                             <b>{c.firstName} {c.lastName}</b>
-                            <small>{c.email || c.phone}</small>
+                            <small>{c.email}</small>
+                            {c.phone && <small style={{ color: 'var(--slate-light)' }}>{c.phone}</small>}
                           </div>
                         </div>
                       </td>
@@ -955,6 +1041,155 @@ export default function Contacts() {
         }}
         onClose={() => setDeleteTarget(null)}
       />
+
+      {/* ===== MODAL : Créer prospect depuis texte collé ===== */}
+      <Modal
+        isOpen={ptModalOpen}
+        onClose={() => setPtModalOpen(false)}
+        title="Créer un prospect depuis texte"
+        wide
+      >
+        {ptCreated ? (
+          <div style={{ padding: '20px 0', textAlign: 'center' }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>&#10003;</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--slate)' }}>
+              Prospect créé avec succès
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--slate-light)', marginTop: 8 }}>
+              <b>{ptResult?.lead.firstName} {ptResult?.lead.lastName}</b> a été ajouté aux contacts.
+            </div>
+            <button
+              className="btn btn-primary"
+              style={{ marginTop: 20 }}
+              onClick={() => { setPtModalOpen(false); resetPtModal() }}
+            >
+              Fermer
+            </button>
+          </div>
+        ) : (
+          <>
+            <p className="field-hint" style={{ marginBottom: 12 }}>
+              Collez une notification de formulaire (email, WhatsApp, etc.) et l&apos;extraction se fera automatiquement par regex, avec fallback IA si nécessaire.
+            </p>
+
+            {/* Step 1: Textarea */}
+            <div className="modal-fg">
+              <label>Texte à analyser</label>
+              <textarea
+                className="body-editor"
+                style={{ minHeight: 140, width: '100%' }}
+                placeholder={'Envoyé le Samedi 1 août 2026 16:36.\nWie viel brauchen Sie?\n1000\nEmail\npaul@example.com\nFull name\nPaul Stolle\nPhone number\n+49 123 456 789'}
+                value={ptRawText}
+                onChange={(e) => { setPtRawText(e.target.value); setPtResult(null) }}
+                disabled={ptParsing}
+              />
+            </div>
+
+            <div className="modal-actions" style={{ justifyContent: 'flex-start', gap: 8 }}>
+              <button
+                className="btn btn-primary"
+                disabled={ptParsing || ptRawText.trim().length < 10}
+                onClick={handleParseText}
+              >
+                {ptParsing ? 'Extraction en cours…' : 'Analyser'}
+              </button>
+              <button className="btn btn-ghost" onClick={() => setPtModalOpen(false)}>
+                Annuler
+              </button>
+            </div>
+
+            {/* Step 2: Preview des champs extraits */}
+            {ptResult && (
+              <div style={{ marginTop: 16 }}>
+                <div style={{
+                  padding: '10px 14px', borderRadius: 8, fontSize: 12,
+                  background: ptResult.lead.confidence === 'high'
+                    ? 'rgba(46,204,113,0.08)'
+                    : ptResult.lead.confidence === 'medium'
+                      ? 'rgba(241,196,15,0.08)'
+                      : 'rgba(241,196,15,0.08)',
+                  color: ptResult.lead.confidence === 'high' ? '#27ae60' : '#f39c12',
+                  marginBottom: 12,
+                }}>
+                  <b>
+                    {ptResult.lead.confidence === 'high' ? '✓ Extraction fiable'
+                      : ptResult.lead.confidence === 'medium' ? '⚠ Extraction partielle'
+                        : '⚠ Extraction limitée'}
+                  </b>
+                  <span style={{ opacity: 0.7, marginLeft: 8 }}>
+                    — via {ptResult.lead.method === 'regex' ? 'regex' : 'IA'}
+                    {ptResult.detectedFields.length > 0 && (
+                      <span> — {ptResult.detectedFields.length} champ(s) détecté(s)</span>
+                    )}
+                  </span>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <PtField label="Prénom" value={ptResult.lead.firstName} detected={ptResult.detectedFields.includes('firstName')} />
+                  <PtField label="Nom" value={ptResult.lead.lastName} detected={ptResult.detectedFields.includes('lastName')} />
+                  <PtField label="Email" value={ptResult.lead.email} detected={ptResult.detectedFields.includes('email')} />
+                  <PtField label="Téléphone" value={ptResult.lead.phone} detected={ptResult.detectedFields.includes('phone')} />
+                  <PtField label="Montant" value={ptResult.lead.amount ? `${ptResult.lead.amount.toLocaleString('fr-FR')} €` : '—'} detected={ptResult.detectedFields.includes('amount')} />
+                  <PtField label="Date soumission" value={ptResult.lead.submittedAt
+                    ? new Date(ptResult.lead.submittedAt).toLocaleString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                    : '—'
+                  } detected={ptResult.detectedFields.includes('submittedAt')} />
+                </div>
+
+                {ptResult.missingFields.length > 0 && (
+                  <div style={{ marginTop: 10, fontSize: 11, color: 'var(--slate-light)' }}>
+                    Champs non détectés : {ptResult.missingFields.map(f => FIELD_LABELS[f] || f).join(', ')}
+                  </div>
+                )}
+
+                <div className="modal-actions" style={{ marginTop: 16, justifyContent: 'flex-start', gap: 8 }}>
+                  <button
+                    className="btn btn-primary"
+                    disabled={ptCreating || !ptResult.lead.firstName || !ptResult.lead.lastName}
+                    onClick={handleCreateFromParsed}
+                  >
+                    {ptCreating ? 'Création en cours…' : 'Créer le prospect'}
+                  </button>
+                  <button
+                    className="btn btn-ghost"
+                    onClick={() => { setPtResult(null); setPtRawText('') }}
+                  >
+                    Réessayer
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </Modal>
     </section>
+  )
+}
+
+// =============================================================================
+// Sub-component : champ extrait dans le modal parse-text
+// =============================================================================
+const FIELD_LABELS: Record<string, string> = {
+  firstName: 'Prénom',
+  lastName: 'Nom',
+  email: 'Email',
+  phone: 'Téléphone',
+  amount: 'Montant',
+  submittedAt: 'Date soumission',
+}
+
+function PtField({ label, value, detected }: { label: string; value: string; detected: boolean }) {
+  return (
+    <div style={{
+      padding: '8px 12px', borderRadius: 6, fontSize: 12,
+      background: detected ? 'var(--bg-card, #fff)' : 'var(--bg-soft, rgba(0,0,0,0.02))',
+      border: `1px solid ${detected ? 'var(--line-soft)' : 'var(--line-soft, transparent)'}`,
+      opacity: detected ? 1 : 0.5,
+    }}>
+      <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--slate-light)', marginBottom: 2 }}>{label}</div>
+      <div style={{ color: detected ? 'var(--slate)' : 'var(--slate-light)', fontWeight: detected ? 500 : 400 }}>
+        {value || <span style={{ fontStyle: 'italic' }}>non détecté</span>}
+      </div>
+    </div>
   )
 }
