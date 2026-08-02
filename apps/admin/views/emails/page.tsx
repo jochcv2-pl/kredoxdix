@@ -232,6 +232,40 @@ export default function Emails() {
   const [testSending, setTestSending] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
+  // Pipeline test (Bienvenue, Offre, R1, R2, R3)
+  const [ptStep, setPtStep] = useState<string | null>(null);
+  const [ptEmail, setPtEmail] = useState('');
+  const [ptSending, setPtSending] = useState(false);
+  const [ptResult, setPtResult] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  const PIPELINE_STEPS = [
+    { key: 'welcome', label: 'Bienvenue', icon: 'mail', desc: 'T+5min — Accusé de réception Agent Accueil', hasPdf: false },
+    { key: 'offer', label: 'Offre', icon: 'file-text', desc: 'T+20min — Offre formalisée + PDF amortissement', hasPdf: true },
+    { key: 'relance_1', label: 'Relance J+3', icon: 'clipboard', desc: 'J+3 — Relance 1 + PDF amortissement', hasPdf: true },
+    { key: 'relance_2', label: 'Relance J+6', icon: 'star', desc: 'J+6 — Relance 2 + PDF amortissement', hasPdf: true },
+    { key: 'relance_3', label: 'Relance J+9', icon: 'star-off', desc: 'J+9 — Relance 3 (sans PDF)', hasPdf: false },
+  ];
+
+  async function handlePipelineTest() {
+    if (!ptStep || !ptEmail.trim()) return;
+    setPtSending(true);
+    setPtResult(null);
+    try {
+      const res = await fetch('/api/pipeline-test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ step: ptStep, email: ptEmail.trim() }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
+      setPtResult({ ok: true, msg: `${json.data.label} envoyé à ${json.data.email}${json.data.hasPdf ? ' (PDF joint)' : ''}` });
+    } catch (e) {
+      setPtResult({ ok: false, msg: e instanceof Error ? e.message : 'Erreur' });
+    } finally {
+      setPtSending(false);
+    }
+  }
+
   // ID du template en cours d'édition (null = création nouvelle).
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -738,6 +772,52 @@ export default function Emails() {
         </div>
         <div className={`submenu${activeSub === 'liste' ? ' active' : ''}`} onClick={() => setActiveSub('liste')}>
           Modèles disponibles {templates.length > 0 && `(${templates.length})`}
+        </div>
+      </div>
+
+      {/* ===== PIPELINE TEST — Tester chaque étape ===== */}
+      <div className="panel" style={{ marginBottom: 20 }}>
+        <div className="panel-head">
+          <h3>Pipeline — Test séquence</h3>
+          <span style={{ fontSize: 11, color: 'var(--slate-light)' }}>Données démo : Jean Dupont, 250 000 € immo, 20 ans</span>
+        </div>
+        <div className="panel-body">
+          <div className="modal-fg" style={{ marginBottom: 12 }}>
+            <label>Adresse de test</label>
+            <input
+              type="email"
+              placeholder="votre@email.com"
+              value={ptEmail}
+              onChange={(e) => setPtEmail(e.target.value)}
+              style={{ maxWidth: 300 }}
+            />
+          </div>
+          {ptResult && (
+            <div style={{
+              padding: '8px 12px', borderRadius: 6, fontSize: 12, marginBottom: 12,
+              background: ptResult.ok ? 'rgba(46,204,113,0.08)' : 'rgba(192,57,43,0.08)',
+              color: ptResult.ok ? '#27ae60' : '#c0392b',
+            }}>
+              {ptResult.msg}
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {PIPELINE_STEPS.map((s) => (
+              <button
+                key={s.key}
+                className="btn btn-ghost btn-sm"
+                disabled={ptSending || !ptEmail.trim()}
+                onClick={() => { setPtStep(s.key); setPtResult(null); handlePipelineTest() }}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 120, justifyContent: 'center' }}
+                title={s.desc}
+              >
+                <Icon name={s.icon} size={14} />
+                {s.label}
+                {s.hasPdf && <span style={{ fontSize: 10, color: 'var(--slate-light)' }}>PDF</span>}
+                {ptStep === s.key && ptSending && <span style={{ fontSize: 10 }}>...</span>}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
