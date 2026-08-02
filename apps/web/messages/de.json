@@ -69,6 +69,8 @@
     "lastName": "Nachname",
     "phone": "Telefon",
     "city": "Stadt",
+    "street": "Straße und Hausnummer",
+    "zipCode": "Postleitzahl",
     "country": "Land",
     "countryPlaceholder": "Auswählen…",
     "loanType": "Kreditart",

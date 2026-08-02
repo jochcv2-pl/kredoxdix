@@ -31,16 +31,12 @@ const LOAN_TYPE_LABELS: Record<string, string> = {
 }
 
 const SOURCE_LABELS: Record<string, string> = {
-  fr: 'FR',
-  be: 'BE',
-  ch: 'CH',
-  lu: 'LU',
-  de: 'DE',
-  es: 'ES',
-  it: 'IT',
-  pt: 'PT',
-  nl: 'NL',
+  fr: 'FR', be: 'BE', ch: 'CH', lu: 'LU', de: 'DE',
+  es: 'ES', it: 'IT', pt: 'PT', nl: 'NL',
 }
+const SOURCE_LABELS_REVERSE: Record<string, string> = Object.fromEntries(
+  Object.entries(SOURCE_LABELS).map(([k, v]) => [v, k])
+)
 
 interface Contact {
   id: string
@@ -50,6 +46,8 @@ interface Contact {
   email: string | null
   phone: string
   ville: string
+  rue: string
+  codePostal: string
   pays: string
   source: string
   recu: string          // date formatée pour affichage
@@ -58,6 +56,9 @@ interface Contact {
   relanceCount: number  // nombre de relances envoyées
   loanType: string
   amount: number | null
+  monthlyPayment: number | null
+  annualRate: number | null
+  totalCost: number | null
   status: ContactStatus
   validateur?: string
 }
@@ -69,6 +70,8 @@ interface ApiLead {
   email: string | null
   phone: string
   city: string
+  street: string | null
+  zipCode: string | null
   country: string
   loanType: string
   amount: number
@@ -127,6 +130,8 @@ function mapLeadToContact(lead: ApiLead): Contact {
     email: lead.email,
     phone: lead.phone,
     ville: lead.city || '—',
+    rue: lead.street || '',
+    codePostal: lead.zipCode || '',
     pays: SOURCE_LABELS[lead.country] ?? lead.country ?? '—',
     source: 'Formulaire site',
     recu: formatDateRecu(lead.createdAt),
@@ -135,6 +140,9 @@ function mapLeadToContact(lead: ApiLead): Contact {
     relanceCount: lead.relanceCount ?? 0,
     loanType: LOAN_TYPE_LABELS[lead.loanType] ?? lead.loanType,
     amount: lead.amount,
+    monthlyPayment: lead.monthlyPayment ?? null,
+    annualRate: lead.annualRate ?? null,
+    totalCost: lead.totalCost ?? null,
     status: lead.status,
   }
 }
@@ -161,6 +169,36 @@ export default function Contacts() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [validateTarget, setValidateTarget] = useState<{ id: string; name: string } | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
+
+  // ----- Edition prospect -----
+  const [editTarget, setEditTarget] = useState<string | null>(null)
+  const [editData, setEditData] = useState({
+    firstName: '', lastName: '', email: '', phone: '',
+    street: '', zipCode: '', city: '', country: 'FR',
+    loanType: '', amount: '', durationYears: '',
+    notes: '',
+  })
+  const [editSaving, setEditSaving] = useState(false)
+
+  function openEditModal(id: string) {
+    const c = contacts.find(x => x.id === id)
+    if (!c) return
+    setEditData({
+      firstName: c.firstName,
+      lastName: c.lastName,
+      email: c.email || '',
+      phone: c.phone,
+      street: c.rue || '',
+      zipCode: c.codePostal || '',
+      city: c.ville !== '—' ? c.ville : '',
+      country: SOURCE_LABELS_REVERSE[c.pays] ?? 'FR',
+      loanType: c.loanType || '',
+      amount: c.amount ? String(c.amount) : '',
+      durationYears: '',
+      notes: '',
+    })
+    setEditTarget(id)
+  }
 
   // ----- Parse-text : créer prospect depuis texte collé -----
   const [ptModalOpen, setPtModalOpen] = useState(false)
@@ -432,6 +470,59 @@ export default function Contacts() {
 
   function deselectAll() {
     setSelectedForImport(new Set())
+  }
+
+  // ----- Edition prospect -----
+  async function handleSaveEdit() {
+    if (!editTarget) return
+    setEditSaving(true)
+    try {
+      const body: Record<string, unknown> = {}
+      if (editData.firstName) body.firstName = editData.firstName
+      if (editData.lastName) body.lastName = editData.lastName
+      body.email = editData.email || ''
+      body.phone = editData.phone || '0000000000'
+      body.street = editData.street || null
+      body.zipCode = editData.zipCode || null
+      body.city = editData.city || 'Inconnu'
+      body.country = editData.country || 'FR'
+      if (editData.loanType) body.loanType = editData.loanType
+      if (editData.amount) body.amount = Number(editData.amount) || 0
+      if (editData.durationYears) body.durationYears = Number(editData.durationYears) || 20
+      if (editData.notes) body.notes = editData.notes
+
+      const res = await fetch(`/api/leads/${editTarget}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => null)
+        throw new Error(err?.error || `HTTP ${res.status}`)
+      }
+      // Mise à jour optimiste locale
+      setContacts((prev) => prev.map((c) => {
+        if (c.id !== editTarget) return c
+        return {
+          ...c,
+          firstName: editData.firstName || c.firstName,
+          lastName: editData.lastName || c.lastName,
+          email: editData.email || c.email,
+          phone: editData.phone || c.phone,
+          rue: editData.street || '',
+          codePostal: editData.zipCode || '',
+          ville: editData.city || c.ville,
+          pays: SOURCE_LABELS[editData.country] ?? c.pays,
+          loanType: LOAN_TYPE_LABELS[editData.loanType] ?? c.loanType,
+          amount: body.amount as number || null,
+        }
+      }))
+      setEditTarget(null)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erreur de sauvegarde')
+    } finally {
+      setEditSaving(false)
+    }
   }
 
   // ----- Parse-text handlers -----
@@ -872,7 +963,7 @@ export default function Contacts() {
                 <tr>
                   <th>Contact</th>
                   <th>Montant</th>
-                  <th>Ville</th>
+                  <th>Adresse</th>
                   <th>Pays</th>
                   <th>Source</th>
                   <th>Reçu le</th>
@@ -901,11 +992,13 @@ export default function Contacts() {
                       </td>
                       <td>
                         {c.amount && c.amount > 0
-                          ? <span style={{ fontWeight: 500, fontSize: 12 }}>{c.amount.toLocaleString('fr-FR')} €</span>
+                          ? <span style={{ fontWeight: 500, fontSize: 12 }}>{c.amount.toLocaleString('fr-FR')} €{c.monthlyPayment ? <span style={{ fontSize: 11, color: 'var(--slate-light)', fontWeight: 400, marginLeft: 4 }}>({c.monthlyPayment.toLocaleString('fr-FR')} €/mois)</span> : ''}</span>
                           : <span style={{ color: 'var(--slate-light)', fontSize: 12 }}>—</span>
                         }
                       </td>
-                      <td>{c.ville}</td>
+                      <td>
+                        <span style={{ fontSize: 12 }}>{c.rue ? `${c.rue}, ` : ''}{c.codePostal ? `${c.codePostal} ` : ''}{c.ville}{c.rue || c.codePostal ? '' : '—'}</span>
+                      </td>
                       <td>{c.pays}</td>
                       <td>{c.source}</td>
                       <td>{c.recu}</td>
@@ -971,7 +1064,15 @@ export default function Contacts() {
                             <span style={{ fontSize: 11, color: 'var(--slate-light)' }}>
                               Dossier perdu
                             </span>
-                          )}
+                           )}
+                          <button
+                            className="btn btn-ghost btn-sm"
+                            title="Modifier"
+                            onClick={() => openEditModal(c.id)}
+                            style={{ padding: '4px 8px' }}
+                          >
+                            <Icon name="pencil" size={14} />
+                          </button>
                           <button
                             className="btn btn-ghost btn-sm"
                             title="Supprimer"
@@ -1089,6 +1190,138 @@ export default function Contacts() {
         }}
         onClose={() => setDeleteTarget(null)}
       />
+
+      {/* ===== MODAL : Modifier un prospect ===== */}
+      <Modal
+        isOpen={!!editTarget}
+        onClose={() => setEditTarget(null)}
+        title="Modifier le prospect"
+        wide
+      >
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div className="modal-fg">
+            <label>Prénom *</label>
+            <input
+              type="text"
+              value={editData.firstName}
+              onChange={(e) => setEditData(d => ({ ...d, firstName: e.target.value }))}
+            />
+          </div>
+          <div className="modal-fg">
+            <label>Nom *</label>
+            <input
+              type="text"
+              value={editData.lastName}
+              onChange={(e) => setEditData(d => ({ ...d, lastName: e.target.value }))}
+            />
+          </div>
+          <div className="modal-fg">
+            <label>Adresse (rue)</label>
+            <input
+              type="text"
+              placeholder="123 Rue de la Paix"
+              value={editData.street}
+              onChange={(e) => setEditData(d => ({ ...d, street: e.target.value }))}
+            />
+          </div>
+          <div className="modal-fg">
+            <label>Code postal</label>
+            <input
+              type="text"
+              placeholder="75001"
+              value={editData.zipCode}
+              onChange={(e) => setEditData(d => ({ ...d, zipCode: e.target.value }))}
+            />
+          </div>
+          <div className="modal-fg">
+            <label>Ville *</label>
+            <input
+              type="text"
+              value={editData.city}
+              onChange={(e) => setEditData(d => ({ ...d, city: e.target.value }))}
+            />
+          </div>
+          <div className="modal-fg">
+            <label>Pays</label>
+            <select
+              value={editData.country}
+              onChange={(e) => setEditData(d => ({ ...d, country: e.target.value }))}
+              style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--line-soft)', background: 'var(--bg-card, #fff)', fontSize: 12, width: '100%' }}
+            >
+              {Object.entries(SOURCE_LABELS).map(([k, v]) => (
+                <option key={k} value={k}>{v}</option>
+              ))}
+            </select>
+          </div>
+          <div className="modal-fg">
+            <label>Email</label>
+            <input
+              type="email"
+              value={editData.email}
+              onChange={(e) => setEditData(d => ({ ...d, email: e.target.value }))}
+              placeholder="email@exemple.com"
+            />
+          </div>
+          <div className="modal-fg">
+            <label>Téléphone *</label>
+            <input
+              type="tel"
+              value={editData.phone}
+              onChange={(e) => setEditData(d => ({ ...d, phone: e.target.value }))}
+            />
+          </div>
+          <div className="modal-fg">
+            <label>Type de prêt</label>
+            <select
+              value={editData.loanType}
+              onChange={(e) => setEditData(d => ({ ...d, loanType: e.target.value }))}
+              style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--line-soft)', background: 'var(--bg-card, #fff)', fontSize: 12, width: '100%' }}
+            >
+              <option value="">— Aucun —</option>
+              {Object.entries(LOAN_TYPE_LABELS).map(([k, v]) => (
+                <option key={k} value={k}>{v}</option>
+              ))}
+            </select>
+          </div>
+          <div className="modal-fg">
+            <label>Montant (€)</label>
+            <input
+              type="number"
+              min={0}
+              value={editData.amount}
+              onChange={(e) => setEditData(d => ({ ...d, amount: e.target.value }))}
+            />
+          </div>
+          <div className="modal-fg">
+            <label>Durée (années)</label>
+            <input
+              type="number"
+              min={1}
+              max={30}
+              value={editData.durationYears}
+              onChange={(e) => setEditData(d => ({ ...d, durationYears: e.target.value }))}
+            />
+          </div>
+          <div className="modal-fg full">
+            <label>Notes</label>
+            <textarea
+              className="body-editor"
+              style={{ minHeight: 80 }}
+              placeholder="Notes internes..."
+              value={editData.notes}
+              onChange={(e) => setEditData(d => ({ ...d, notes: e.target.value }))}
+            />
+          </div>
+        </div>
+        <div className="modal-actions" style={{ marginTop: 16, justifyContent: 'flex-start', gap: 8 }}>
+          <button className="btn btn-primary" disabled={editSaving} onClick={handleSaveEdit}>
+            {editSaving ? 'Sauvegarde…' : 'Enregistrer'}
+          </button>
+          <button className="btn btn-ghost" onClick={() => setEditTarget(null)}>
+            Annuler
+          </button>
+        </div>
+      </Modal>
 
       {/* ===== MODAL : Créer prospect depuis texte collé ===== */}
       <Modal

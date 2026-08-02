@@ -62,6 +62,8 @@ export async function POST(request: NextRequest) {
         phone: parsed.data.phone,
         email: parsed.data.email || null,
         city: parsed.data.city,
+        street: parsed.data.street || null,
+        zipCode: parsed.data.zipCode || null,
         country: parsed.data.country,
         loanType: parsed.data.loanType,
         amount: parsed.data.amount,

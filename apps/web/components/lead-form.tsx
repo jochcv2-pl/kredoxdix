@@ -88,6 +88,8 @@ export default function LeadForm({ prefill, whatsappNumber }: { prefill?: LeadFo
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [city, setCity] = useState("");
+  const [street, setStreet] = useState("");
+  const [zipCode, setZipCode] = useState("");
   const [country, setCountry] = useState("");
   const [employment, setEmployment] = useState("");
   const [amount, setAmount] = useState<string>("");
@@ -162,6 +164,8 @@ export default function LeadForm({ prefill, whatsappNumber }: { prefill?: LeadFo
           phone,
           email: email || undefined,
           city,
+          street: street || undefined,
+          zipCode: zipCode || undefined,
           country: country || "FR",
           loanType,
           amount: Number(amount) || 0,
@@ -249,6 +253,24 @@ export default function LeadForm({ prefill, whatsappNumber }: { prefill?: LeadFo
             onChange={(e) => setEmail(e.target.value)}
           />
           <span className="fhint">{t("emailHint")}</span>
+        </div>
+        <div className="fg">
+          <label className="field-label">{t("street")}</label>
+          <input
+            type="text"
+            placeholder="123 Rue de la Paix"
+            value={street}
+            onChange={(e) => setStreet(e.target.value)}
+          />
+        </div>
+        <div className="fg">
+          <label className="field-label">{t("zipCode")}</label>
+          <input
+            type="text"
+            placeholder="75001"
+            value={zipCode}
+            onChange={(e) => setZipCode(e.target.value)}
+          />
         </div>
         <div className="fg">
           <label className="field-label">{t("city")}</label>

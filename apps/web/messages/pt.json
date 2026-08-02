@@ -69,6 +69,8 @@
     "lastName": "Apelido",
     "phone": "Telefone",
     "city": "Cidade",
+    "street": "Morada",
+    "zipCode": "Código postal",
     "country": "País",
     "countryPlaceholder": "Selecionar…",
     "loanType": "Tipo de empréstimo",

@@ -21,8 +21,23 @@ import { requireAuth } from '../../_lib/auth-server';
 import { isValidId } from '@/app/api/_lib/id-validation';
 
 const patchLeadSchema = z.object({
-  status: z.nativeEnum(LeadStatus),
+  status: z.nativeEnum(LeadStatus).optional(),
   notes: z.string().optional(),
+  // Champs d'édition prospect (admin CRM)
+  firstName: z.string().min(1).max(80).optional(),
+  lastName: z.string().min(1).max(80).optional(),
+  email: z.string().email().optional().or(z.literal('')),
+  phone: z.string().min(1).max(40).optional(),
+  street: z.string().max(200).optional().or(z.literal('')),
+  zipCode: z.string().max(20).optional().or(z.literal('')),
+  city: z.string().min(1).max(120).optional(),
+  country: z.string().max(10).optional(),
+  loanType: z.string().min(1).max(60).optional(),
+  amount: z.number().int().min(0).optional(),
+  durationYears: z.number().int().min(1).max(30).optional(),
+  monthlyPayment: z.number().int().min(0).optional(),
+  annualRate: z.number().min(0).max(100).optional(),
+  totalCost: z.number().int().min(0).optional(),
 });
 
 // GET /api/leads/[id] — détail complet.
@@ -75,29 +90,41 @@ export async function PATCH(
 
     const now = new Date();
     const newStatus = data.status;
+    const hasStatusChange = newStatus !== undefined && newStatus !== existing.status;
     const isTerminal = newStatus === LeadStatus.client || newStatus === LeadStatus.lost;
 
     // Ferme proprement la séquence de relance si on bascule vers un statut terminal.
     // Uniquement si la séquence était active ou pas encore terminée.
-    const updateData: Record<string, unknown> = { status: newStatus };
+    const allowedEditFields = ['firstName', 'lastName', 'email', 'phone', 'street', 'zipCode', 'city', 'country', 'loanType', 'amount', 'durationYears', 'monthlyPayment', 'annualRate', 'totalCost'] as const;
+
+    // Construire updateData : champs d'édition + statut (si fourni) + notes
+    const updateData: Record<string, unknown> = {};
+    if (newStatus !== undefined) {
+      updateData.status = newStatus;
+    }
     if (data.notes !== undefined) {
       updateData.notes = data.notes;
     }
 
-    if (isTerminal) {
+    // Ajouter les champs d'édition (seulement ceux qui sont explicitement fournis)
+    for (const field of allowedEditFields) {
+      if (data[field] !== undefined) {
+        (updateData as Record<string, unknown>)[field] = data[field];
+      }
+    }
+
+    // Logique de séquence : uniquement si le statut change
+    if (hasStatusChange && isTerminal) {
       updateData.sequenceActive = false;
       updateData.sequenceEndedAt = now;
-      // On ne surcharge pas un exitReason déjà posé par webhook/cron (ex: unsubscribe),
-      // sauf si la séquence était encore considérée comme ouverte côté admin.
       if (existing.exitReason === null) {
         updateData.exitReason =
           newStatus === LeadStatus.client
             ? SequenceExitReason.validated
             : SequenceExitReason.excluded;
       }
-    } else if (existing.status === LeadStatus.client || existing.status === LeadStatus.lost) {
+    } else if (hasStatusChange && (existing.status === LeadStatus.client || existing.status === LeadStatus.lost)) {
       // Rouverture depuis un statut terminal → on clears exitReason/sequenceEndedAt
-      // pour laisser le cron ou l'admin reprendre la main.
       updateData.exitReason = null;
       updateData.sequenceEndedAt = null;
     }

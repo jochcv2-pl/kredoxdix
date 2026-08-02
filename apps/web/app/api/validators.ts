@@ -45,6 +45,16 @@ export const createLeadSchema = z.object({
     .string()
     .min(1, "La ville est requise")
     .max(100),
+  street: z
+    .string()
+    .max(200)
+    .optional()
+    .or(z.literal("")),
+  zipCode: z
+    .string()
+    .max(20)
+    .optional()
+    .or(z.literal("")),
   country: z
     .string()
     .min(2, "Le pays est requis")

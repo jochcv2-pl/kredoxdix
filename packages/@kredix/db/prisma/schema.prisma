@@ -130,6 +130,8 @@ model Lead {
   email             String?    // optionnel : le téléphone reste le canal principal
   phone             String
   city              String
+  street            String?    // adresse : numéro + rue
+  zipCode           String?    // code postal
   country           String     @default("FR") // code pays (FR, BE, CH, ...)
 
   // loanType en string (pas enum) : la liste de produits peut s'étendre
