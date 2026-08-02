@@ -69,6 +69,11 @@ export default function middleware(req: NextRequest) {
     return NextResponse.next()
   }
 
+  // --- Routes /api/cron/* : protégées par CRON_SECRET (header Bearer), pas NextAuth ---
+  if (pathname.startsWith('/api/cron')) {
+    return NextResponse.next()
+  }
+
   // --- Toutes les autres routes : protection NextAuth ---
   // auth() est le middleware NextAuth qui attend un NextAuthRequest (= NextRequest
   // augmenté avec .auth). Le cast via unknown est nécessaire car NextAuth v5
