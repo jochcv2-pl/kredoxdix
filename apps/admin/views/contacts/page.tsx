@@ -174,8 +174,34 @@ export default function Contacts() {
     }
     detectedFields: string[]; missingFields: string[]
   } | null>(null)
+  const [ptLoanType, setPtLoanType] = useState('conso')
+  const [ptDuration, setPtDuration] = useState(20)
   const [ptCreating, setPtCreating] = useState(false)
   const [ptCreated, setPtCreated] = useState(false)
+
+  // Simulation mensualité (taux indicatifs, côté client)
+  function getIndicativeRate(loanType: string, amount: number): number {
+    if (amount >= 200000) return 2.0
+    if (amount >= 100000) return 2.5
+    switch (loanType) {
+      case 'immo': return 3.5
+      case 'rachat': return 4.5
+      case 'pro': return 4.2
+      default: return 5.9 // conso
+    }
+  }
+
+  function simulateMonthly(amount: number, durationYears: number, annualRate: number) {
+    const r = annualRate / 100 / 12
+    const n = durationYears * 12
+    if (r === 0) return Math.round(amount / n)
+    return Math.round(amount * (r / (1 - Math.pow(1 + r, -n))))
+  }
+
+  const ptAmount = ptResult?.lead.amount || 1000
+  const ptAnnualRate = getIndicativeRate(ptLoanType, ptAmount)
+  const ptMonthly = simulateMonthly(ptAmount, ptDuration, ptAnnualRate)
+  const ptTotalCost = ptMonthly * ptDuration * 12
 
   // ----- Chargement initial -----
   const fetchContacts = useCallback(async () => {
@@ -445,6 +471,17 @@ export default function Contacts() {
     setPtCreating(true)
     try {
       const lead = ptResult.lead
+      // Construire les notes avec la date de soumission extraite
+      let notes = ''
+      if (lead.submittedAt) {
+        const d = new Date(lead.submittedAt)
+        const day = String(d.getUTCDate()).padStart(2, '0')
+        const month = d.toLocaleString('fr-FR', { month: 'long', timeZone: 'UTC' })
+        const year = d.getUTCFullYear()
+        const h = String(d.getUTCHours()).padStart(2, '0')
+        const m = String(d.getUTCMinutes()).padStart(2, '0')
+        notes = `Formulaire soumis le ${day} ${month} ${year} à ${h}:${m}`
+      }
       const res = await fetch('/api/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -454,9 +491,13 @@ export default function Contacts() {
           email: lead.email || '',
           phone: lead.phone || '0000000000',
           city: 'Inconnu',
-          loanType: 'autre',
+          loanType: ptLoanType,
           amount: lead.amount || 1000,
-          durationYears: 20,
+          durationYears: ptDuration,
+          monthlyPayment: ptMonthly,
+          annualRate: ptAnnualRate,
+          totalCost: ptTotalCost,
+          notes: notes || undefined,
         }),
       })
       if (!res.ok) {
@@ -1063,7 +1104,7 @@ export default function Contacts() {
               Prospect créé avec succès
             </div>
             <div style={{ fontSize: 13, color: 'var(--slate-light)', marginTop: 8 }}>
-              <b>{ptResult?.lead.firstName} {ptResult?.lead.lastName}</b> a été ajouté aux contacts.
+              <b>{ptResult?.lead.firstName} {ptResult?.lead.lastName}</b> — {ptLoanType} {ptAmount.toLocaleString('fr-FR')} € / {ptDuration} ans — {ptMonthly.toLocaleString('fr-FR')} €/mois
             </div>
             <button
               className="btn btn-primary"
@@ -1158,6 +1199,65 @@ export default function Contacts() {
                     Champs non détectés : {ptResult.missingFields.map(f => FIELD_LABELS[f] || f).join(', ')}
                   </div>
                 )}
+
+                {/* Simulation : type de prêt + durée + mensualité */}
+                <div style={{ marginTop: 20, padding: '14px', borderRadius: 8, background: 'var(--bg-soft, rgba(0,0,0,0.02))', border: '1px solid var(--line-soft)' }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--slate)', marginBottom: 12 }}>Simulation de crédit</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+                    <div className="modal-fg" style={{ margin: 0 }}>
+                      <label>Type de prêt</label>
+                      <select
+                        value={ptLoanType}
+                        onChange={(e) => setPtLoanType(e.target.value)}
+                        style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--line-soft)', background: 'var(--bg-card, #fff)', fontSize: 12, width: '100%' }}
+                      >
+                        <option value="immo">Immobilier</option>
+                        <option value="conso">Consommation</option>
+                        <option value="rachat">Rachat de crédit</option>
+                        <option value="pro">Professionnel</option>
+                      </select>
+                    </div>
+                    <div className="modal-fg" style={{ margin: 0 }}>
+                      <label>Durée : {ptDuration} ans</label>
+                      <input
+                        type="range"
+                        min={1}
+                        max={30}
+                        step={1}
+                        value={ptDuration}
+                        onChange={(e) => setPtDuration(parseInt(e.target.value, 10))}
+                        style={{ width: '100%', accentColor: 'var(--primary, #2980b9)', marginTop: 4 }}
+                      />
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--slate-light)', marginTop: 2 }}>
+                        <span>1 an</span>
+                        <span>30 ans</span>
+                      </div>
+                    </div>
+                    <div className="modal-fg" style={{ margin: 0 }}>
+                      <label>Taux indicatif</label>
+                      <div style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--line-soft)', background: 'var(--bg-card, #fff)', fontSize: 12, color: 'var(--slate-light)' }}>
+                        {ptAnnualRate}%
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ marginTop: 12, padding: '12px 14px', borderRadius: 8, background: 'var(--bg-card, #fff)', border: '1px solid var(--line-soft)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--slate-light)', marginBottom: 2 }}>Mensualité estimée</div>
+                      <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--primary, #2980b9)' }}>
+                        {ptMonthly.toLocaleString('fr-FR')} €
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: 10, color: 'var(--slate-light)' }}>Coût total</div>
+                      <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--slate)' }}>
+                        {ptTotalCost.toLocaleString('fr-FR')} €
+                      </div>
+                      <div style={{ fontSize: 10, color: 'var(--slate-light)', marginTop: 2 }}>
+                        {ptDuration * 12} mensualités
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
                 <div className="modal-actions" style={{ marginTop: 16, justifyContent: 'flex-start', gap: 8 }}>
                   <button
