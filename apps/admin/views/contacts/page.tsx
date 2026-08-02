@@ -221,6 +221,7 @@ export default function Contacts() {
   const [ptLoanType, setPtLoanType] = useState('conso')
   const [ptDuration, setPtDuration] = useState(20)
   const [ptLanguage, setPtLanguage] = useState('de')
+  const [ptCountry, setPtCountry] = useState('de')
   const [ptCreating, setPtCreating] = useState(false)
   const [ptCreated, setPtCreated] = useState(false)
 
@@ -604,6 +605,7 @@ export default function Contacts() {
           email: lead.email || '',
           phone: lead.phone || '0000000000',
           city: 'Inconnu',
+          country: ptCountry,
           loanType: ptLoanType,
           amount: lead.amount || 1000,
           durationYears: ptDuration,
@@ -1472,16 +1474,28 @@ export default function Contacts() {
                   </div>
                 )}
 
-                {/* Langue + Simulation */}
-                <div style={{ marginTop: 16 }}>
-                  <div className="modal-fg" style={{ marginBottom: 10 }}>
-                    <label>Langue du prospect</label>
+                {/* Langue + Pays */}
+                <div style={{ marginTop: 16, display: 'flex', gap: 12, alignItems: 'flex-end' }}>
+                  <div className="modal-fg" style={{ marginBottom: 0 }}>
+                    <label>Langue</label>
                     <select
                       value={ptLanguage}
                       onChange={(e) => setPtLanguage(e.target.value)}
                       style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--line-soft)', background: 'var(--bg-card, #fff)', fontSize: 12, width: 200 }}
                     >
                       {LANGUAGES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
+                    </select>
+                  </div>
+                  <div className="modal-fg" style={{ marginBottom: 0 }}>
+                    <label>Pays</label>
+                    <select
+                      value={ptCountry}
+                      onChange={(e) => setPtCountry(e.target.value)}
+                      style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--line-soft)', background: 'var(--bg-card, #fff)', fontSize: 12, width: 200 }}
+                    >
+                      {Object.entries(SOURCE_LABELS).map(([k, v]) => (
+                        <option key={k} value={k}>{v}</option>
+                      ))}
                     </select>
                   </div>
                 </div>
