@@ -48,6 +48,12 @@ importers:
       '@kredix/email':
         specifier: workspace:*
         version: link:../../packages/@kredix/email
+      '@kredix/simulator':
+        specifier: workspace:*
+        version: link:../../packages/@kredix/simulator
+      '@kredix/types':
+        specifier: workspace:*
+        version: link:../../packages/@kredix/types
       '@types/qrcode':
         specifier: ^1.5.6
         version: 1.5.6

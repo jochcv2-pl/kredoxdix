@@ -1,6 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { calculateLoan } from '@kredix/simulator'
+import type { ApplicableRate } from '@kredix/types'
 import { Modal } from '@/components/Modal'
 import { Icon } from '@/components/Icon'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
@@ -217,29 +219,34 @@ export default function Contacts() {
   const [ptCreating, setPtCreating] = useState(false)
   const [ptCreated, setPtCreated] = useState(false)
 
-  // Simulation mensualité (taux indicatifs, côté client)
-  function getIndicativeRate(loanType: string, amount: number): number {
-    if (amount >= 200000) return 2.0
-    if (amount >= 100000) return 2.5
-    switch (loanType) {
-      case 'immo': return 3.5
-      case 'rachat': return 4.5
-      case 'pro': return 4.2
-      default: return 5.9 // conso
-    }
-  }
+  // Taux DB pour la simulation (fetch au chargement de la page)
+  const [dbRates, setDbRates] = useState<ApplicableRate[]>([])
+  const fetchRates = useCallback(async () => {
+    try {
+      const res = await fetch('/api/rates?active=true')
+      if (res.ok) {
+        const json = await res.json()
+        const rates: ApplicableRate[] = (json?.data ?? []).map((r: { bank?: { name: string }; loanType: string; amountMin: number; amountMax: number; annualRate: number }) => ({
+          bankName: r.bank?.name,
+          loanType: r.loanType,
+          amountMin: r.amountMin,
+          amountMax: r.amountMax,
+          annualRate: r.annualRate,
+        }))
+        setDbRates(rates)
+      }
+    } catch { /* fallback sur taux indicatifs internes */ }
+  }, [])
 
-  function simulateMonthly(amount: number, durationYears: number, annualRate: number) {
-    const r = annualRate / 100 / 12
-    const n = durationYears * 12
-    if (r === 0) return Math.round(amount / n)
-    return Math.round(amount * (r / (1 - Math.pow(1 + r, -n))))
-  }
+  // Charger les taux au mount
+  useEffect(() => { fetchRates() }, [fetchRates])
 
+  // Simulation mensualité via calculateLoan (DB rates avec fallback indicatif)
   const ptAmount = ptResult?.lead.amount || 1000
-  const ptAnnualRate = getIndicativeRate(ptLoanType, ptAmount)
-  const ptMonthly = simulateMonthly(ptAmount, ptDuration, ptAnnualRate)
-  const ptTotalCost = ptMonthly * ptDuration * 12
+  const ptSimulation = calculateLoan(
+    { loanType: ptLoanType as 'immo' | 'conso' | 'rachat' | 'pro', amount: ptAmount, durationYears: ptDuration },
+    dbRates.length > 0 ? dbRates : undefined,
+  )
 
   // ----- Chargement initial -----
   const fetchContacts = useCallback(async () => {
@@ -585,9 +592,9 @@ export default function Contacts() {
           loanType: ptLoanType,
           amount: lead.amount || 1000,
           durationYears: ptDuration,
-          monthlyPayment: ptMonthly,
-          annualRate: ptAnnualRate,
-          totalCost: ptTotalCost,
+          monthlyPayment: ptSimulation.monthlyPayment,
+          annualRate: ptSimulation.annualRate,
+          totalCost: ptSimulation.totalCost,
           notes: notes || undefined,
         }),
       })
@@ -1337,7 +1344,7 @@ export default function Contacts() {
               Prospect créé avec succès
             </div>
             <div style={{ fontSize: 13, color: 'var(--slate-light)', marginTop: 8 }}>
-              <b>{ptResult?.lead.firstName} {ptResult?.lead.lastName}</b> — {ptLoanType} {ptAmount.toLocaleString('fr-FR')} € / {ptDuration} ans — {ptMonthly.toLocaleString('fr-FR')} €/mois
+              <b>{ptResult?.lead.firstName} {ptResult?.lead.lastName}</b> — {ptLoanType} {ptAmount.toLocaleString('fr-FR')} € / {ptDuration} ans — {ptSimulation.monthlyPayment.toLocaleString('fr-FR')} €/mois
             </div>
             <button
               className="btn btn-primary"
@@ -1469,7 +1476,7 @@ export default function Contacts() {
                     <div className="modal-fg" style={{ margin: 0 }}>
                       <label>Taux indicatif</label>
                       <div style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--line-soft)', background: 'var(--bg-card, #fff)', fontSize: 12, color: 'var(--slate-light)' }}>
-                        {ptAnnualRate}%
+                        {ptSimulation.annualRate}%
                       </div>
                     </div>
                   </div>
@@ -1477,13 +1484,13 @@ export default function Contacts() {
                     <div>
                       <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--slate-light)', marginBottom: 2 }}>Mensualité estimée</div>
                       <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--primary, #2980b9)' }}>
-                        {ptMonthly.toLocaleString('fr-FR')} €
+                        {ptSimulation.monthlyPayment.toLocaleString('fr-FR')} €
                       </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
                       <div style={{ fontSize: 10, color: 'var(--slate-light)' }}>Coût total</div>
                       <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--slate)' }}>
-                        {ptTotalCost.toLocaleString('fr-FR')} €
+                        {ptSimulation.totalCost.toLocaleString('fr-FR')} €
                       </div>
                       <div style={{ fontSize: 10, color: 'var(--slate-light)', marginTop: 2 }}>
                         {ptDuration * 12} mensualités

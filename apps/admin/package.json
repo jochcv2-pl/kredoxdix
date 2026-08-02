@@ -18,6 +18,8 @@
     "@kredix/ai": "workspace:*",
     "@kredix/db": "workspace:*",
     "@kredix/email": "workspace:*",
+    "@kredix/simulator": "workspace:*",
+    "@kredix/types": "workspace:*",
     "@types/qrcode": "^1.5.6",
     "bcryptjs": "^3.0.3",
     "lucide-react": "^1.26.0",
