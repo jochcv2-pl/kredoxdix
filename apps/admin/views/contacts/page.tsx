@@ -830,6 +830,7 @@ export default function Contacts() {
               <thead>
                 <tr>
                   <th>Contact</th>
+                  <th>Montant</th>
                   <th>Ville</th>
                   <th>Pays</th>
                   <th>Source</th>
@@ -856,6 +857,12 @@ export default function Contacts() {
                             {c.phone && <small style={{ color: 'var(--slate-light)' }}>{c.phone}</small>}
                           </div>
                         </div>
+                      </td>
+                      <td>
+                        {c.amount && c.amount > 0
+                          ? <span style={{ fontWeight: 500, fontSize: 12 }}>{c.amount.toLocaleString('fr-FR')} €</span>
+                          : <span style={{ color: 'var(--slate-light)', fontSize: 12 }}>—</span>
+                        }
                       </td>
                       <td>{c.ville}</td>
                       <td>{c.pays}</td>
