@@ -453,7 +453,7 @@ export default function Contacts() {
           lastName: lead.lastName,
           email: lead.email || '',
           phone: lead.phone || '0000000000',
-          city: '',
+          city: 'Inconnu',
           loanType: 'autre',
           amount: lead.amount || 1000,
           durationYears: 20,
@@ -1131,7 +1131,17 @@ export default function Contacts() {
                   <PtField label="Téléphone" value={ptResult.lead.phone} detected={ptResult.detectedFields.includes('phone')} />
                   <PtField label="Montant" value={ptResult.lead.amount ? `${ptResult.lead.amount.toLocaleString('fr-FR')} €` : '—'} detected={ptResult.detectedFields.includes('amount')} />
                   <PtField label="Date soumission" value={ptResult.lead.submittedAt
-                    ? new Date(ptResult.lead.submittedAt).toLocaleString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                    ? (() => {
+                        // Afficher la date sans conversion timezone :
+                        // le texte indique l'heure locale du prospect, pas UTC.
+                        const d = new Date(ptResult.lead.submittedAt)
+                        const day = String(d.getUTCDate()).padStart(2, '0')
+                        const month = d.toLocaleString('fr-FR', { month: 'short', timeZone: 'UTC' })
+                        const year = d.getUTCFullYear()
+                        const h = String(d.getUTCHours()).padStart(2, '0')
+                        const m = String(d.getUTCMinutes()).padStart(2, '0')
+                        return `${day} ${month} ${year}, ${h}:${m}`
+                      })()
                     : '—'
                   } detected={ptResult.detectedFields.includes('submittedAt')} />
                 </div>
