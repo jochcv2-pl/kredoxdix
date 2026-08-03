@@ -57,20 +57,29 @@ export async function getOfferAttachment(
   if (!lead || !lead.amount || !lead.durationYears) return null;
 
   const siteName = await getSetting('site_name', 'Kredix');
-  const pdfBuffer = await generateAmortizationPDF({
-    amount: lead.amount,
-    annualRate: lead.annualRate ?? 4.5,
-    durationYears: lead.durationYears,
-    firstName: fallbackFirstName ?? lead.firstName,
-    lastName: fallbackLastName ?? lead.lastName,
-    siteName,
-  });
 
-  return {
-    filename: 'tableau-amortissement.pdf',
-    content: pdfBuffer,
-    contentType: 'application/pdf',
-  };
+  // Le PDF est optionnel : si sa génération échoue (fonts manquantes en standalone,
+  // OOM, etc.), on renvoie null et l'email part SANS pièce jointe plutôt que de
+  // bloquer toute la séquence (welcome/offre/relances).
+  try {
+    const pdfBuffer = await generateAmortizationPDF({
+      amount: lead.amount,
+      annualRate: lead.annualRate ?? 4.5,
+      durationYears: lead.durationYears,
+      firstName: fallbackFirstName ?? lead.firstName,
+      lastName: fallbackLastName ?? lead.lastName,
+      siteName,
+    });
+
+    return {
+      filename: 'tableau-amortissement.pdf',
+      content: pdfBuffer,
+      contentType: 'application/pdf',
+    };
+  } catch (err) {
+    console.error('[getOfferAttachment] PDF non généré, email envoyé sans pièce jointe:', err instanceof Error ? err.message : err);
+    return null;
+  }
 }
 
 /**
