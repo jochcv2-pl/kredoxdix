@@ -44,15 +44,13 @@ RUN pnpm build
 # Copie des fonts pdfkit (.afm) vers un chemin fixe.
 # Ces fichiers sont chargés dynamiquement par pdfkit au runtime et ne sont
 # PAS tracés par Next.js standalone → ENOENT en production Docker.
-RUN node -e " \
-  const path = require('path'); \
-  const fs = require('fs'); \
-  const pdfkitPath = require.resolve('pdfkit'); \
-  const dataDir = path.join(path.dirname(pdfkitPath), 'js', 'data'); \
-  fs.mkdirSync('/app/pdfkit-data', { recursive: true }); \
-  fs.readdirSync(dataDir).forEach(f => fs.copyFileSync(path.join(dataDir, f), path.join('/app/pdfkit-data', f))); \
-  console.log('pdfkit fonts copied:', fs.readdirSync('/app/pdfkit-data').length, 'files'); \
-"
+# On utilise find car pnpm utilise une structure de symlinks (.pnpm/) qui
+# rend require.resolve('pdfkit') peu fiable.
+RUN mkdir -p /app/pdfkit-data \
+    && find /app/node_modules -path "*/pdfkit/js/data" -type d \
+       -exec sh -c 'cp -r "$1"/* /app/pdfkit-data/' _ {} \; \
+    && ls /app/pdfkit-data/ | head -5 \
+    && echo "pdfkit fonts copied: $(ls /app/pdfkit-data/ | wc -l) files"
 
 # -----------------------------------------------------------------------------
 # Stage 4 — runner (apps/admin, port 3001)
