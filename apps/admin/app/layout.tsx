@@ -10,7 +10,10 @@ const montserrat = Montserrat({
   variable: "--font-display",
 });
 
+const ADMIN_URL = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_ADMIN_URL || "http://localhost:3101";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(ADMIN_URL),
   title: "Kredix · CRM administrateur",
   description: "Admin CRM pour Kredix, courtier en financement",
 };
