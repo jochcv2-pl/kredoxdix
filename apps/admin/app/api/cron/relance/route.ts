@@ -37,7 +37,12 @@ const DAY = 24 * 60 * 60 * 1000;
 
 export async function POST(req: NextRequest) {
   // ----- Authentification : CRON_SECRET obligatoire (comparaison timing-safe) -----
-  if (!verifyBearerSecret(req.headers.get('authorization'), process.env.CRON_SECRET)) {
+  const authHeader = req.headers.get('authorization');
+  const cronSecret = process.env.CRON_SECRET;
+  console.log('[CRON-DEBUG] authHeader:', authHeader ? `"${authHeader}"` : 'null');
+  console.log('[CRON-DEBUG] CRON_SECRET:', cronSecret ? `"${cronSecret}" (len=${cronSecret.length})` : 'undefined');
+  console.log('[CRON-DEBUG] match:', verifyBearerSecret(authHeader, cronSecret));
+  if (!verifyBearerSecret(authHeader, cronSecret)) {
     return errorResponse(ERR.UNAUTHORIZED.msg, ERR.UNAUTHORIZED.code, undefined, 401);
   }
 
