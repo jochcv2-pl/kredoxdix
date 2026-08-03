@@ -41,6 +41,19 @@ ENV NODE_ENV=production
 RUN pnpm --filter @kredix/db db:generate
 RUN pnpm build
 
+# Copie des fonts pdfkit (.afm) vers un chemin fixe.
+# Ces fichiers sont chargés dynamiquement par pdfkit au runtime et ne sont
+# PAS tracés par Next.js standalone → ENOENT en production Docker.
+RUN node -e " \
+  const path = require('path'); \
+  const fs = require('fs'); \
+  const pdfkitPath = require.resolve('pdfkit'); \
+  const dataDir = path.join(path.dirname(pdfkitPath), 'js', 'data'); \
+  fs.mkdirSync('/app/pdfkit-data', { recursive: true }); \
+  fs.readdirSync(dataDir).forEach(f => fs.copyFileSync(path.join(dataDir, f), path.join('/app/pdfkit-data', f))); \
+  console.log('pdfkit fonts copied:', fs.readdirSync('/app/pdfkit-data').length, 'files'); \
+"
+
 # -----------------------------------------------------------------------------
 # Stage 4 — runner (apps/admin, port 3001)
 # -----------------------------------------------------------------------------
@@ -58,6 +71,9 @@ RUN addgroup --system --gid 1001 nodejs \
 COPY --from=builder --chown=nextjs:nodejs /app/apps/admin/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/admin/.next/static ./apps/admin/.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/apps/admin/public ./apps/admin/public
+
+# Fonts pdfkit (.afm) — copiées depuis le builder (chemin fixe /app/pdfkit-data)
+COPY --from=builder --chown=nextjs:nodejs /app/pdfkit-data /app/pdfkit-data
 
 # Crée le dossier uploads avec les bonnes permissions pour le volume partagé.
 # Docker copie ces permissions dans le named volume lors du premier montage.

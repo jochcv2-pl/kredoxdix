@@ -13,24 +13,26 @@ import PDFDocument from 'pdfkit';
 import { join } from 'path';
 
 // =============================================================================
-// Fonts PDFKit — fix Docker/standalone : les .afm ne sont pas trouvés par
-// pdfkit dans le build Next.js standalone. On les résout explicitement
-// depuis les données internes du package pdfkit.
+// Fonts PDFKit — fix Docker/standalone : les .afm ne sont pas tracés par
+// Next.js standalone. Le Dockerfile.admin les copie vers /app/pdfkit-data/.
+// En dev local, pdfkit résout les fonts depuis son propre package.
 // =============================================================================
 function resolvePdfkitFont(name: string): string {
-  // 1. Essai : données internes pdfkit (node_modules/pdfkit/js/data/)
+  const fs = require('fs') as typeof import('fs');
+
+  // 1. Chemin fixe Docker standalone (/app/pdfkit-data/, copié par Dockerfile)
+  const dockerPath = `/app/pdfkit-data/${name}.afm`;
+  if (fs.existsSync(dockerPath)) return dockerPath;
+
+  // 2. Chemin node_modules local (dev)
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const pdfkitDir = require.resolve('pdfkit');
     const jsDataDir = join(pdfkitDir, '..', 'js', 'data');
-    // pdfkit stocke les fonts dans js/data/ (Helvetica.afm, Helvetica-Bold.afm, etc.)
-    const fs = require('fs');
-    if (fs.existsSync(join(jsDataDir, `${name}.afm`))) {
-      return join(jsDataDir, `${name}.afm`);
-    }
-  } catch { /* next */ }
+    const localPath = join(jsDataDir, `${name}.afm`);
+    if (fs.existsSync(localPath)) return localPath;
+  } catch { /* pdfkit non résolu */ }
 
-  // 2. Fallback : laisser pdfkit chercher (marche en local dev)
+  // 3. Fallback : laisser pdfkit chercher (marche parfois selon la config)
   return name;
 }
 
