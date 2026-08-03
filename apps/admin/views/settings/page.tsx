@@ -772,8 +772,8 @@ export default function Settings() {
               </div>
               <div className="set-row">
                 <div className="set-label">
-                  <b>Intervalle entre envois</b>
-                  <small>Espacement aléatoire</small>
+                  <b>Délai entre envois (séquence auto)</b>
+                  <small>Secondes entre chaque email du cron (welcome/offre/relances). Aléatoire entre min et max.</small>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <input

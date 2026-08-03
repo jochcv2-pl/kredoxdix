@@ -35,6 +35,16 @@ import { verifyBearerSecret } from '../../_lib/security';
 
 const DAY = 24 * 60 * 60 * 1000;
 
+/** Pause asynchrone (utilisé pour espacer les envois anti-spam). */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Entier aléatoire inclus entre min et max. */
+function randomBetween(min: number, max: number): number {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
 export async function POST(req: NextRequest) {
   // ----- Authentification : CRON_SECRET obligatoire (comparaison timing-safe) -----
   if (!verifyBearerSecret(req.headers.get('authorization'), process.env.CRON_SECRET)) {
@@ -53,6 +63,9 @@ export async function POST(req: NextRequest) {
     // ----- Paramètres cadence -----
     const timeoutDays = await getSettingNumber('cadence_timeout_days', 10);
     const dailyCap = await getSettingNumber('cadence_daily_cap', 200);
+    // Délai aléatoire entre chaque envoi (anti-spam). Defaults: 3-8s.
+    const intervalMin = await getSettingNumber('cadence_interval_min', 3);
+    const intervalMax = await getSettingNumber('cadence_interval_max', 8);
 
     const stats = {
       timeouts: 0,
@@ -583,6 +596,13 @@ export async function POST(req: NextRequest) {
       } catch (err) {
         console.error(`[CRON RELANCE] Erreur lead ${lead.id}:`, err);
         stats.errors++;
+      }
+
+      // ----- Délai anti-spam entre les envois (sauf après le dernier lead) -----
+      // Espacement aléatoire configurable dans CRM > Paramètres > Cadence.
+      if (intervalMax > 0 && lead !== dueLeads[dueLeads.length - 1]) {
+        const delaySec = randomBetween(intervalMin, intervalMax);
+        await sleep(delaySec * 1000);
       }
     }
 
