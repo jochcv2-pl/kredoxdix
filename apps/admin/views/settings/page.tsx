@@ -44,10 +44,7 @@ const CADENCE_KEYS = {
   dailyCap: 'cadence_daily_cap',
   intervalMin: 'cadence_interval_min',
   intervalMax: 'cadence_interval_max',
-  warmupWeeks: 'cadence_warmup_weeks',
-  ipType: 'cadence_ip_type',
-  dedicatedIp: 'cadence_dedicated_ip',
-  sendingDomain: 'cadence_sending_domain',
+  timeoutDays: 'cadence_timeout_days',
 } as const
 
 const PROVIDER_LABEL: Record<Gateway['provider'], string> = {
@@ -208,10 +205,7 @@ export default function Settings() {
     { key: CADENCE_KEYS.dailyCap, value: settings[CADENCE_KEYS.dailyCap] ?? '', category: 'cadence' },
     { key: CADENCE_KEYS.intervalMin, value: settings[CADENCE_KEYS.intervalMin] ?? '', category: 'cadence' },
     { key: CADENCE_KEYS.intervalMax, value: settings[CADENCE_KEYS.intervalMax] ?? '', category: 'cadence' },
-    { key: CADENCE_KEYS.warmupWeeks, value: settings[CADENCE_KEYS.warmupWeeks] ?? '', category: 'cadence' },
-    { key: CADENCE_KEYS.ipType, value: settings[CADENCE_KEYS.ipType] ?? 'shared', category: 'cadence' },
-    { key: CADENCE_KEYS.dedicatedIp, value: settings[CADENCE_KEYS.dedicatedIp] ?? '', category: 'cadence' },
-    { key: CADENCE_KEYS.sendingDomain, value: settings[CADENCE_KEYS.sendingDomain] ?? '', category: 'cadence' },
+    { key: CADENCE_KEYS.timeoutDays, value: settings[CADENCE_KEYS.timeoutDays] ?? '', category: 'cadence' },
   ])
 
   // Sauvegarde section Tracking
@@ -744,41 +738,31 @@ export default function Settings() {
             </div>
             <div className="panel-body" style={{ paddingTop: '14px' }}>
               <p className="field-hint">
-                Le CRM planifie les envois avec des limites strictes pour protéger la réputation du domaine.
+                Paramètres appliqués aux séquences automatiques (welcome, offre, relances) ET aux campagnes en masse.
               </p>
               <div className="set-row">
                 <div className="set-label">
-                  <b>Montée en charge (warm-up)</b>
-                  <small>Volume progressif les premières semaines</small>
-                </div>
-                <input
-                  type="number"
-                  className="set-input"
-                  value={settings[CADENCE_KEYS.warmupWeeks] ?? ''}
-                  onChange={(e) => setSetting(CADENCE_KEYS.warmupWeeks, e.target.value)}
-                />
-              </div>
-              <div className="set-row">
-                <div className="set-label">
                   <b>Plafond quotidien</b>
-                  <small>Emails max par jour</small>
+                  <small>Nombre max d&apos;emails envoyés par jour (cron + campagnes combinés)</small>
                 </div>
                 <input
                   type="number"
                   className="set-input"
+                  placeholder="200"
                   value={settings[CADENCE_KEYS.dailyCap] ?? ''}
                   onChange={(e) => setSetting(CADENCE_KEYS.dailyCap, e.target.value)}
                 />
               </div>
               <div className="set-row">
                 <div className="set-label">
-                  <b>Délai entre envois (séquence auto)</b>
-                  <small>Secondes entre chaque email du cron (welcome/offre/relances). Aléatoire entre min et max.</small>
+                  <b>Délai entre envois</b>
+                  <small>Secondes d&apos;attente entre chaque email. Aléatoire entre min et max. S&apos;applique au cron ET aux campagnes.</small>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <input
                     type="number"
                     className="set-input set-input-sm"
+                    placeholder="3"
                     value={settings[CADENCE_KEYS.intervalMin] ?? ''}
                     onChange={(e) => setSetting(CADENCE_KEYS.intervalMin, e.target.value)}
                   />
@@ -786,6 +770,7 @@ export default function Settings() {
                   <input
                     type="number"
                     className="set-input set-input-sm"
+                    placeholder="8"
                     value={settings[CADENCE_KEYS.intervalMax] ?? ''}
                     onChange={(e) => setSetting(CADENCE_KEYS.intervalMax, e.target.value)}
                   />
@@ -794,43 +779,15 @@ export default function Settings() {
               </div>
               <div className="set-row">
                 <div className="set-label">
-                  <b>Type d&apos;IP</b>
-                  <small>shared, dedicated ou vps</small>
-                </div>
-                <select
-                  className="set-select"
-                  value={settings[CADENCE_KEYS.ipType] ?? 'shared'}
-                  onChange={(e) => setSetting(CADENCE_KEYS.ipType, e.target.value)}
-                >
-                  <option value="shared">IP partagée (ESP)</option>
-                  <option value="dedicated">IP dédiée (ESP)</option>
-                  <option value="vps">VPS + IP dédiée</option>
-                </select>
-              </div>
-              <div className="set-row">
-                <div className="set-label">
-                  <b>Adresse IP du VPS (si dédiée)</b>
-                  <small>Laisser vide si IP partagée</small>
+                  <b>Délai d&apos;abandon (timeout)</b>
+                  <small>Un prospect sans réponse sort de la séquence après N jours</small>
                 </div>
                 <input
-                  type="text"
+                  type="number"
                   className="set-input"
-                  placeholder="Ex: 51.91.123.45"
-                  value={settings[CADENCE_KEYS.dedicatedIp] ?? ''}
-                  onChange={(e) => setSetting(CADENCE_KEYS.dedicatedIp, e.target.value)}
-                />
-              </div>
-              <div className="set-row">
-                <div className="set-label">
-                  <b>Domaine d&apos;envoi</b>
-                  <small>Doit être configuré chez le fournisseur (SPF/DKIM/DMARC)</small>
-                </div>
-                <input
-                  type="text"
-                  className="set-input"
-                  placeholder="votredomaine.com"
-                  value={settings[CADENCE_KEYS.sendingDomain] ?? ''}
-                  onChange={(e) => setSetting(CADENCE_KEYS.sendingDomain, e.target.value)}
+                  placeholder="10"
+                  value={settings[CADENCE_KEYS.timeoutDays] ?? ''}
+                  onChange={(e) => setSetting(CADENCE_KEYS.timeoutDays, e.target.value)}
                 />
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>

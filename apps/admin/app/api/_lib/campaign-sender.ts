@@ -126,9 +126,10 @@ export async function processCampaign(campaignId: string): Promise<void> {
     }
 
     // 3 — Paramètres de cadence + URL du site (pour le lien de désinscription).
-    const intervalMin = await getSettingNumber('campaign_interval_min', 30);
-    const intervalMax = await getSettingNumber('campaign_interval_max', 90);
-    const dailyCap = await getSettingNumber('campaign_daily_cap', 200);
+    // Unified settings : les mêmes que le cron relance (configurables dans CRM > Paramètres > Cadence).
+    const intervalMin = await getSettingNumber('cadence_interval_min', 30);
+    const intervalMax = await getSettingNumber('cadence_interval_max', 90);
+    const dailyCap = await getSettingNumber('cadence_daily_cap', 200);
     const siteUrl = await getSetting('site_url', '');
     const brand = await loadBrandData();
 
