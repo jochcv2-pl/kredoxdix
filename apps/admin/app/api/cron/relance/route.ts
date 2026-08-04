@@ -79,6 +79,22 @@ export async function POST(req: NextRequest) {
       skippedNoTemplate: 0,
     };
 
+    // ----- Plafond journalier réel : compter les emails déjà envoyés aujourd'hui -----
+    // EmailLog.sentAt = date d'envoi. On compte tous les "sent" depuis minuit.
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const sentToday = await prisma.emailLog.count({
+      where: { sentAt: { gte: startOfToday }, status: 'sent' },
+    });
+    const remainingToday = Math.max(0, dailyCap - sentToday);
+    if (remainingToday === 0) {
+      return successResponse({
+        ...stats,
+        skippedDailyCap: true,
+        note: `Plafond journalier atteint (${sentToday}/${dailyCap}) — reprise à minuit`,
+      }, 200);
+    }
+
     // -----------------------------------------------------------------
     // 1. TIMEOUTS — leads en séquence depuis trop longtemps sans validation
     // -----------------------------------------------------------------
@@ -125,7 +141,7 @@ export async function POST(req: NextRequest) {
         exitReason: null,
       },
       orderBy: { nextRelanceAt: 'asc' },
-      take: dailyCap, // respecte le cap journalier
+      take: Math.min(remainingToday, 50), // max 50 par run + respecte le plafond journalier restant
       select: {
         id: true,
         email: true,
