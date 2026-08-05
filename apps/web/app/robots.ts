@@ -6,6 +6,10 @@
 
 import type { MetadataRoute } from "next";
 
+// force-dynamic : lire NEXT_PUBLIC_SITE_URL au runtime (pas baked au build,
+// car le service web n'a pas de build.args dans docker-compose.prod.yml).
+export const dynamic = 'force-dynamic';
+
 // Normalisation du slash final pour éviter les doubles slashes dans les URLs.
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://kredix.fr").replace(/\/$/, "");
 
