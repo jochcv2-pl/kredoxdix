@@ -556,10 +556,13 @@ export default function Settings() {
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '8px', marginTop: '14px', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                   <button className="btn btn-primary" onClick={saveAI} disabled={sectionSaving === 'ai'}>
-                    {sectionSaving === 'ai' ? 'Enregistrement…' : sectionSaved === 'ai' ? 'Enregistré' : 'Enregistrer'}
+                    {sectionSaving === 'ai' ? 'Enregistrement…' : 'Enregistrer'}
                   </button>
+                  {sectionSaved === 'ai' && (
+                    <span style={{ color: '#16a34a', fontSize: '13px', fontWeight: 500 }}>✓ Enregistré</span>
+                  )}
                   <button className="btn btn-ghost" onClick={() => { setTestModalOpen(true); setTestResult(null) }}>
                     Tester la connexion
                   </button>
@@ -790,9 +793,12 @@ export default function Settings() {
                   onChange={(e) => setSetting(CADENCE_KEYS.timeoutDays, e.target.value)}
                 />
               </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '12px', marginTop: '12px' }}>
+                {sectionSaved === 'cadence' && (
+                  <span style={{ color: '#16a34a', fontSize: '13px', fontWeight: 500 }}>✓ Enregistré</span>
+                )}
                 <button className="btn btn-primary" onClick={saveCadence} disabled={sectionSaving === 'cadence'}>
-                  {sectionSaving === 'cadence' ? 'Enregistrement…' : sectionSaved === 'cadence' ? 'Enregistré' : 'Enregistrer'}
+                  {sectionSaving === 'cadence' ? 'Enregistrement…' : 'Enregistrer'}
                 </button>
               </div>
             </div>
@@ -876,9 +882,14 @@ export default function Settings() {
                     {trackingTest?.key === 'ga4' && trackingTest.loading ? 'Test…' : 'Tester GA4'}
                   </button>
                 </div>
-                <button className="btn btn-primary" onClick={saveTracking} disabled={sectionSaving === 'tracking'}>
-                  {sectionSaving === 'tracking' ? 'Enregistrement…' : sectionSaved === 'tracking' ? 'Enregistré' : 'Enregistrer'}
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  {sectionSaved === 'tracking' && (
+                    <span style={{ color: '#16a34a', fontSize: '13px', fontWeight: 500 }}>✓ Enregistré</span>
+                  )}
+                  <button className="btn btn-primary" onClick={saveTracking} disabled={sectionSaving === 'tracking'}>
+                    {sectionSaving === 'tracking' ? 'Enregistrement…' : 'Enregistrer'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
