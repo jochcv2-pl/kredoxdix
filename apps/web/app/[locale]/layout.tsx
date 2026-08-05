@@ -5,7 +5,9 @@ import { notFound } from "next/navigation";
 import { LOCALES } from "@kredix/types";
 import { getPublicSetting } from "@/lib/settings";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://kredix.fr";
+// Normalisation : retirer un éventuel slash final pour éviter les doubles slashes
+// dans les canonicals/hreflang (ex: "https://nouveaudomaine//de" → "https://nouveaudomaine/de").
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://kredix.fr").replace(/\/$/, "");
 
 // force-dynamic : toutes les pages sous [locale] sont SSR (pas de pré-render au build).
 // Nécessaire car les pages interrogent la DB (settings CMS, taux, legal pages).

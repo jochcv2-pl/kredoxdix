@@ -8,7 +8,8 @@ import type { MetadataRoute } from "next";
 import { LOCALES } from "@kredix/types";
 
 // En production : configurer NEXT_PUBLIC_SITE_URL=https://kredix.fr
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://kredix.fr";
+// Normalisation du slash final pour éviter les doubles slashes dans les URLs.
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://kredix.fr").replace(/\/$/, "");
 
 // Pages publiques principales (hors dynamiques comme legal/[slug]).
 const STATIC_PAGES = ["", "/#contact"];

@@ -6,7 +6,8 @@
 
 import type { MetadataRoute } from "next";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://kredix.fr";
+// Normalisation du slash final pour éviter les doubles slashes dans les URLs.
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://kredix.fr").replace(/\/$/, "");
 
 export default function robots(): MetadataRoute.Robots {
   return {
