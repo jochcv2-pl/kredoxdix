@@ -23,6 +23,7 @@ export {
   formatEuro,
   type InterpolationContext,
   type BrandContext,
+  type AdvisorContext,
 } from './template';
 
 export {
@@ -40,7 +41,10 @@ export {
   getSetting,
   getSettingNumber,
   getActiveGateway,
+  getSystemGateway,
   getPrimaryGateway,
+  getGatewayForLead,
   getGatewayForCampaign,
+  getConseillerContext,
   getActiveTemplate,
 } from './settings';

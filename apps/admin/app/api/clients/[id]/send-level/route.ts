@@ -16,6 +16,7 @@ import { z } from 'zod';
 import { prisma } from '@kredix/db';
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses';
 import { requireAuth } from '../../../_lib/auth-server';
+import { getLeadScope } from '../../../_lib/scope';
 import { isValidId } from '@/app/api/_lib/id-validation';
 import { sendClientLevelEmail } from '@/app/api/_lib/client-level-sender';
 
@@ -28,7 +29,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const [, deny] = await requireAuth();
+  const [admin, deny] = await requireAuth();
   if (deny) return deny;
   try {
     const { id } = await params;
@@ -41,9 +42,9 @@ export async function POST(
     const [data, error] = await parseBody(req, sendLevelSchema);
     if (error) return error;
 
-    // Vérifie l'existence du client (404 clair avant toute tentative d'envoi).
-    const lead = await prisma.lead.findUnique({
-      where: { id },
+    // findFirst avec scope : anti-IDOR (DEC-K5). Un conseiller ne peut envoyer qu'à ses clients.
+    const lead = await prisma.lead.findFirst({
+      where: { id, ...getLeadScope(admin) },
       select: { id: true, status: true },
     });
     if (!lead) {

@@ -11,6 +11,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@kredix/db'
 import { errorResponse, ERR } from '../../_lib/responses'
 import { requireAuth } from '../../_lib/auth-server'
+import { getLeadScope } from '../../_lib/scope'
 
 function csvEscape(value: string | number | null | undefined): string {
   if (value === null || value === undefined) return ''
@@ -41,14 +42,15 @@ const LOAN_TYPE_LABELS: Record<string, string> = {
 }
 
 export async function GET(req: NextRequest) {
-  const [, deny] = await requireAuth()
+  const [admin, deny] = await requireAuth()
   if (deny) return deny
 
   try {
     const { searchParams } = new URL(req.url)
     const type = searchParams.get('type') ?? 'all'
 
-    const where: Record<string, unknown> = {}
+    // Scope multi-admin (DEC-K5) : un conseiller n'exporte que ses propres leads.
+    const where: Record<string, unknown> = { ...getLeadScope(admin!) }
     if (type === 'leads') {
       where.status = { not: 'client' }
     } else if (type === 'clients') {

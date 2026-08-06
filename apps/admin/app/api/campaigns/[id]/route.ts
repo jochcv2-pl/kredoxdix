@@ -6,6 +6,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@kredix/db';
 import { successResponse, errorResponse, ERR } from '@/app/api/_lib/responses';
 import { requireAuth } from '../../_lib/auth-server';
+import { getCampaignScope } from '../../_lib/scope';
 import { isValidId } from '@/app/api/_lib/id-validation';
 
 // DELETE /api/campaigns/[id] — supprime une campagne et ses destinataires.
@@ -13,7 +14,7 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const [, deny] = await requireAuth();
+  const [admin, deny] = await requireAuth();
   if (deny) return deny;
   try {
     const { id } = await params;
@@ -22,8 +23,9 @@ export async function DELETE(
       return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);
     }
 
-    const existing = await prisma.campaign.findUnique({
-      where: { id },
+    // findFirst avec scope : anti-IDOR (DEC-K5).
+    const existing = await prisma.campaign.findFirst({
+      where: { id, ...getCampaignScope(admin) },
       select: { id: true, status: true },
     });
 
@@ -58,7 +60,7 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const [, deny] = await requireAuth();
+  const [admin, deny] = await requireAuth();
   if (deny) return deny;
   try {
     const { id } = await params;
@@ -67,8 +69,9 @@ export async function GET(
       return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);
     }
 
-    const campaign = await prisma.campaign.findUnique({
-      where: { id },
+    // findFirst avec scope : anti-IDOR (DEC-K5).
+    const campaign = await prisma.campaign.findFirst({
+      where: { id, ...getCampaignScope(admin) },
       include: {
         template: true,
         domain: { select: { domain: true, fromEmail: true } },

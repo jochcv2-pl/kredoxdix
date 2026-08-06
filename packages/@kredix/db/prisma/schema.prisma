@@ -161,6 +161,12 @@ model Lead {
   // Relation optionnelle : un lead peut ne pas encore être assigné.
   assignedToId      String?
   assignedTo        AdminUser? @relation("AssignedLeads", fields: [assignedToId], references: [id])
+  assignedAt        DateTime?    // DEC-K5 : timestamp d'assignation (routing automatique ou manuel)
+
+  // ===== MULTI-ADMIN (DEC-K5) — relations inverse pour scope EmailLog/ClientStep =====
+  // Permettent le filtrage relationnel : getEmailLogScope() / getClientStepScope()
+  emailLogs         EmailLog[]                     // historique des emails envoyés à ce lead
+  clientSteps       ClientStep[]                   // parcours client (7 niveaux)
 
   // ===== MOTEUR DE PROSPECTION / RELANCE =====
   // L'Agent Accueil accuse réception (<5 min) puis annonce un rappel 48h.
@@ -265,10 +271,24 @@ model AdminUser {
   zitadelSubjectId String?      @unique // legacy Zitadel — nullable depuis DEC-K4
   lastLoginAt      DateTime?
 
+  // ===== MULTI-ADMIN (DEC-K5) — identité conseiller + routing automatique =====
+  firstName        String?      // prénom conseiller (variables email {{prenom_conseiller}})
+  lastName         String?      // nom conseiller (variables email {{nom_conseiller}})
+  phone            String?      // téléphone conseiller (variables email {{telephone_conseiller}})
+  loanTypes        String[]     @default([])  // routing : ["immo","pro","conso","rachat"] — VIDE = tous types
+  countries        String[]     @default([])  // routing : ["FR","BE","CH"] — VIDE = tous pays
+  maxActiveLeads   Int          @default(50)   // plafond de charge (nb leads séquence active)
+  currentActiveLeads Int        @default(0)     // dénormalisé pour perf du routing (least-loaded)
+  lastAssignedAt   DateTime?    // tie-break du round-robin (le moins récent gagne en cas d'égalité de charge)
+
   // Deux relations distinctes sur Lead : l'assignment nominatif
   // ("AssignedLeads") et la collection générique back-referencée.
   leads            Lead[]       @relation("AssignedLeads")
   // (relation inverse Lead.assignedTo)
+
+  // ===== MULTI-ADMIN : ressources possédées (isolation par admin) =====
+  gateways         EmailGateway[] @relation("OwnedGateways")
+  campaigns        Campaign[]     @relation("OwnedCampaigns")
 
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
@@ -371,7 +391,13 @@ model EmailGateway {
   apiKey      String?                          // secret — usage serveur uniquement
   config      Json             @default("{}") // domaine, hôte, mode, identifiant
   isActive    Boolean          @default(false) // actif (plusieurs peuvent l'être)
-  isPrimary   Boolean          @default(false) // SMTP principal pour prospects/relances (un seul)
+  isPrimary   Boolean          @default(false) // SMTP principal pour prospects/relances (UN SEUL PAR ADMIN désormais — DEC-K5)
+
+  // ===== MULTI-ADMIN (DEC-K5) — SMTP exclusif par admin =====
+  ownerId     String?                          // null = SMTP système (fallback pour leads unassigned)
+  owner       AdminUser?       @relation("OwnedGateways", fields: [ownerId], references: [id])
+  isSystem    Boolean          @default(false) // true = SMTP système réservé aux leads unassigned (un seul actif)
+
   createdAt   DateTime         @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -379,6 +405,7 @@ model EmailGateway {
 
   @@index([provider])
   @@index([isActive])
+  @@index([ownerId, isActive])   // perf filtrage scope admin (conseiller voit SES SMTP)
 }
 
 // -----------------------------------------------------------------------------
@@ -433,10 +460,15 @@ model Campaign {
   name            String                          // "Offre spéciale été"
   templateId      String
   template        EmailTemplate  @relation(fields: [templateId], references: [id])
-  gatewayId       String?                         // SMTP spécifique pour cette campagne (null = primary)
+  gatewayId       String?                         // SMTP spécifique pour cette campagne (null = primary de l'owner)
   gateway         EmailGateway?  @relation(fields: [gatewayId], references: [id])
   domainId        String?                         // domaine d'envoi (FK Domain type=mail), null = global from_email
   domain          Domain?        @relation(fields: [domainId], references: [id])
+
+  // ===== MULTI-ADMIN (DEC-K5) — propriétaire de la campagne =====
+  ownerId         String?                         // null = legacy / super-admin (tous voient)
+  owner           AdminUser?     @relation("OwnedCampaigns", fields: [ownerId], references: [id])
+
   status          CampaignStatus @default(draft)
   recipientSource String                          // "validated_today" | "validated_week" | "manual" | "all_active"
   totalRecipients Int            @default(0)
@@ -451,6 +483,7 @@ model Campaign {
 
   @@index([status])
   @@index([createdAt])
+  @@index([ownerId])   // perf filtrage scope admin
 }
 
 model CampaignRecipient {
@@ -493,6 +526,7 @@ enum CampaignRecipientStatus {
 model EmailLog {
   id           String   @id @default(cuid())
   leadId       String?                          // null si pas lié à un lead (campaign sans lead)
+  lead         Lead?    @relation(fields: [leadId], references: [id], onDelete: Cascade)
   email        String                           // snapshot email au moment de l'envoi
   trigger      String                           // "accueil_ack" | "offer" | "relance_1" | "relance_2" | "relance_3" | "campaign" | "manual"
   templateName String                           // "Accusé de réception" (snapshot du nom au moment de l'envoi)
@@ -550,6 +584,7 @@ enum DomainType {
 model ClientStep {
   id          String   @id @default(cuid())
   leadId      String
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
   level       Int                             // ordre du PipelineStep au moment de l'envoi (backward compat)
   stepId      String?                         // FK vers PipelineStep (nullable = niveau legacy)
   step        PipelineStep?                   @relation(fields: [stepId], references: [id], onDelete: SetNull)

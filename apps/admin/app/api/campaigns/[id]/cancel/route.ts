@@ -7,6 +7,7 @@ import { NextRequest } from 'next/server';
 import { prisma, CampaignStatus } from '@kredix/db';
 import { successResponse, errorResponse, ERR } from '@/app/api/_lib/responses';
 import { requireAuth } from '../../../_lib/auth-server';
+import { getCampaignScope } from '../../../_lib/scope';
 import { isValidId } from '@/app/api/_lib/id-validation';
 
 // POST /api/campaigns/[id]/cancel — passe le statut à "cancelled".
@@ -14,7 +15,7 @@ export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const [, deny] = await requireAuth();
+  const [admin, deny] = await requireAuth();
   if (deny) return deny;
   try {
     const { id } = await params;
@@ -23,8 +24,9 @@ export async function POST(
       return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);
     }
 
-    const campaign = await prisma.campaign.findUnique({
-      where: { id },
+    // findFirst avec scope : anti-IDOR (DEC-K5).
+    const campaign = await prisma.campaign.findFirst({
+      where: { id, ...getCampaignScope(admin) },
       select: { id: true, status: true, name: true },
     });
 

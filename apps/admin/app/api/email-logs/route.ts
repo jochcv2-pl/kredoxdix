@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@kredix/db';
 import { successResponse, errorResponse, ERR } from '../_lib/responses';
 import { requireAuth } from '../_lib/auth-server';
+import { getEmailLogScope } from '../_lib/scope';
 
 // =============================================================================
 // GET /api/email-logs
@@ -18,7 +19,7 @@ import { requireAuth } from '../_lib/auth-server';
 // =============================================================================
 
 export async function GET(req: NextRequest) {
-  const [, deny] = await requireAuth();
+  const [admin, deny] = await requireAuth();
   if (deny) return deny;
   try {
     const { searchParams } = new URL(req.url);
@@ -26,7 +27,8 @@ export async function GET(req: NextRequest) {
     const leadId = searchParams.get('leadId');
     const trigger = searchParams.get('trigger');
 
-    const where: Record<string, unknown> = {};
+    // Scope multi-admin (DEC-K5) : un conseiller ne voit que les logs de ses leads.
+    const where: Record<string, unknown> = { ...getEmailLogScope(admin!) };
     if (email) where.email = { contains: email, mode: 'insensitive' };
     if (leadId) where.leadId = leadId;
     if (trigger) where.trigger = trigger;

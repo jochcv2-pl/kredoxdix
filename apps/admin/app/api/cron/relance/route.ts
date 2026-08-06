@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma, EmailTrigger, SequenceExitReason, createNotification } from '@kredix/db';
 import { generateEmail } from '@kredix/ai';
 import { successResponse, errorResponse, ERR } from '../../_lib/responses';
-import { getSetting, getSettingNumber, getPrimaryGateway } from '../../_lib/settings';
+import { getSetting, getSettingNumber, getSystemGateway } from '../../_lib/settings';
 import { sendEmail } from '../../_lib/email-sender';
 import { interpolateTemplate, textToHtml, buildUnsubscribeUrl } from '../../_lib/template-interpolation';
 import { composeEmailHtml, loadBrandData, brandToContext } from '@kredix/email';
@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
         sequenceActive: true,
         sequenceStartedAt: { lt: timeoutThreshold },
       },
-      select: { id: true, firstName: true, lastName: true },
+      select: { id: true, firstName: true, lastName: true, assignedToId: true },
     });
 
     for (const lead of timeoutLeads) {
@@ -117,6 +117,15 @@ export async function POST(req: NextRequest) {
           status: 'lost',
         },
       });
+
+      // DEC-K5 — libérer la charge du conseiller.
+      if (lead.assignedToId) {
+        await prisma.adminUser.update({
+          where: { id: lead.assignedToId },
+          data: { currentActiveLeads: { decrement: 1 } },
+        });
+      }
+
       stats.timeouts++;
 
       // Notification admin : séquence expirée (timeout)
@@ -160,12 +169,14 @@ export async function POST(req: NextRequest) {
         offerSentAt: true,
         unsubscribeToken: true,
         preferredLanguage: true,
-        assignedTo: { select: { displayName: true } },
+        assignedToId: true,
+        assignedTo: { select: { firstName: true, lastName: true, phone: true, email: true, displayName: true } },
       },
     });
 
-    // Vérifie qu'un gateway actif existe (sinon on skippe avec un log).
-    const gateway = await getPrimaryGateway();
+    // Gateway système (DEC-K5 : les leads existants sont non-assignés → SMTP système.
+    // TODO Bloc C : adapter pour getGatewayForLead par lead quand routing automatique sera actif).
+    const gateway = await getSystemGateway();
     if (!gateway) {
       stats.skippedNoGateway = dueLeads.length;
       return successResponse({ ...stats, note: 'Aucun gateway actif — envois skipés' }, 200);
@@ -197,6 +208,14 @@ export async function POST(req: NextRequest) {
                     : SequenceExitReason.bounced,
               },
             });
+
+            // DEC-K5 — libérer la charge du conseiller.
+            if (lead.assignedToId) {
+              await prisma.adminUser.update({
+                where: { id: lead.assignedToId },
+                data: { currentActiveLeads: { decrement: 1 } },
+              });
+            }
             stats.suppressed++;
             continue;
           }
@@ -240,7 +259,7 @@ export async function POST(req: NextRequest) {
           }
 
           const siteUrl = await getSetting('site_url', 'http://localhost:3100');
-          const ctx = { lead: { ...lead, advisorName: lead.assignedTo?.displayName ?? null }, siteUrl, brand: brandToContext(brand) };
+          const ctx = { lead: { ...lead, advisorName: lead.assignedTo?.displayName ?? null }, siteUrl, brand: brandToContext(brand), advisor: lead.assignedTo };
           const welcomeSubject = interpolateTemplate(welcomeTemplate.subject, ctx);
           const welcomeBody = interpolateTemplate(welcomeTemplate.bodyText, ctx);
 
@@ -370,7 +389,7 @@ export async function POST(req: NextRequest) {
           }
 
           const siteUrl = await getSetting('site_url', 'http://localhost:3100');
-          const ctx = { lead: { ...lead, advisorName: lead.assignedTo?.displayName ?? null }, siteUrl, brand: brandToContext(brand) };
+          const ctx = { lead: { ...lead, advisorName: lead.assignedTo?.displayName ?? null }, siteUrl, brand: brandToContext(brand), advisor: lead.assignedTo };
           const offerSubject = interpolateTemplate(offerTemplate.subject, ctx);
           const offerBody = interpolateTemplate(offerTemplate.bodyText, ctx);
           const offerRawHtml = offerTemplate.htmlContent
@@ -462,7 +481,7 @@ export async function POST(req: NextRequest) {
 
         // d) Interpole les variables du template (fallback de base)
         const siteUrl = await getSetting('site_url', 'http://localhost:3100');
-        const ctx = { lead: { ...lead, advisorName: lead.assignedTo?.displayName ?? null }, siteUrl, brand: brandToContext(brand) };
+        const ctx = { lead: { ...lead, advisorName: lead.assignedTo?.displayName ?? null }, siteUrl, brand: brandToContext(brand), advisor: lead.assignedTo };
         const fallbackSubject = interpolateTemplate(template.subject, ctx);
         const fallbackBody = interpolateTemplate(template.bodyText, ctx);
 
@@ -592,6 +611,14 @@ export async function POST(req: NextRequest) {
             status: isLast ? 'lost' : undefined, // 3 relances sans réponse → lost
           },
         });
+
+        // DEC-K5 — libérer la charge du conseiller si séquence terminée.
+        if (isLast && lead.assignedToId) {
+          await prisma.adminUser.update({
+            where: { id: lead.assignedToId },
+            data: { currentActiveLeads: { decrement: 1 } },
+          });
+        }
 
         if (isLast) {
           stats.maxRelances++;

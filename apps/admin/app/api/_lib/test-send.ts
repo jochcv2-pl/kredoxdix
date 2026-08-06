@@ -65,9 +65,10 @@ export async function sendTestEmail(
     isConfidential: boolean;
   },
   testEmail: string,
+  adminId?: string,
 ): Promise<TestSendResult> {
-  // 1. Gateway actif obligatoire.
-  const gateway = await getPrimaryGateway();
+  // 1. Gateway actif obligatoire (DEC-K5 : SMTP de l'admin connecté si fourni).
+  const gateway = await getPrimaryGateway(adminId);
   if (!gateway) {
     return { success: false, error: 'Aucun gateway email actif. Configurez un fournisseur dans Paramètres → Emails.' };
   }

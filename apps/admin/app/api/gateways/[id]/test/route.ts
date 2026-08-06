@@ -10,6 +10,7 @@ import { prisma } from '@kredix/db';
 import { successResponse, errorResponse, ERR } from '@/app/api/_lib/responses';
 import { isValidId } from '@/app/api/_lib/id-validation';
 import { requireAuth } from '../../../_lib/auth-server';
+import { getGatewayScope } from '../../../_lib/scope';
 import { sendEmail } from '@/app/api/_lib/email-sender';
 
 export async function POST(
@@ -25,7 +26,8 @@ export async function POST(
       return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);
     }
 
-    const gateway = await prisma.emailGateway.findUnique({ where: { id } });
+    // findFirst avec scope : anti-IDOR (DEC-K5). Un conseiller ne peut tester que ses SMTP.
+    const gateway = await prisma.emailGateway.findFirst({ where: { id, ...getGatewayScope(admin) } });
     if (!gateway) {
       return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);
     }

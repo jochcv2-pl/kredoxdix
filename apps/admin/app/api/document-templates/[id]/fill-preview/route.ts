@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { prisma } from '@kredix/db';
 import { errorResponse, ERR, parseBody } from '@/app/api/_lib/responses';
 import { requireAuth } from '../../../_lib/auth-server';
+import { getLeadScope } from '../../../_lib/scope';
 import { isValidId } from '@/app/api/_lib/id-validation';
 import { fillPdfTemplate, PdfFillData } from '@/app/api/_lib/pdf-filler';
 import { getSetting } from '@/app/api/_lib/settings';
@@ -22,7 +23,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const [, deny] = await requireAuth();
+  const [admin, deny] = await requireAuth();
   if (deny) return deny;
   try {
     const { id } = await params;
@@ -32,7 +33,7 @@ export async function POST(
     const [data, error] = await parseBody(req, previewSchema);
     if (error) return error;
 
-    // Récupération du template.
+    // Récupération du template (partagé — pas de scope).
     const template = await prisma.documentTemplate.findUnique({ where: { id } });
     if (!template) {
       return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);
@@ -46,8 +47,8 @@ export async function POST(
       );
     }
 
-    // Récupération du lead.
-    const lead = await prisma.lead.findUnique({ where: { id: data.leadId } });
+    // Récupération du lead avec scope (DEC-K5) : anti-IDOR.
+    const lead = await prisma.lead.findFirst({ where: { id: data.leadId, ...getLeadScope(admin) } });
     if (!lead) {
       return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);
     }

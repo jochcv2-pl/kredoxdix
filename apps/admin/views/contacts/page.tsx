@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { useSession } from 'next-auth/react'
 import { calculateLoan } from '@kredix/simulator'
 import type { ApplicableRate } from '@kredix/types'
 import { Modal } from '@/components/Modal'
@@ -171,6 +172,46 @@ export default function Contacts() {
   const [selectedForImport, setSelectedForImport] = useState<Set<number>>(new Set())
   const [filterModalOpen, setFilterModalOpen] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string>('all')
+
+  // DEC-K5 multi-admin — onglets de scope (super-admin only)
+  const { data: session } = useSession()
+  const isSuperAdmin = session?.user?.role === 'admin'
+  const [scopeTab, setScopeTab] = useState<'all' | 'mine' | 'unassigned'>('all')
+
+  // DEC-K5 — assignation manuelle (super-admin only)
+  const [assignTarget, setAssignTarget] = useState<{ id: string; name: string } | null>(null)
+  const [advisors, setAdvisors] = useState<Array<{ id: string; displayName: string; email: string; currentActiveLeads: number; maxActiveLeads: number; loanTypes: string[]; countries: string[]; role: string }>>([])
+  const [assignLoading, setAssignLoading] = useState(false)
+
+  const openAssignModal = async (leadId: string, leadName: string) => {
+    setAssignTarget({ id: leadId, name: leadName })
+    if (advisors.length === 0) {
+      try {
+        const res = await fetch('/api/admin/users', { cache: 'no-store' })
+        const json = await res.json()
+        setAdvisors((json.data ?? []).filter((a: { isActive: boolean; role: string }) => a.isActive && a.role !== 'viewer'))
+      } catch { /* non bloquant */ }
+    }
+  }
+
+  const handleAssign = async (advisorId: string) => {
+    if (!assignTarget) return
+    setAssignLoading(true)
+    try {
+      const res = await fetch(`/api/leads/${assignTarget.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assignedToId: advisorId }),
+      })
+      if (!res.ok) throw new Error('Échec assignation')
+      setAssignTarget(null)
+      await fetchContacts()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erreur')
+    } finally {
+      setAssignLoading(false)
+    }
+  }
   const [validateTarget, setValidateTarget] = useState<{ id: string; name: string } | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
 
@@ -268,7 +309,8 @@ export default function Contacts() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch('/api/leads?pageSize=200')
+      const scopeParam = isSuperAdmin ? `&scope=${scopeTab}` : ''
+      const res = await fetch(`/api/leads?pageSize=200${scopeParam}`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const json = await res.json()
       const leads: ApiLead[] = Array.isArray(json?.data?.leads) ? json.data.leads : []
@@ -279,7 +321,7 @@ export default function Contacts() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [isSuperAdmin, scopeTab])
 
   useEffect(() => {
     fetchContacts()
@@ -688,6 +730,20 @@ export default function Contacts() {
         </div>
       </div>
 
+      {isSuperAdmin && (
+        <div className="cns-tabs">
+          <button className={`cns-tab ${scopeTab === 'all' ? 'active' : ''}`} onClick={() => setScopeTab('all')}>
+            Tous les leads
+          </button>
+          <button className={`cns-tab ${scopeTab === 'mine' ? 'active' : ''}`} onClick={() => setScopeTab('mine')}>
+            Mes leads
+          </button>
+          <button className={`cns-tab ${scopeTab === 'unassigned' ? 'active' : ''}`} onClick={() => setScopeTab('unassigned')}>
+            Non assignés
+          </button>
+        </div>
+      )}
+
       {error && (
         <div
           style={{
@@ -1091,6 +1147,16 @@ export default function Contacts() {
                               Dossier perdu
                             </span>
                            )}
+                          {isSuperAdmin && (
+                            <button
+                              className="btn btn-ghost btn-sm"
+                              title="Assigner / Transférer"
+                              onClick={() => openAssignModal(c.id, `${c.firstName} ${c.lastName}`)}
+                              style={{ padding: '4px 8px' }}
+                            >
+                              <Icon name="user-check" size={14} />
+                            </button>
+                          )}
                           <button
                             className="btn btn-ghost btn-sm"
                             title="Modifier"
@@ -1196,6 +1262,50 @@ export default function Contacts() {
         }}
         onClose={() => setValidateTarget(null)}
       />
+
+      {/* DEC-K5 — Modal d'assignation manuelle */}
+      <Modal
+        isOpen={!!assignTarget}
+        onClose={() => setAssignTarget(null)}
+        title={`Assigner ${assignTarget?.name ?? ''}`}
+      >
+        <div className="modal-fg">
+          <p style={{ fontSize: 13, color: '#666', marginBottom: 12 }}>
+            Sélectionnez le conseiller à qui assigner ce lead :
+          </p>
+          {advisors.length === 0 && <p style={{ color: '#999' }}>Chargement…</p>}
+          {advisors.map((a) => (
+            <button
+              key={a.id}
+              onClick={() => handleAssign(a.id)}
+              disabled={assignLoading}
+              style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                width: '100%', padding: '10px 14px', marginBottom: 8,
+                border: '1px solid var(--line, #e5e7eb)', borderRadius: 8,
+                background: '#fff', cursor: assignLoading ? 'wait' : 'pointer',
+                textAlign: 'left', fontFamily: 'inherit', fontSize: 13,
+                opacity: assignLoading ? 0.6 : 1,
+              }}
+            >
+              <div>
+                <strong>{a.displayName}</strong>
+                <span style={{ marginLeft: 8, fontSize: 11, color: '#aaa' }}>
+                  {a.role === 'admin' ? 'Super-admin' : 'Conseiller'}
+                </span>
+                <div style={{ fontSize: 12, color: '#888' }}>{a.email}</div>
+              </div>
+              <div style={{ textAlign: 'right', fontSize: 12, color: '#666' }}>
+                <div>Charge : {a.currentActiveLeads}/{a.maxActiveLeads}</div>
+                <div style={{ color: '#aaa' }}>
+                  {a.loanTypes.length > 0 ? a.loanTypes.join(', ') : 'Tous types'} ·{' '}
+                  {a.countries.length > 0 ? a.countries.join(', ') : 'Tous pays'}
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </Modal>
 
       <ConfirmDialog
         isOpen={!!deleteTarget}

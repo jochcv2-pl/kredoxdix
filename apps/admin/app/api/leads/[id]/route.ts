@@ -18,6 +18,7 @@ import { z } from 'zod';
 import { prisma, LeadStatus, SequenceExitReason, createNotification } from '@kredix/db';
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses';
 import { requireAuth } from '../../_lib/auth-server';
+import { getLeadScope } from '../../_lib/scope';
 import { isValidId } from '@/app/api/_lib/id-validation';
 
 const patchLeadSchema = z.object({
@@ -38,6 +39,8 @@ const patchLeadSchema = z.object({
   monthlyPayment: z.number().int().min(0).optional(),
   annualRate: z.number().min(0).max(100).optional(),
   totalCost: z.number().int().min(0).optional(),
+  // DEC-K5 — assignation manuelle (super-admin only)
+  assignedToId: z.string().nullable().optional(),
 });
 
 // GET /api/leads/[id] — détail complet.
@@ -45,14 +48,16 @@ export async function GET(
   _req: NextRequest,
   ctx: { params: Promise<{ id: string }> },
 ) {
-  const [, deny] = await requireAuth();
+  const [admin, deny] = await requireAuth();
   if (deny) return deny;
   try {
     const { id } = await ctx.params;
     if (!isValidId(id)) {
       return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);
     }
-    const lead = await prisma.lead.findUnique({ where: { id } });
+    // findFirst (pas findUnique) pour appliquer le scope multi-admin (DEC-K5).
+    // Un conseiller ne voit que ses propres leads ; un super-admin voit tout.
+    const lead = await prisma.lead.findFirst({ where: { id, ...getLeadScope(admin) } });
 
     if (!lead) {
       return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);
@@ -70,7 +75,7 @@ export async function PATCH(
   req: NextRequest,
   ctx: { params: Promise<{ id: string }> },
 ) {
-  const [, deny] = await requireAuth();
+  const [admin, deny] = await requireAuth();
   if (deny) return deny;
   try {
     const { id } = await ctx.params;
@@ -80,9 +85,16 @@ export async function PATCH(
     const [data, error] = await parseBody(req, patchLeadSchema);
     if (error) return error;
 
-    const existing = await prisma.lead.findUnique({
-      where: { id },
-      select: { id: true, status: true, sequenceActive: true, exitReason: true },
+    // DEC-K5 — assignation manuelle réservée au super-admin.
+    if (data.assignedToId !== undefined && admin!.role !== 'admin') {
+      return errorResponse('Seul le super-admin peut réassigner un lead', 'FORBIDDEN', undefined, 403);
+    }
+
+    // findFirst avec scope : anti-IDOR (DEC-K5). Un conseiller ne peut modifier
+    // que ses propres leads. Le update qui suit est safe car l'appartenance est vérifiée.
+    const existing = await prisma.lead.findFirst({
+      where: { id, ...getLeadScope(admin) },
+      select: { id: true, status: true, sequenceActive: true, exitReason: true, assignedToId: true },
     });
     if (!existing) {
       return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);
@@ -113,6 +125,12 @@ export async function PATCH(
       }
     }
 
+    // DEC-K5 — assignation manuelle.
+    if (data.assignedToId !== undefined) {
+      updateData.assignedToId = data.assignedToId;
+      updateData.assignedAt = new Date();
+    }
+
     // Logique de séquence : uniquement si le statut change
     if (hasStatusChange && isTerminal) {
       updateData.sequenceActive = false;
@@ -133,6 +151,22 @@ export async function PATCH(
       where: { id },
       data: updateData,
     });
+
+    // DEC-K5 — ajuster les compteurs de charge si réassignation.
+    if (data.assignedToId !== undefined && data.assignedToId !== existing.assignedToId) {
+      if (existing.assignedToId) {
+        await prisma.adminUser.update({
+          where: { id: existing.assignedToId },
+          data: { currentActiveLeads: { decrement: 1 } },
+        }).catch(() => {});
+      }
+      if (data.assignedToId) {
+        await prisma.adminUser.update({
+          where: { id: data.assignedToId },
+          data: { currentActiveLeads: { increment: 1 }, lastAssignedAt: new Date() },
+        }).catch(() => {});
+      }
+    }
 
     // ----- Notification : conversion client -----
     if (newStatus === LeadStatus.client && existing.status !== LeadStatus.client) {
@@ -159,7 +193,7 @@ export async function DELETE(
   _req: NextRequest,
   ctx: { params: Promise<{ id: string }> },
 ) {
-  const [, deny] = await requireAuth();
+  const [admin, deny] = await requireAuth();
   if (deny) return deny;
   try {
     const { id } = await ctx.params;
@@ -167,8 +201,10 @@ export async function DELETE(
       return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);
     }
 
-    const existing = await prisma.lead.findUnique({
-      where: { id },
+    // findFirst avec scope : anti-IDOR (DEC-K5). Un conseiller ne peut supprimer
+    // que ses propres leads.
+    const existing = await prisma.lead.findFirst({
+      where: { id, ...getLeadScope(admin) },
       select: { id: true },
     });
     if (!existing) {

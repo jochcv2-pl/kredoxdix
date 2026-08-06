@@ -18,6 +18,10 @@ export {
 export { createNotification } from './notifications';
 export type { CreateNotificationInput } from './notifications';
 
+// Routing automatique des leads (DEC-K5 multi-admin)
+export { assignLeadToAdmin, recalcAdminLoad, recalcAllAdminLoads } from './routing';
+export type { RoutingResult } from './routing';
+
 // Types
 export type {
   Lead,

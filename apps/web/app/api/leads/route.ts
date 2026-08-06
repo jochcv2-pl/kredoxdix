@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { prisma, createNotification } from "@kredix/db";
+import { prisma, createNotification, assignLeadToAdmin } from "@kredix/db";
 import { createLeadSchema, errorResponse, successResponse } from "../validators";
 import { computeSequenceInitDates } from "../_lib/email-ack";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limiter";
@@ -84,13 +84,20 @@ export async function POST(request: NextRequest) {
     // nextRelanceAt = now + 5min a déjà été setté par computeSequenceInitDates().
     // Le cron détectera ackSentAt = null et enverra le reception_ack.
 
+    // ----- Routing automatique (DEC-K5 multi-admin) -----
+    // Assigne le lead au conseiller le moins chargé qui matche (loanType + pays).
+    // Si aucun match → lead reste non assigné (notification warning super-admin).
+    const routing = await assignLeadToAdmin(lead.id);
+
     // ----- Notification admin : nouveau prospect -----
     await createNotification({
       type: 'new_prospect',
-      title: 'Nouveau prospect',
-      message: `${lead.firstName} ${lead.lastName} a soumis une demande de ${lead.loanType} de ${lead.amount.toLocaleString('fr-FR')}€.`,
-      icon: 'user-plus',
-      severity: 'info',
+      title: routing.assigned ? 'Nouveau prospect' : 'Prospect non assigné',
+      message: routing.assigned
+        ? `${lead.firstName} ${lead.lastName} a soumis une demande de ${lead.loanType} de ${lead.amount.toLocaleString('fr-FR')}€.`
+        : `${lead.firstName} ${lead.lastName} (${lead.loanType}/${lead.country}) — aucun conseiller éligible. Assignez manuellement.`,
+      icon: routing.assigned ? 'user-plus' : 'alert-triangle',
+      severity: routing.assigned ? 'info' : 'warning',
       linkUrl: `/leads?id=${lead.id}`,
       relatedEntityId: lead.id,
     });

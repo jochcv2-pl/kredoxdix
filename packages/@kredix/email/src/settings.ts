@@ -26,34 +26,97 @@ export async function getSettingNumber(key: string, fallback: number): Promise<n
 }
 
 /** Récupère le gateway d'envoi actif (le premier trouvé).
- *  Utilisé pour la rétro-compatibilité — préférez getPrimaryGateway(). */
+ *  Utilisé pour la rétro-compatibilité — préférez getPrimaryGateway() ou getGatewayForLead(). */
 export async function getActiveGateway() {
   return prisma.emailGateway.findFirst({ where: { isActive: true } });
 }
 
-/** Récupère le gateway PRIMAIRE (prospects, relances, parcours client).
- *  Si aucun n'est marqué isPrimary, fallback sur le premier actif. */
-export async function getPrimaryGateway() {
-  const primary = await prisma.emailGateway.findFirst({ where: { isPrimary: true } });
+/**
+ * Récupère le gateway SMTP système (réservé aux leads non assignés — DEC-K5).
+ */
+export async function getSystemGateway() {
+  return prisma.emailGateway.findFirst({
+    where: { isSystem: true, isActive: true },
+  });
+}
+
+/**
+ * Récupère le gateway PRIMAIRE (prospects, relances, parcours client).
+ *
+ * DEC-K5 multi-admin :
+ *   - Si ownerId fourni : SMTP primaire DE CET ADMIN.
+ *     Fallback : premier actif de cet admin, puis SMTP système.
+ *   - Si ownerId absent : SMTP primaire global (ownerId IS NULL) — rétro-compat.
+ */
+export async function getPrimaryGateway(ownerId?: string) {
+  if (ownerId) {
+    const primary = await prisma.emailGateway.findFirst({
+      where: { isPrimary: true, ownerId, isActive: true },
+    });
+    if (primary) return primary;
+    const anyActive = await prisma.emailGateway.findFirst({
+      where: { ownerId, isActive: true },
+    });
+    if (anyActive) return anyActive;
+    return getSystemGateway();
+  }
+  const primary = await prisma.emailGateway.findFirst({
+    where: { isPrimary: true, ownerId: null },
+  });
   if (primary) return primary;
-  // Fallback rétro-compat : premier gateway actif.
   return prisma.emailGateway.findFirst({ where: { isActive: true } });
 }
 
-/** Récupère le gateway pour une campagne spécifique.
- *  Si la campagne a un gatewayId → utilise ce gateway.
- *  Sinon → fallback sur le gateway primaire. */
+/**
+ * Récupère le gateway pour un lead donné (DEC-K5).
+ * - Lead assigné → SMTP primaire de l'owner.
+ * - Lead non assigné → SMTP système.
+ */
+export async function getGatewayForLead(leadId: string) {
+  const lead = await prisma.lead.findUnique({
+    where: { id: leadId },
+    select: { assignedToId: true },
+  });
+  if (lead?.assignedToId) {
+    return getPrimaryGateway(lead.assignedToId);
+  }
+  return getSystemGateway();
+}
+
+/**
+ * Récupère le gateway pour une campagne spécifique (DEC-K5).
+ * Utilise campaign.ownerId pour trouver le SMTP de l'owner.
+ */
 export async function getGatewayForCampaign(campaignId: string) {
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId },
-    select: { gatewayId: true },
+    select: { gatewayId: true, ownerId: true },
   });
   if (campaign?.gatewayId) {
     const gw = await prisma.emailGateway.findUnique({ where: { id: campaign.gatewayId } });
     if (gw?.isActive) return gw;
   }
-  // Fallback : gateway primaire.
+  if (campaign?.ownerId) {
+    return getPrimaryGateway(campaign.ownerId);
+  }
   return getPrimaryGateway();
+}
+
+/**
+ * Récupère le contexte conseiller pour un lead (DEC-K5 multi-admin).
+ * - Lead assigné → AdminUser (firstName, lastName, phone, email, displayName).
+ * - Lead non assigné → null (le caller fait fallback sur settings CMS).
+ */
+export async function getConseillerContext(leadId: string) {
+  const lead = await prisma.lead.findUnique({
+    where: { id: leadId },
+    select: {
+      assignedTo: {
+        select: { firstName: true, lastName: true, phone: true, email: true, displayName: true },
+      },
+    },
+  });
+  return lead?.assignedTo ?? null;
 }
 
 /** Récupère le template d'email actif pour un trigger + langue donnés.

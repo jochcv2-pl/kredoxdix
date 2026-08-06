@@ -25,11 +25,13 @@ import SEO from '@/views/seo/page'
 import Domains from '@/views/domains/page'
 import Agents from '@/views/agents/page'
 import Partners from '@/views/partners/page'
+import Conseillers from '@/views/conseillers/page'
 import Settings from '@/views/settings/page'
 import Profil from '@/views/profil/page'
 
 const pageTitles: Record<string, [string, string]> = {
   dashboard: ["Vue d'ensemble", "Activité de votre agence en temps réel"],
+  conseillers: ['Gestion des conseillers', 'Créez et configurez vos conseillers (rôles, spécialités, charge)'],
   contacts: ['Prospects & clients', 'Gérez et validez vos contacts'],
   clients: ['Clients', "Parcours d'accompagnement en 7 niveaux"],
   parcours: ['Parcours client', "Configurez les étapes du parcours client — 100% manuel, aucun envoi automatique"],
@@ -119,6 +121,7 @@ export default function AdminPage() {
   const renderView = () => {
     switch (viewId) {
       case 'dashboard': return <ViewErrorBoundary viewName="Tableau de bord"><Dashboard /></ViewErrorBoundary>
+      case 'conseillers': return <ViewErrorBoundary viewName="Conseillers"><Conseillers /></ViewErrorBoundary>
       case 'contacts': return <ViewErrorBoundary viewName="Prospects"><Contacts /></ViewErrorBoundary>
       case 'clients': return <ViewErrorBoundary viewName="Clients"><Clients /></ViewErrorBoundary>
       case 'parcours': return <ViewErrorBoundary viewName="Parcours client"><Parcours /></ViewErrorBoundary>

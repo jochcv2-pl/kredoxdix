@@ -25,6 +25,7 @@ interface Gateway {
   config: Record<string, unknown>
   isActive: boolean
   isPrimary: boolean
+  isSystem?: boolean
 }
 
 // =============================================================================
@@ -1241,6 +1242,11 @@ function GatewayCard({
           {gateway.isPrimary && (
             <span className="prov-badge" style={{ marginLeft: 8, background: '#2563eb' }}>
               ⭐ Principale
+            </span>
+          )}
+          {gateway.isSystem && (
+            <span className="prov-badge" style={{ marginLeft: 8, background: '#6b7280' }}>
+              ⚙ Système
             </span>
           )}
         </label>

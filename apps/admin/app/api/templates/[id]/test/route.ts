@@ -11,7 +11,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@kredix/db';
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses';
-import { requireAdmin } from '@/app/api/_lib/auth-server';
+import { requireAuth } from '@/app/api/_lib/auth-server';
 import { sendTestEmail } from '@/app/api/_lib/test-send';
 
 const testSchema = z.object({
@@ -22,7 +22,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const [, deny] = await requireAdmin();
+  const [admin, deny] = await requireAuth();
   if (deny) return deny;
 
   const { id } = await params;
@@ -47,7 +47,7 @@ export async function POST(
       return errorResponse('Modèle introuvable', ERR.NOT_FOUND.code, undefined, 404);
     }
 
-    const result = await sendTestEmail(template, data.email);
+    const result = await sendTestEmail(template, data.email, admin.id);
 
     if (!result.success) {
       return errorResponse(

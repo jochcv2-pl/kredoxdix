@@ -5077,3 +5077,46 @@ body {
 .tpl2-btn-test:hover {
   background: #eff6ff;
 }
+
+/* =============================================================================
+   DEC-K5 — Vue Gestion des conseillers
+   ============================================================================= */
+.cns-checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.cns-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.cns-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  border-bottom: 2px solid var(--line, #e5e7eb);
+}
+.cns-tab {
+  padding: 8px 16px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--slate, #64748b);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+.cns-tab:hover {
+  color: var(--ink, #1e293b);
+}
+.cns-tab.active {
+  color: var(--blue, #2B8BDE);
+  border-bottom-color: var(--blue, #2B8BDE);
+  font-weight: 600;
+}

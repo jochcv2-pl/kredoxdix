@@ -104,7 +104,11 @@ export async function processCampaign(campaignId: string): Promise<void> {
     // 1 — Charger la campagne et vérifier qu'elle est en cours d'envoi.
     const campaign = await prisma.campaign.findUnique({
       where: { id: campaignId },
-      include: { template: true, domain: true },
+      include: {
+        template: true,
+        domain: true,
+        owner: { select: { firstName: true, lastName: true, phone: true, email: true, displayName: true } },
+      },
     });
     if (!campaign) return;
     if (campaign.status !== CampaignStatus.sending) return;
@@ -238,6 +242,7 @@ export async function processCampaign(campaignId: string): Promise<void> {
         },
         siteUrl,
         brand: brandToContext(brand),
+        advisor: campaign.owner,
       };
       const subject = interpolateTemplate(template.subject, ctx);
       const textBody = interpolateTemplate(template.bodyText, ctx);

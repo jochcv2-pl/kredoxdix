@@ -19,6 +19,7 @@
 import { prisma, LeadStatus } from '@kredix/db';
 import { successResponse, errorResponse, ERR } from '@/app/api/_lib/responses';
 import { requireAuth } from '../../_lib/auth-server';
+import { getLeadScope, getEmailLogScope } from '../../_lib/scope';
 
 // Ordre canonique du pipeline (cohérent avec la vue Contacts).
 const PIPELINE_ORDER: LeadStatus[] = [
@@ -33,12 +34,16 @@ const PIPELINE_ORDER: LeadStatus[] = [
 
 // GET /api/leads/stats — agrégations dashboard.
 export async function GET() {
-  const [, deny] = await requireAuth();
+  const [admin, deny] = await requireAuth();
   if (deny) return deny;
   try {
     const now = new Date();
     const startOfToday = new Date(now);
     startOfToday.setHours(0, 0, 0, 0);
+
+    // Scope multi-admin (DEC-K5) : un conseiller ne voit que ses propres données.
+    const leadScope = getLeadScope(admin!)
+    const emailLogScope = getEmailLogScope(admin!)
 
     // ----- KPIs principaux -----
     const [
@@ -54,23 +59,25 @@ export async function GET() {
     ] = await Promise.all([
       // Prospects actifs = ni client ni lost.
       prisma.lead.count({
-        where: { status: { notIn: [LeadStatus.client, LeadStatus.lost] } },
+        where: { ...leadScope, status: { notIn: [LeadStatus.client, LeadStatus.lost] } },
       }),
-      prisma.lead.count({ where: { status: LeadStatus.client } }),
-      prisma.lead.count({ where: { status: LeadStatus.offer } }),
+      prisma.lead.count({ where: { ...leadScope, status: LeadStatus.client } }),
+      prisma.lead.count({ where: { ...leadScope, status: LeadStatus.offer } }),
       // Volume financé = somme des amounts des clients validés.
       prisma.lead.aggregate({
-        where: { status: LeadStatus.client },
+        where: { ...leadScope, status: LeadStatus.client },
         _sum: { amount: true },
       }),
-      prisma.lead.count(),
+      prisma.lead.count({ where: leadScope }),
       // Count groupé par statut.
       prisma.lead.groupBy({
         by: ['status'],
+        where: leadScope,
         _count: { _all: true },
       }),
       // 5 derniers leads.
       prisma.lead.findMany({
+        where: leadScope,
         orderBy: { createdAt: 'desc' },
         take: 5,
         select: {
@@ -91,12 +98,13 @@ export async function GET() {
       // Activité agents : emails envoyés aujourd'hui, groupés par trigger.
       prisma.emailLog.groupBy({
         by: ['trigger'],
-        where: { sentAt: { gte: startOfToday } },
+        where: { ...emailLogScope, sentAt: { gte: startOfToday } },
         _count: { _all: true },
       }),
       // Relances programmées (leads avec prochaine échéance future).
       prisma.lead.count({
         where: {
+          ...leadScope,
           sequenceActive: true,
           nextRelanceAt: { gt: now },
         },

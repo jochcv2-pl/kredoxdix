@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { prisma, LeadStatus } from '@kredix/db';
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses';
 import { requireAuth } from '../../_lib/auth-server';
+import { getLeadScope } from '../../_lib/scope';
 
 const previewSchema = z.object({
   recipientSource: z.enum([
@@ -62,13 +63,14 @@ function buildRecipientWhere(source: string, leadIds: string[] | undefined) {
 
 // POST /api/campaigns/recipients-preview — compte + échantillon (10 premiers).
 export async function POST(req: NextRequest) {
-  const [, deny] = await requireAuth();
+  const [admin, deny] = await requireAuth();
   if (deny) return deny;
   try {
     const [data, error] = await parseBody(req, previewSchema);
     if (error) return error;
 
-    const where = buildRecipientWhere(data.recipientSource, data.leadIds);
+    // Scope multi-admin (DEC-K5) : un conseiller ne cible que ses propres leads.
+    const where = { ...getLeadScope(admin!), ...buildRecipientWhere(data.recipientSource, data.leadIds) };
 
     const [count, sample] = await Promise.all([
       prisma.lead.count({ where }),

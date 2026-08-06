@@ -16,6 +16,7 @@ import { z } from 'zod';
 import { prisma, LeadStatus, createNotification } from '@kredix/db';
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses';
 import { requireAuth } from '../_lib/auth-server';
+import { getLeadScope } from '../_lib/scope';
 
 const DAY = 24 * 60 * 60 * 1000;
 const WELCOME_DELAY_MS = 5 * 60 * 1000; // 5 minutes
@@ -57,7 +58,7 @@ interface LeadListItem {
 
 // GET /api/leads — liste paginée filtrée.
 export async function GET(req: NextRequest) {
-  const [, deny] = await requireAuth();
+  const [admin, deny] = await requireAuth();
   if (deny) return deny;
   try {
     const { searchParams } = new URL(req.url);
@@ -71,8 +72,8 @@ export async function GET(req: NextRequest) {
     const search = searchParams.get('search')?.trim();
     const loanType = searchParams.get('loanType')?.trim();
 
-    // Construction du where Prisma.
-    const where: Record<string, unknown> = {};
+    // Construction du where Prisma + scope multi-admin (DEC-K5).
+    const where: Record<string, unknown> = { ...getLeadScope(admin!) };
 
     if (status && VALID_STATUSES.has(status)) {
       where.status = status as LeadStatus;
@@ -89,6 +90,16 @@ export async function GET(req: NextRequest) {
         { phone: { contains: search } },
         { city: { contains: search, mode: 'insensitive' } },
       ];
+    }
+
+    // Onglet scope (DEC-K5) — filtrage par assignation pour le super-admin.
+    // Pour un conseiller, getLeadScope filtre déjà par assignedToId — ce param
+    // n'a d'effet visible que pour le super-admin (dont le scope est vide = tous).
+    const scopeParam = searchParams.get('scope');
+    if (scopeParam === 'mine') {
+      where.assignedToId = admin!.id;
+    } else if (scopeParam === 'unassigned') {
+      where.assignedToId = null;
     }
 
     const [leads, total] = await Promise.all([

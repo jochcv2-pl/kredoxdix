@@ -23,6 +23,15 @@ const publicAdminSelect = {
   displayName: true,
   role: true,
   isActive: true,
+  // DEC-K5 — identité conseiller + routing
+  firstName: true,
+  lastName: true,
+  phone: true,
+  loanTypes: true,
+  countries: true,
+  maxActiveLeads: true,
+  currentActiveLeads: true,
+  lastAssignedAt: true,
   lastLoginAt: true,
   createdAt: true,
   updatedAt: true,
@@ -34,6 +43,13 @@ const updateUserSchema = z.object({
   password: z.string().min(8).max(128).optional(), // si fourni → re-hash
   role: z.nativeEnum(AdminRole).optional(),
   isActive: z.boolean().optional(),
+  // DEC-K5 — identité conseiller + routing
+  firstName: z.string().max(80).nullable().optional(),
+  lastName: z.string().max(80).nullable().optional(),
+  phone: z.string().max(40).nullable().optional(),
+  loanTypes: z.array(z.string()).optional(),
+  countries: z.array(z.string()).optional(),
+  maxActiveLeads: z.number().int().min(1).max(500).optional(),
 })
 
 // GET /api/admin/users/[id]
@@ -123,6 +139,13 @@ export async function PATCH(
     if (data.password !== undefined) {
       update.passwordHash = await bcrypt.hash(data.password, 10)
     }
+    // DEC-K5 — champs conseiller + routing
+    if (data.firstName !== undefined) update.firstName = data.firstName
+    if (data.lastName !== undefined) update.lastName = data.lastName
+    if (data.phone !== undefined) update.phone = data.phone
+    if (data.loanTypes !== undefined) update.loanTypes = data.loanTypes
+    if (data.countries !== undefined) update.countries = data.countries
+    if (data.maxActiveLeads !== undefined) update.maxActiveLeads = data.maxActiveLeads
 
     const user = await prisma.adminUser.update({
       where: { id },

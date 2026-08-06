@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { prisma, LeadStatus } from '@kredix/db';
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses';
 import { requireAuth } from '../_lib/auth-server';
+import { getCampaignScope, getLeadScope } from '../_lib/scope';
 
 // Source des destinataires possibles.
 const recipientSourceSchema = z.enum([
@@ -80,10 +81,11 @@ function buildRecipientWhere(source: string, leadIds: string[] | undefined) {
 
 // GET /api/campaigns — liste toutes les campagnes (template inclus).
 export async function GET() {
-  const [, deny] = await requireAuth();
+  const [admin, deny] = await requireAuth();
   if (deny) return deny;
   try {
     const campaigns = await prisma.campaign.findMany({
+      where: getCampaignScope(admin!),
       orderBy: { createdAt: 'desc' },
       include: {
         template: { select: { name: true } },
@@ -99,7 +101,7 @@ export async function GET() {
 
 // POST /api/campaigns — crée une campagne + ses destinataires (transaction).
 export async function POST(req: NextRequest) {
-  const [, deny] = await requireAuth();
+  const [admin, deny] = await requireAuth();
   if (deny) return deny;
   try {
     const [data, error] = await parseBody(req, createCampaignSchema);
@@ -155,7 +157,7 @@ export async function POST(req: NextRequest) {
     } else {
       // Sources automatiques (validated_today, validated_week, all_active, manual avec leadIds).
       const leads = await prisma.lead.findMany({
-        where: buildRecipientWhere(data.recipientSource, data.leadIds),
+        where: { ...getLeadScope(admin!), ...buildRecipientWhere(data.recipientSource, data.leadIds) },
         select: { id: true, firstName: true, lastName: true, email: true, phone: true },
       });
       recipientsData = leads.map((lead) => ({
@@ -176,6 +178,7 @@ export async function POST(req: NextRequest) {
           templateId: data.templateId,
           domainId: data.domainId || null,
           gatewayId: data.gatewayId || null,
+          ownerId: admin!.id,
           recipientSource: data.recipientSource,
           totalRecipients: recipientsData.length,
           recipients: {

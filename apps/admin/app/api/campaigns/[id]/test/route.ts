@@ -10,7 +10,8 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@kredix/db';
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses';
-import { requireAdmin } from '@/app/api/_lib/auth-server';
+import { requireAuth } from '@/app/api/_lib/auth-server';
+import { getCampaignScope } from '@/app/api/_lib/scope';
 import { sendTestEmail } from '@/app/api/_lib/test-send';
 
 const testSchema = z.object({
@@ -21,7 +22,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const [, deny] = await requireAdmin();
+  const [admin, deny] = await requireAuth();
   if (deny) return deny;
 
   const { id } = await params;
@@ -29,8 +30,9 @@ export async function POST(
   if (err) return err;
 
   try {
-    const campaign = await prisma.campaign.findUnique({
-      where: { id },
+    // findFirst avec scope : anti-IDOR (DEC-K5). Un conseiller ne peut tester que ses campagnes.
+    const campaign = await prisma.campaign.findFirst({
+      where: { id, ...getCampaignScope(admin) },
       include: {
         template: {
           select: {
@@ -54,7 +56,7 @@ export async function POST(
       return errorResponse('Aucun template associé à cette campagne', ERR.VALIDATION.code, undefined, 422);
     }
 
-    const result = await sendTestEmail(campaign.template, data.email);
+    const result = await sendTestEmail(campaign.template, data.email, admin.id);
 
     if (!result.success) {
       return errorResponse(

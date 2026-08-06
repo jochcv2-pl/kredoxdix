@@ -23,6 +23,15 @@ const publicAdminSelect = {
   displayName: true,
   role: true,
   isActive: true,
+  // DEC-K5 — identité conseiller + routing
+  firstName: true,
+  lastName: true,
+  phone: true,
+  loanTypes: true,
+  countries: true,
+  maxActiveLeads: true,
+  currentActiveLeads: true,
+  lastAssignedAt: true,
   lastLoginAt: true,
   createdAt: true,
   updatedAt: true,
@@ -35,6 +44,14 @@ const createUserSchema = z.object({
   password: z.string().min(8).max(128),
   role: z.nativeEnum(AdminRole).default('advisor'),
   isActive: z.boolean().default(true),
+  // DEC-K5 — identité conseiller (variables email)
+  firstName: z.string().max(80).optional(),
+  lastName: z.string().max(80).optional(),
+  phone: z.string().max(40).optional(),
+  // DEC-K5 — routing automatique (vide = tous)
+  loanTypes: z.array(z.string()).default([]),
+  countries: z.array(z.string()).default([]),
+  maxActiveLeads: z.number().int().min(1).max(500).default(50),
 })
 
 // Garde-fou : au moins un admin actif doit rester en base.
@@ -78,6 +95,12 @@ export async function POST(req: NextRequest) {
         passwordHash,
         role: data.role,
         isActive: data.isActive,
+        firstName: data.firstName || null,
+        lastName: data.lastName || null,
+        phone: data.phone || null,
+        loanTypes: data.loanTypes,
+        countries: data.countries,
+        maxActiveLeads: data.maxActiveLeads,
       },
       select: publicAdminSelect,
     })

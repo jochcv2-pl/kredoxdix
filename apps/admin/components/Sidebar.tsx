@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
+import { useSession } from "next-auth/react";
 import {
-  LayoutDashboard, Users, UserCheck, FolderOpen, Percent,
+  LayoutDashboard, Users, UserCheck, UserCog, FolderOpen, Percent,
   Mail, Megaphone, History, Globe, LayoutTemplate,
   Star, LayoutGrid, FileText, Search, Bot, Settings, User, Activity, Building2,
   Route,
@@ -26,6 +27,7 @@ const ICONS: Record<string, ReactNode> = {
   cms: <LayoutTemplate {...ICON_PROPS} />,
   testimonials: <Star {...ICON_PROPS} />,
   partners: <Building2 {...ICON_PROPS} />,
+  conseillers: <UserCog {...ICON_PROPS} />,
   content: <LayoutGrid {...ICON_PROPS} />,
   legal: <FileText {...ICON_PROPS} />,
   seo: <Search {...ICON_PROPS} />,
@@ -36,6 +38,7 @@ const ICONS: Record<string, ReactNode> = {
 
 const navigation = [
   { id: "dashboard", label: "Vue d'ensemble", group: "Pilotage" },
+  { id: "conseillers", label: "Gestion des conseillers", group: "Pilotage" },
   { id: "contacts", label: "Prospects & clients", group: "Pilotage" },
   { id: "clients", label: "Clients", group: "Pilotage" },
   { id: "parcours", label: "Parcours client", group: "Pilotage" },
@@ -58,6 +61,12 @@ const navigation = [
   { id: "profil", label: "Mon profil", group: "Compte" },
 ];
 
+// DEC-K5 — items de menu réservés au super-admin (role 'admin').
+const SUPER_ADMIN_ONLY = new Set([
+  'conseillers', 'pipeline', 'cms', 'testimonials', 'partners',
+  'content', 'legal', 'seo', 'domains', 'agents', 'settings',
+]);
+
 interface SidebarProps {
   currentView: string;
   onViewChange: (viewId: string) => void;
@@ -68,7 +77,10 @@ interface SidebarProps {
 }
 
 export function Sidebar({ currentView, onViewChange, open, brandName = 'Kredix', logoUrl, logoAlt }: SidebarProps) {
-  const groups = Array.from(new Set(navigation.map((n) => n.group)));
+  const { data: session } = useSession();
+  const isSuperAdmin = session?.user?.role === 'admin';
+  const visibleNav = isSuperAdmin ? navigation : navigation.filter((n) => !SUPER_ADMIN_ONLY.has(n.id));
+  const groups = Array.from(new Set(visibleNav.map((n) => n.group)));
 
   // Modèle IA actif (chargé depuis les settings DB).
   const [aiModel, setAiModel] = useState<string>('');
@@ -102,7 +114,7 @@ export function Sidebar({ currentView, onViewChange, open, brandName = 'Kredix',
       {groups.map((group) => (
         <div key={group} className="sb-group">
           <div className="sb-group-label">{group}</div>
-          {navigation
+          {visibleNav
             .filter((n) => n.group === group)
             .map((nav) => (
               <button

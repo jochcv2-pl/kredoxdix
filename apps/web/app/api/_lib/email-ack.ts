@@ -15,7 +15,8 @@ import {
   textToHtml,
   buildUnsubscribeUrl,
   getSetting,
-  getPrimaryGateway,
+  getGatewayForLead,
+  getConseillerContext,
   getActiveTemplate,
   composeEmailHtml,
   loadBrandData,
@@ -54,9 +55,10 @@ export async function sendReceptionAck(lead: Lead): Promise<AckResult> {
   const siteUrl = await getSetting('site_url', process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3100');
   const brand = await loadBrandData();
 
-  const [gateway, template] = await Promise.all([
-    getPrimaryGateway(),
+  const [gateway, template, advisor] = await Promise.all([
+    getGatewayForLead(lead.id),
     getActiveTemplate('reception_ack', lead.preferredLanguage || 'fr'),
+    getConseillerContext(lead.id),
   ]);
 
   if (!gateway) {
@@ -80,7 +82,7 @@ export async function sendReceptionAck(lead: Lead): Promise<AckResult> {
     return { sent: false, templateUsed: false, gatewayActive: true };
   }
 
-  const ctx = { lead, siteUrl, brand: brandToContext(brand) };
+  const ctx = { lead, siteUrl, brand: brandToContext(brand), advisor };
   const subject = interpolateTemplate(template.subject, ctx);
   const bodyText = interpolateTemplate(template.bodyText, ctx);
   const rawHtml = template.htmlContent

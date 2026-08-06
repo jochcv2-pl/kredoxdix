@@ -11,6 +11,7 @@
 import { prisma, LeadStatus } from '@kredix/db';
 import { successResponse, errorResponse, ERR } from '@/app/api/_lib/responses';
 import { requireAuth } from '../_lib/auth-server';
+import { getLeadScope } from '../_lib/scope';
 
 interface ClientStepInfo {
   id: string;
@@ -36,11 +37,11 @@ interface ClientListItem {
 
 // GET /api/clients — liste paginée des clients + progression du parcours 7 niveaux.
 export async function GET() {
-  const [, deny] = await requireAuth();
+  const [admin, deny] = await requireAuth();
   if (deny) return deny;
   try {
     const leads = await prisma.lead.findMany({
-      where: { status: LeadStatus.client },
+      where: { ...getLeadScope(admin!), status: LeadStatus.client },
       orderBy: { updatedAt: 'desc' },
       take: 100,
       select: {

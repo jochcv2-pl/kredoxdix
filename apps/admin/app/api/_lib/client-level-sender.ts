@@ -17,7 +17,7 @@ import {
   type EmailTemplate,
   type DocumentTemplate,
 } from '@kredix/db';
-import { getSetting, getPrimaryGateway } from './settings';
+import { getSetting, getGatewayForLead } from './settings';
 import { sendEmail, type EmailAttachment } from './email-sender';
 import { interpolateTemplate, textToHtml, buildUnsubscribeUrl } from './template-interpolation';
 import { composeEmailHtml, loadBrandData, brandToContext } from '@kredix/email';
@@ -89,7 +89,7 @@ export async function sendClientLevelEmail(
       preferredLanguage: true,
       createdAt: true,
       offerSentAt: true,
-      assignedTo: { select: { displayName: true } },
+      assignedTo: { select: { firstName: true, lastName: true, phone: true, email: true, displayName: true } },
     },
   });
 
@@ -141,8 +141,8 @@ export async function sendClientLevelEmail(
     return { success: false, error: 'Aucun modèle actif pour cette étape' };
   }
 
-  // 5 — Gateway actif (échec fatal si aucun) + paramètres marque.
-  const gateway = (await getPrimaryGateway()) as EmailGateway | null;
+  // 5 — Gateway pour ce lead (DEC-K5 : SMTP de l'owner du lead, ou système si non assigné).
+  const gateway = (await getGatewayForLead(lead.id)) as EmailGateway | null;
   if (!gateway) {
     return { success: false, error: 'Aucune passerelle d\'envoi configurée' };
   }
@@ -170,7 +170,7 @@ export async function sendClientLevelEmail(
     preferredLanguage: lead.preferredLanguage,
     advisorName: lead.assignedTo?.displayName ?? null,
   };
-  const ctx = { lead: leadData, siteUrl, brand: brandToContext(brand) };
+  const ctx = { lead: leadData, siteUrl, brand: brandToContext(brand), advisor: lead.assignedTo };
   const subject = interpolateTemplate(template.subject, ctx);
   const textBody = interpolateTemplate(template.bodyText, ctx);
   const rawHtml = template.htmlContent

@@ -77,6 +77,8 @@ export interface InterpolationContext {
   customMessage?: string;
   /** Données de marque injectées dans l'interpolation. */
   brand?: BrandContext;
+  /** Contexte conseiller (DEC-K5). Si présent, surcharge les variables conseiller. */
+  advisor?: AdvisorContext | null;
 }
 
 /** Variables marque disponibles dans les templates via {{NomSite}}, {{SiteUrl}}, etc. */
@@ -89,12 +91,24 @@ export interface BrandContext {
   advisorName: string;
 }
 
+/** Contexte conseiller (DEC-K5 multi-admin).
+ *  Issu de lead.assignedTo (AdminUser). Surcharge les variables conseiller
+ *  {{prenom_conseiller}}, {{nom_conseiller}}, {{telephone_conseiller}}, {{email_conseiller}}.
+ *  Si absent (lead non assigné) → fallback sur BrandContext (settings CMS). */
+export interface AdvisorContext {
+  firstName: string | null;
+  lastName: string | null;
+  phone: string | null;
+  email: string;
+  displayName: string;
+}
+
 export function buildUnsubscribeUrl(lead: InterpolationContext['lead'], siteUrl: string): string {
   return `${siteUrl}/api/unsubscribe?t=${lead.unsubscribeToken}`;
 }
 
 export function interpolateTemplate(text: string, ctx: InterpolationContext): string {
-  const { lead, siteUrl, customMessage, brand } = ctx;
+  const { lead, siteUrl, customMessage, brand, advisor } = ctx;
   const unsubscribeUrl = buildUnsubscribeUrl(lead, siteUrl);
 
   const lang = lead.preferredLanguage || 'fr';
@@ -115,8 +129,14 @@ export function interpolateTemplate(text: string, ctx: InterpolationContext): st
     ? new Date(new Date(lead.offerSentAt).getTime() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString(locale)
     : '';
 
-  // Prénom du conseiller : priorité au paramètre global, fallback traduit.
-  const prenomConseiller = brand?.advisorName || lead.advisorName || (ADVISOR_FALLBACK_I18N[lang] ?? ADVISOR_FALLBACK_I18N.fr);
+  // Variables conseiller (DEC-K5) : priorité admin assigné → settings CMS → fallback traduit.
+  const prenomConseiller = advisor?.firstName
+    || brand?.advisorName
+    || lead.advisorName
+    || (ADVISOR_FALLBACK_I18N[lang] ?? ADVISOR_FALLBACK_I18N.fr);
+  const nomConseiller = advisor?.lastName ?? '';
+  const telephoneConseiller = advisor?.phone || brand?.agencyPhone || '';
+  const emailConseiller = advisor?.email || brand?.contactEmail || '';
 
   // Type de prêt + unités traduites.
   const loanTypeLabel = translateLoanType(lead.loanType, lang);
@@ -155,8 +175,9 @@ export function interpolateTemplate(text: string, ctx: InterpolationContext): st
     '{{type_pret}}': loanTypeLabel,
     '{{montant_pret}}': formatEuro(lead.amount, locale),
     '{{prenom_conseiller}}': prenomConseiller,
-    '{{telephone_conseiller}}': brand?.agencyPhone ?? '',
-    '{{email_conseiller}}': brand?.contactEmail ?? '',
+    '{{nom_conseiller}}': nomConseiller,
+    '{{telephone_conseiller}}': telephoneConseiller,
+    '{{email_conseiller}}': emailConseiller,
     '{{adresse_siege}}': brand?.agencyAddress ?? '',
     '{{lien_desabonnement}}': unsubscribeUrl,
   };

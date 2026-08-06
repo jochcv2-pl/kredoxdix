@@ -15,6 +15,7 @@ import { z } from 'zod'
 import { prisma, LeadStatus } from '@kredix/db'
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses'
 import { requireAuth } from '../../_lib/auth-server'
+import { getLeadScope } from '../../_lib/scope'
 
 const MAX_IMPORT_COUNT = 500
 
@@ -62,8 +63,11 @@ export async function POST(req: NextRequest) {
     const existingEmails = new Set<string>()
     if (emailsToCheck.length > 0) {
       // Prisma findMany avec mode insensitive (PostgreSQL).
+      // Scope multi-admin (DEC-K5) : la déduplication est par conseiller (un même prospect
+      // peut légitimement exister pour 2 conseillers différents).
       const existing = await prisma.lead.findMany({
         where: {
+          ...getLeadScope(admin!),
           email: { in: emailsToCheck, mode: 'insensitive' },
         },
         select: { email: true },

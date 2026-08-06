@@ -9,6 +9,7 @@ import { prisma, encryptSecret } from '@kredix/db';
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses';
 import { isValidId } from '@/app/api/_lib/id-validation';
 import { requireAuth } from '../../_lib/auth-server';
+import { getGatewayScope } from '../../_lib/scope';
 import { maskApiKey } from '@/app/api/_lib/security';
 
 // Schéma de mise à jour — provider volontairement absent (immutable après création).
@@ -18,6 +19,7 @@ const updateGatewaySchema = z.object({
   config: z.record(z.any()).optional(),
   isActive: z.boolean().optional(),
   isPrimary: z.boolean().optional(),
+  isSystem: z.boolean().optional(), // DEC-K5 — super-admin only
 });
 
 // GET /api/gateways/[id] — passerelle seule.
@@ -25,14 +27,15 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const [, deny] = await requireAuth();
+  const [admin, deny] = await requireAuth();
   if (deny) return deny;
   try {
     const { id } = await params;
     if (!isValidId(id)) {
       return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);
     }
-    const gateway = await prisma.emailGateway.findUnique({ where: { id } });
+    // findFirst avec scope : anti-IDOR (DEC-K5).
+    const gateway = await prisma.emailGateway.findFirst({ where: { id, ...getGatewayScope(admin) } });
     if (!gateway) {
       return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);
     }
@@ -48,7 +51,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const [, deny] = await requireAuth();
+  const [admin, deny] = await requireAuth();
   if (deny) return deny;
   try {
     const { id } = await params;
@@ -58,9 +61,15 @@ export async function PATCH(
     const [data, error] = await parseBody(req, updateGatewaySchema);
     if (error) return error;
 
-    const existing = await prisma.emailGateway.findUnique({ where: { id } });
+    // findFirst avec scope : anti-IDOR (DEC-K5).
+    const existing = await prisma.emailGateway.findFirst({ where: { id, ...getGatewayScope(admin) } });
     if (!existing) {
       return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);
+    }
+
+    // DEC-K5 — SMTP système réservé au super-admin.
+    if (data.isSystem !== undefined && admin!.role !== 'admin') {
+      return errorResponse('Seul le super-admin peut modifier le flag SMTP système', 'FORBIDDEN', undefined, 403);
     }
 
     // Chiffrer la clé API si elle est modifiée (et non masquée/••••).
@@ -71,13 +80,17 @@ export async function PATCH(
       // Valeur masquée renvoyée par le GET — ne pas écraser la clé existante.
       delete updateData.apiKey;
     }
+    // isSystem propagé dans l'update (déjà validé ci-dessus).
+    if (data.isSystem !== undefined) {
+      updateData.isSystem = data.isSystem;
+    }
 
     // Règle métier : un seul isPrimary à la fois (transaction).
     const makingPrimary = data.isPrimary === true;
     const gateway = await prisma.$transaction(async (tx) => {
       if (makingPrimary) {
         await tx.emailGateway.updateMany({
-          where: { isPrimary: true, NOT: { id } },
+          where: { isPrimary: true, NOT: { id }, ...getGatewayScope(admin!) },
           data: { isPrimary: false },
         });
       }
@@ -96,14 +109,15 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const [, deny] = await requireAuth();
+  const [admin, deny] = await requireAuth();
   if (deny) return deny;
   try {
     const { id } = await params;
     if (!isValidId(id)) {
       return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);
     }
-    const existing = await prisma.emailGateway.findUnique({ where: { id } });
+    // findFirst avec scope : anti-IDOR (DEC-K5).
+    const existing = await prisma.emailGateway.findFirst({ where: { id, ...getGatewayScope(admin) } });
     if (!existing) {
       return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404);
     }
