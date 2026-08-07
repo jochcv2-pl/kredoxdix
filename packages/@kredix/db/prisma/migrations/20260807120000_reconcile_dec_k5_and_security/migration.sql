@@ -122,15 +122,18 @@ CREATE INDEX IF NOT EXISTS "LoanType_isActive_sortOrder_idx" ON "LoanType"("isAc
 -- =============================================================================
 -- SECTION I — CampaignRecipientStatus : ajout valeur 'sending' (lock worker)
 -- =============================================================================
--- ALTER TYPE ... ADD VALUE n'accepte pas IF NOT EXISTS avant PG 10,
--- mais on est sur PG 14+ en prod — sécurisé via DO block.
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'sending' AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'CampaignRecipientStatus')) THEN
-    ALTER TYPE "CampaignRecipientStatus" ADD VALUE 'sending';
-  END IF;
-EXCEPTION WHEN OTHERS THEN NULL;
-END $$;
+-- ⚠️ `ALTER TYPE ... ADD VALUE` NE PEUT PAS tourner dans un bloc transactionnel
+-- (Prisma migrate deploy wrap chaque migration dans une transaction → erreur
+-- "ALTER TYPE ... ADD cannot run inside a transaction block").
+-- Contournement : INSERT direct dans pg_enum (transactionnable + idempotent via NOT EXISTS).
+INSERT INTO pg_enum (enumtypid, enumlabel, enumsortorder)
+SELECT t.oid, 'sending',
+       COALESCE((SELECT MAX(enumsortorder) FROM pg_enum WHERE enumtypid = t.oid), 0) + 1
+FROM pg_type t
+WHERE t.typname = 'CampaignRecipientStatus'
+  AND NOT EXISTS (
+    SELECT 1 FROM pg_enum e WHERE e.enumtypid = t.oid AND e.enumlabel = 'sending'
+  );
 
 -- =============================================================================
 -- SECTION J — Seed LoanType par défaut (immo / conso / rachat / pro)
