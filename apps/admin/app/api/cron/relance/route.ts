@@ -137,6 +137,7 @@ export async function POST(req: NextRequest) {
         severity: 'warning',
         linkUrl: `/leads?id=${lead.id}`,
         relatedEntityId: lead.id,
+        recipientId: lead.assignedToId,
       });
     }
 
@@ -586,6 +587,7 @@ export async function POST(req: NextRequest) {
             severity: 'danger',
             linkUrl: `/leads?id=${lead.id}`,
             relatedEntityId: lead.id,
+            recipientId: lead.assignedToId,
           });
 
           continue; // N'incrémente pas — le cron réessayera au prochain passage
@@ -632,6 +634,7 @@ export async function POST(req: NextRequest) {
             severity: 'warning',
             linkUrl: `/leads?id=${lead.id}`,
             relatedEntityId: lead.id,
+            recipientId: lead.assignedToId,
           });
         } else {
           stats.sent++;

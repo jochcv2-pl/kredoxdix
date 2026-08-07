@@ -178,6 +178,7 @@ export async function PATCH(
         severity: 'success',
         linkUrl: `/leads?id=${updated.id}`,
         relatedEntityId: updated.id,
+        recipientId: updated.assignedToId,
       });
     }
 

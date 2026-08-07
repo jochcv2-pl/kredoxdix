@@ -231,9 +231,10 @@ export async function POST(req: NextRequest) {
       title: routing.assigned ? 'Nouveau dossier (création manuelle)' : 'Dossier non assigné',
       message: `${lead.firstName} ${lead.lastName} — ${lead.loanType} de ${lead.amount.toLocaleString('fr-FR')}€.${routing.assigned ? '' : ' ⚠ Aucun conseiller éligible.'}`,
       icon: 'user-plus',
-      severity: 'info',
+      severity: routing.assigned ? 'info' : 'warning',
       linkUrl: `/leads?id=${lead.id}`,
       relatedEntityId: lead.id,
+      recipientId: routing.adminId,
     });
 
     return successResponse(lead, 201);

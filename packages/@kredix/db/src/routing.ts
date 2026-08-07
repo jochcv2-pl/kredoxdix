@@ -56,33 +56,39 @@ export async function assignLeadToAdmin(leadId: string): Promise<RoutingResult> 
   }
 
   // 2. Trouver les admins éligibles (loanType + country match).
-  // loanTypes/countries vides = accepte tout (convention DEC-K5).
-  const candidates = await prisma.adminUser.findMany({
-    where: {
-      isActive: true,
-      role: { in: ['admin', 'advisor'] },
-      AND: [
-        {
-          OR: [
-            { loanTypes: { isEmpty: true } },
-            { loanTypes: { has: lead.loanType } },
-          ],
-        },
-        {
-          OR: [
-            { countries: { isEmpty: true } },
-            { countries: { has: lead.country } },
-          ],
-        },
-      ],
-    },
-    select: {
-      id: true,
-      maxActiveLeads: true,
-      currentActiveLeads: true,
-      lastAssignedAt: true,
-    },
+  // Option C hybride : les conseillers sont prioritaires. Le super-admin
+  // n'est sollicité que si AUCUN conseiller n'est éligible (filet de sécurité).
+  const eligibilityFilter = {
+    isActive: true,
+    AND: [
+      {
+        OR: [
+          { loanTypes: { isEmpty: true } },
+          { loanTypes: { has: lead.loanType } },
+        ],
+      },
+      {
+        OR: [
+          { countries: { isEmpty: true } },
+          { countries: { has: lead.country } },
+        ],
+      },
+    ],
+  };
+
+  // Passe 1 : conseillers uniquement (priorité).
+  let candidates = await prisma.adminUser.findMany({
+    where: { ...eligibilityFilter, role: 'advisor' },
+    select: { id: true, maxActiveLeads: true, currentActiveLeads: true, lastAssignedAt: true },
   });
+
+  // Passe 2 : si aucun conseiller éligible, élargir au super-admin (fallback).
+  if (candidates.length === 0) {
+    candidates = await prisma.adminUser.findMany({
+      where: { ...eligibilityFilter, role: { in: ['admin', 'advisor'] } },
+      select: { id: true, maxActiveLeads: true, currentActiveLeads: true, lastAssignedAt: true },
+    });
+  }
 
   // 3. Filtrer la saturation en JS (Prisma ne compare pas 2 champs entre eux).
   const available = candidates.filter(

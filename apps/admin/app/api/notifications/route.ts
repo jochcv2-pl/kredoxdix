@@ -14,7 +14,7 @@ import { successResponse, errorResponse, ERR } from '../_lib/responses'
 import { requireAuth } from '../_lib/auth-server'
 
 export async function GET(req: NextRequest) {
-  const [, deny] = await requireAuth()
+  const [admin, deny] = await requireAuth()
   if (deny) return deny
 
   try {
@@ -25,8 +25,8 @@ export async function GET(req: NextRequest) {
     const notifications = await prisma.notification.findMany({
       where: {
         OR: [
-          { recipientId: null },
-          // recipientId spécifique si on implémente plus tard le ciblage
+          { recipientId: null },            // broadcast (tous voient)
+          { recipientId: admin!.id },        // DEC-K5 — ciblé à cet admin
         ],
         ...(unreadOnly ? { readAt: null } : {}),
       },

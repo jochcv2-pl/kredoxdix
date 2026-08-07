@@ -100,6 +100,7 @@ export async function POST(request: NextRequest) {
       severity: routing.assigned ? 'info' : 'warning',
       linkUrl: `/leads?id=${lead.id}`,
       relatedEntityId: lead.id,
+      recipientId: routing.adminId,
     });
 
     return successResponse(
