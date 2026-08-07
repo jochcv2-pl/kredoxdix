@@ -49,6 +49,18 @@ const EMPTY_FORM: FormState = {
   phone: '', role: 'advisor', loanTypes: [], countries: [], maxActiveLeads: 50, isActive: true,
 }
 
+function makeInitials(name: string): string {
+  const parts = name.trim().split(/\s+/)
+  return ((parts[0]?.[0] ?? '?') + (parts[1]?.[0] ?? '')).toUpperCase()
+}
+
+function getLoadColor(current: number, max: number): string {
+  const pct = max > 0 ? current / max : 0
+  if (pct >= 0.8) return '#dc2626'
+  if (pct >= 0.5) return '#f97316'
+  return '#2B8BDE'
+}
+
 export default function Conseillers() {
   const [list, setList] = useState<AdminUser[]>([])
   const [loading, setLoading] = useState(true)
@@ -155,76 +167,86 @@ export default function Conseillers() {
         <div className="alert alert-error" style={{ cursor: 'pointer' }} onClick={() => setError(null)}>{error}</div>
       )}
 
+      <div className="info-band">
+        <div className="imark">i</div>
+        <div>
+          Les conseillers reçoivent automatiquement les prospects correspondant à leurs <b>spécialités</b> (types de prêt) et <b>pays</b>.
+          Le système assigne au conseiller le <b>moins chargé</b>. Une liste vide signifie « accepte tout ».
+        </div>
+      </div>
+
       <div className="panel">
         <div className="panel-head">
-          <h3>Comptes conseillers ({list.length})</h3>
+          <h3>Comptes ({list.length})</h3>
           <button className="btn btn-primary btn-sm" onClick={openCreate}>+ Nouveau conseiller</button>
         </div>
         <div className="panel-body">
           {list.length === 0 ? (
             <div className="card-grid-empty">Aucun compte. Créez votre premier conseiller.</div>
           ) : (
-            <table className="admin-users-table">
-              <thead>
-                <tr>
-                  <th>Nom</th>
-                  <th>Email</th>
-                  <th>Rôle</th>
-                  <th>Statut</th>
-                  <th>Charge</th>
-                  <th>Spécialités</th>
-                  <th>Pays</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {list.map((u) => (
-                  <tr key={u.id}>
-                    <td>
-                      <strong>{u.displayName}</strong>
-                      {(u.firstName || u.lastName) && (
-                        <div style={{ fontSize: 12, color: '#888' }}>
-                          {[u.firstName, u.lastName].filter(Boolean).join(' ')}
+            <div className="cns-card-grid">
+              {list.map((u) => {
+                const loadPct = u.maxActiveLeads > 0 ? Math.min(100, (u.currentActiveLeads / u.maxActiveLeads) * 100) : 0
+                const loadColor = getLoadColor(u.currentActiveLeads, u.maxActiveLeads)
+                return (
+                  <div key={u.id} className={`cns-card${!u.isActive ? ' cns-card-inactive' : ''}`}>
+                    {/* En-tête : avatar + identité */}
+                    <div className="cns-card-top">
+                      <div className="cns-avatar" style={{ background: u.role === 'admin' ? '#0F2942' : 'var(--blue, #2B8BDE)' }}>
+                        {makeInitials(u.displayName)}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <strong>{u.displayName}</strong>
+                          <span className={`role-badge role-${u.role}`}>
+                            {u.role === 'admin' ? 'Super-admin' : 'Conseiller'}
+                          </span>
+                          {!u.isActive && <span style={{ fontSize: 11, color: '#999' }}>· Inactif</span>}
                         </div>
-                      )}
-                    </td>
-                    <td style={{ fontSize: 13 }}>{u.email}</td>
-                    <td>
-                      <span className={`role-badge role-${u.role}`}>
-                        {u.role === 'admin' ? 'Super-admin' : u.role === 'advisor' ? 'Conseiller' : u.role}
-                      </span>
-                    </td>
-                    <td>
-                      <span className={`status-dot ${u.isActive ? 'on' : 'off'}`}></span>
-                      {u.isActive ? 'Actif' : 'Inactif'}
-                    </td>
-                    <td>
-                      {u.currentActiveLeads}/{u.maxActiveLeads}
-                      {u.currentActiveLeads >= u.maxActiveLeads && (
-                        <span style={{ color: 'var(--red)', marginLeft: 4 }} title="Saturé">●</span>
-                      )}
-                    </td>
-                    <td style={{ fontSize: 13 }}>
+                        <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>{u.email}</div>
+                        {u.phone && <div style={{ fontSize: 12, color: '#aaa' }}>{u.phone}</div>}
+                      </div>
+                    </div>
+
+                    {/* Barre de charge */}
+                    <div style={{ marginBottom: 12 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
+                        <span style={{ color: '#666' }}>Charge active</span>
+                        <span style={{ fontWeight: 600, color: loadColor }}>
+                          {u.currentActiveLeads} / {u.maxActiveLeads}
+                          {u.currentActiveLeads >= u.maxActiveLeads && ' ⚠'}
+                        </span>
+                      </div>
+                      <div className="cns-load-bar">
+                        <div className="cns-load-fill" style={{ width: `${loadPct}%`, background: loadColor }} />
+                      </div>
+                    </div>
+
+                    {/* Spécialités */}
+                    <div style={{ marginBottom: 8 }}>
+                      <div className="cns-label-mini">SPÉCIALITÉS</div>
                       {u.loanTypes.length === 0
-                        ? <span style={{ color: '#888' }}>Tous</span>
-                        : u.loanTypes.join(', ')}
-                    </td>
-                    <td style={{ fontSize: 13 }}>
+                        ? <span className="cns-tag cns-tag-all">Tous types</span>
+                        : u.loanTypes.map((t) => <span key={t} className="cns-tag">{t}</span>)}
+                    </div>
+
+                    {/* Pays */}
+                    <div style={{ marginBottom: 12 }}>
+                      <div className="cns-label-mini">PAYS</div>
                       {u.countries.length === 0
-                        ? <span style={{ color: '#888' }}>Tous</span>
-                        : u.countries.join(', ')}
-                    </td>
-                    <td>
-                      <button className="link-btn" onClick={() => openEdit(u)}>Modifier</button>
-                      {' · '}
-                      <button className="link-btn" onClick={() => setDeleteTarget(u)} style={{ color: 'var(--red)' }}>
-                        Supprimer
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                        ? <span className="cns-tag cns-tag-all">Tous pays</span>
+                        : u.countries.map((c) => <span key={c} className="cns-tag">{c}</span>)}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="cns-card-actions">
+                      <button className="btn btn-ghost btn-sm" onClick={() => openEdit(u)}>✎ Modifier</button>
+                      <button className="btn btn-ghost btn-sm" onClick={() => setDeleteTarget(u)} style={{ color: 'var(--red, #dc2626)', marginLeft: 'auto' }}>Supprimer</button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           )}
         </div>
       </div>
