@@ -38,7 +38,7 @@ export async function PATCH(
 
     return successResponse({ updated: result.count })
   } catch (err) {
-    console.error('[PATCH /api/notifications/[id]] Error:', err)
+    console.error('[PATCH /api/notifications/[id]] Error:', err instanceof Error ? err.message : String(err))
     return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500)
   }
 }

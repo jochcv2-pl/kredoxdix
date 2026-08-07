@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
 
     return successResponse({ ok: true, twoFactorEnabled: false })
   } catch (err) {
-    console.error('[API /profile/2fa/disable] error:', err)
+    console.error('[API /profile/2fa/disable] error:', err instanceof Error ? err.message : String(err))
     return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500)
   }
 }

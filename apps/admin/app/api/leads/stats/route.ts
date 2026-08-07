@@ -144,7 +144,7 @@ export async function GET() {
       generatedAt: now.toISOString(),
     });
   } catch (err) {
-    console.error('[GET /api/leads/stats] Erreur:', err);
+    console.error('[GET /api/leads/stats] Erreur:', err instanceof Error ? err.message : String(err));
     return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500);
   }
 }

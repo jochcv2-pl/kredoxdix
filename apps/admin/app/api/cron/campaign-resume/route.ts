@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
     for (const c of sendingCampaigns) {
       // Fire-and-forget : processCampaign tourne en arrière-plan.
       processCampaign(c.id).catch((err) =>
-        console.error(`[cron campaign-resume] Erreur campagne ${c.id}:`, err),
+        console.error(`[cron campaign-resume] Erreur campagne ${c.id}:`, err instanceof Error ? err.message : String(err)),
       );
       resumed++;
       console.log(`[cron campaign-resume] Reprise campagne "${c.name}" (${c.id})`);
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
       campaignIds: sendingCampaigns.map((c) => c.id),
     });
   } catch (err) {
-    console.error('[cron campaign-resume] Erreur:', err);
+    console.error('[cron campaign-resume] Erreur:', err instanceof Error ? err.message : String(err));
     return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500);
   }
 }

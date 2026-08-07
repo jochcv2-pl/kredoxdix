@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
       deduplicated: unassignedLeads.length - notified,
     });
   } catch (err) {
-    console.error('[CRON unassigned-grace] Erreur:', err);
+    console.error('[CRON unassigned-grace] Erreur:', err instanceof Error ? err.message : String(err));
     return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500);
   }
 }

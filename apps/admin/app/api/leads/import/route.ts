@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
       message: `${created.count} prospect(s) importé(s), ${duplicateCount} doublon(s) ignoré(s).`,
     })
   } catch (err) {
-    console.error('[POST /api/leads/import] Erreur:', err)
+    console.error('[POST /api/leads/import] Erreur:', err instanceof Error ? err.message : String(err))
     return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500)
   }
 }

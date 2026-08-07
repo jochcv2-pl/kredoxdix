@@ -73,7 +73,7 @@ export async function POST(
       200,
     );
   } catch (err) {
-    console.error(`[POST /api/clients/[id]/send-level] Erreur:`, err);
+    console.error(`[POST /api/clients/[id]/send-level] Erreur:`, err instanceof Error ? err.message : String(err));
     return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500);
   }
 }

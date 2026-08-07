@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
 
     return successResponse(logs);
   } catch (e) {
-    console.error('[EMAIL LOGS] Erreur:', e);
+    console.error('[EMAIL LOGS] Erreur:', e instanceof Error ? e.message : String(e));
     return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500);
   }
 }

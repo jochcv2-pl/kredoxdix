@@ -65,7 +65,7 @@ export async function POST(
 
     // Fire-and-forget : le traitement tourne en arrière-plan.
     processCampaign(id).catch((err) =>
-      console.error(`[campaign ${id}] Erreur traitement:`, err),
+      console.error(`[campaign ${id}] Erreur traitement:`, err instanceof Error ? err.message : String(err)),
     );
 
     return successResponse(

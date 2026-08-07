@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
       timestamp: new Date().toISOString(),
     });
   } catch (err) {
-    console.error('[CRON recalc-loads] Erreur:', err);
+    console.error('[CRON recalc-loads] Erreur:', err instanceof Error ? err.message : String(err));
     return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500);
   }
 }

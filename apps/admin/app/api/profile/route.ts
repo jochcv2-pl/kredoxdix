@@ -175,7 +175,7 @@ export async function PATCH(req: NextRequest) {
       twoFactorEnabled: updated.twoFactorSecret !== null,
     })
   } catch (err) {
-    console.error('[API /profile PATCH] error:', err)
+    console.error('[API /profile PATCH] error:', err instanceof Error ? err.message : String(err))
     return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500)
   }
 }

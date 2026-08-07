@@ -147,7 +147,7 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (err) {
-    console.error('[GET /api/leads] Erreur:', err);
+    console.error('[GET /api/leads] Erreur:', err instanceof Error ? err.message : String(err));
     return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500);
   }
 }
@@ -239,7 +239,7 @@ export async function POST(req: NextRequest) {
 
     return successResponse(lead, 201);
   } catch (err) {
-    console.error('[POST /api/leads] Erreur:', err);
+    console.error('[POST /api/leads] Erreur:', err instanceof Error ? err.message : String(err));
     return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500);
   }
 }

@@ -223,7 +223,7 @@ Pour chaque prospect, détermine s'il correspond aux critères de l'administrate
 
     return results
   } catch (err) {
-    console.error('[POST /api/leads/sort-csv] AI score failed:', err)
+    console.error('[POST /api/leads/sort-csv] AI score failed:', err instanceof Error ? err.message : String(err))
     return null
   }
 }
@@ -258,7 +258,7 @@ export async function POST(req: NextRequest) {
       rejected: results.filter((r) => !r.retained).length,
     })
   } catch (err) {
-    console.error('[POST /api/leads/sort-csv] Error:', err)
+    console.error('[POST /api/leads/sort-csv] Error:', err instanceof Error ? err.message : String(err))
     return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500)
   }
 }

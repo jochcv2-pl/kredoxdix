@@ -353,7 +353,7 @@ export async function processCampaign(campaignId: string): Promise<void> {
     console.log(`[campaign ${campaignId}] Traitement terminé`);
   } catch (err) {
     // Erreur fatale : on marque la campagne en échec pour trace.
-    console.error(`[campaign ${campaignId}] Erreur fatale:`, err);
+    console.error(`[campaign ${campaignId}] Erreur fatale:`, err instanceof Error ? err.message : String(err));
     try {
       await prisma.campaign.update({
         where: { id: campaignId },

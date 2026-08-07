@@ -90,7 +90,7 @@ export async function GET() {
 
     return successResponse(result);
   } catch (err) {
-    console.error('[GET /api/clients] Erreur:', err);
+    console.error('[GET /api/clients] Erreur:', err instanceof Error ? err.message : String(err));
     return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500);
   }
 }

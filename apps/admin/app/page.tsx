@@ -173,9 +173,17 @@ export default function AdminPage() {
           onProfileClick={() => setViewId('profil')}
           onMenuToggle={() => setSidebarOpen((v) => !v)}
           onLogout={async () => {
-            // signOut() de next-auth/react — nettoie cookie + state.
-            // callbackUrl: '/' recharge / qui redirigera vers /login
-            // (puisque la session est détruite).
+            // KRX-007 — Révocation session JWT côté serveur AVANT signOut.
+            // signOut() ne supprime que le cookie côté client ; le JWT reste
+            // techniquement valide jusqu'à expiration (24h) sans cet appel.
+            // revoke-sessions incrémente sessionTokenVersion → getCurrentAdmin()
+            // refusera le token au prochain appel. Non bloquant si l'appel échoue
+            // (on déconnecte quand même côté client).
+            try {
+              await fetch('/api/profile/revoke-sessions', { method: 'POST' })
+            } catch {
+              /* réseau down ou autre — on logout quand même */
+            }
             await signOut({ redirect: false })
             router.replace('/login')
           }}

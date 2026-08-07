@@ -22,7 +22,7 @@ export async function GET() {
 
     return successResponse({ count })
   } catch (err) {
-    console.error('[GET /api/notifications/unread-count] Error:', err)
+    console.error('[GET /api/notifications/unread-count] Error:', err instanceof Error ? err.message : String(err))
     return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500)
   }
 }

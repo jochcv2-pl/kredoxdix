@@ -65,7 +65,7 @@ export async function GET(
 
     return successResponse(lead);
   } catch (err) {
-    console.error('[GET /api/leads/[id]] Erreur:', err);
+    console.error('[GET /api/leads/[id]] Erreur:', err instanceof Error ? err.message : String(err));
     return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500);
   }
 }
@@ -184,7 +184,7 @@ export async function PATCH(
 
     return successResponse(updated);
   } catch (err) {
-    console.error('[PATCH /api/leads/[id]] Erreur:', err);
+    console.error('[PATCH /api/leads/[id]] Erreur:', err instanceof Error ? err.message : String(err));
     return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500);
   }
 }
@@ -219,7 +219,7 @@ export async function DELETE(
 
     return successResponse({ deleted: true });
   } catch (err) {
-    console.error('[DELETE /api/leads/[id]] Erreur:', err);
+    console.error('[DELETE /api/leads/[id]] Erreur:', err instanceof Error ? err.message : String(err));
     return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500);
   }
 }

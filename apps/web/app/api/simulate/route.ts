@@ -5,12 +5,26 @@ import { simulateSchema, errorResponse, successResponse } from "../validators";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limiter";
 
 // =============================================================================
-// POST /api/simulate
-// Calcul backend de la mensualité, taux et coût total.
-// DEC-K2 : simulateur double (client JS + backend API).
+// POST /api/simulate — API PUBLIQUE de simulation de crédit.
+// =============================================================================
+// DEC-K2 : simulateur double (client JS pour UX instantanée + backend API pour
+// calculs avancés / intégrations externes / tests e2e).
+//
+// L'UI web (apps/web/components/simulator.tsx) calcule CÔTÉ CLIENT via
+// @kredix/simulator (sans appeler cette route). Cette route backend sert à :
+//   1. Les tests e2e (tests/e2e/leads.spec.ts) qui valident le contrat d'API.
+//   2. Les intégrations externes éventuelles (partenaires, calculatrices tierces).
+//   3. Les calculs serveur nécessitant les taux RÉELS des banques partenaires
+//      (table Rate) — utile quand le client n'a pas accès à la DB.
+//
 // Utilise les taux RÉELS des banques partenaires (table Rate) si disponibles,
 // avec fallback sur les taux indicatifs hardcoded sinon.
 // Rate limiting : 30 simulations/min/IP (anti-abus calcul intensif).
+//
+// KRX-simulate (audit s43) : décider de garder (API publique documentée) plutôt
+// que supprimer — la double logique de calcul est intentionnelle (DEC-K2) et
+// le risque de divergence est maîtrisé par le package partagé @kredix/simulator
+// qui contient la logique unique (calculateLoan) consommée par les deux côtés.
 // =============================================================================
 
 export async function POST(request: NextRequest) {

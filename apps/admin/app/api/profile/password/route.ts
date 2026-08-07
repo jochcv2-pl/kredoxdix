@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
 
     return successResponse({ ok: true })
   } catch (err) {
-    console.error('[API /profile/password POST] error:', err)
+    console.error('[API /profile/password POST] error:', err instanceof Error ? err.message : String(err))
     return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500)
   }
 }

@@ -176,7 +176,7 @@ export async function POST(req: NextRequest) {
       messageId: result.messageId,
     });
   } catch (err) {
-    console.error(`[PIPELINE TEST] Erreur étape ${step}:`, err);
+    console.error(`[PIPELINE TEST] Erreur étape ${step}:`, err instanceof Error ? err.message : String(err));
     return errorResponse(err instanceof Error ? err.message : 'Erreur interne', ERR.INTERNAL.code, undefined, 500);
   }
 }

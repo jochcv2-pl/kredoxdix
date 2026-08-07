@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
 
     return successResponse(step, 201);
   } catch (err) {
-    console.error('[POST /api/pipeline-steps] Erreur:', err);
+    console.error('[POST /api/pipeline-steps] Erreur:', err instanceof Error ? err.message : String(err));
     return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500);
   }
 }

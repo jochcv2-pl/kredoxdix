@@ -23,7 +23,7 @@ export async function POST() {
 
     return successResponse({ updated: result.count })
   } catch (err) {
-    console.error('[POST /api/notifications/read-all] Error:', err)
+    console.error('[POST /api/notifications/read-all] Error:', err instanceof Error ? err.message : String(err))
     return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500)
   }
 }

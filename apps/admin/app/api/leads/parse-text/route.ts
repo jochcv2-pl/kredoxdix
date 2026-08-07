@@ -408,7 +408,7 @@ Return JSON: { "firstName": "", "lastName": "", "email": "", "phone": "", "amoun
       method: 'ai',
     }
   } catch (err) {
-    console.error('[parse-text] Erreur IA fallback:', err)
+    console.error('[parse-text] Erreur IA fallback:', err instanceof Error ? err.message : String(err))
     return null
   }
 }

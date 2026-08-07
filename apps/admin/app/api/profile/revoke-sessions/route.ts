@@ -28,7 +28,7 @@ export async function POST() {
 
     return successResponse({ revoked: true })
   } catch (err) {
-    console.error('[POST /api/profile/revoke-sessions] Error:', err)
+    console.error('[POST /api/profile/revoke-sessions] Error:', err instanceof Error ? err.message : String(err))
     return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500)
   }
 }

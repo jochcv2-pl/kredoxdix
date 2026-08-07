@@ -41,7 +41,7 @@ export async function POST(_req: NextRequest) {
       qrDataUrl,
     })
   } catch (err) {
-    console.error('[API /profile/2fa/setup] error:', err)
+    console.error('[API /profile/2fa/setup] error:', err instanceof Error ? err.message : String(err))
     return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500)
   }
 }

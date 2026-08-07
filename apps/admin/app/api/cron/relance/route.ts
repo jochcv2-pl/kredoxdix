@@ -640,7 +640,7 @@ export async function POST(req: NextRequest) {
           stats.sent++;
         }
       } catch (err) {
-        console.error(`[CRON RELANCE] Erreur lead ${lead.id}:`, err);
+        console.error(`[CRON RELANCE] Erreur lead ${lead.id}:`, err instanceof Error ? err.message : String(err));
         stats.errors++;
       }
 
@@ -654,7 +654,7 @@ export async function POST(req: NextRequest) {
 
     return successResponse(stats, 200);
   } catch (err) {
-    console.error('[CRON RELANCE] Erreur fatale:', err);
+    console.error('[CRON RELANCE] Erreur fatale:', err instanceof Error ? err.message : String(err));
     return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500);
   }
 }

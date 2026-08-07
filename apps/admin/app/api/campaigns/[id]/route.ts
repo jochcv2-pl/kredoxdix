@@ -49,7 +49,7 @@ export async function DELETE(
 
     return successResponse({ deleted: true });
   } catch (err) {
-    console.error('[DELETE /api/campaigns/[id]] Erreur:', err);
+    console.error('[DELETE /api/campaigns/[id]] Erreur:', err instanceof Error ? err.message : String(err));
     return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500);
   }
 }
