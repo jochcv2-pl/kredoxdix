@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, UserCheck, UserCog, FolderOpen, Percent,
   Mail, Megaphone, History, Globe, LayoutTemplate,
   Star, LayoutGrid, FileText, Search, Bot, Settings, User, Activity, Building2,
-  Route,
+  Route, Send,
 } from "lucide-react";
 
 const ICON_PROPS = { className: "sb-ico", size: 18, strokeWidth: 1.8 } as const;
@@ -33,6 +33,7 @@ const ICONS: Record<string, ReactNode> = {
   seo: <Search {...ICON_PROPS} />,
   agents: <Bot {...ICON_PROPS} />,
   settings: <Settings {...ICON_PROPS} />,
+  'mes-smtp': <Send {...ICON_PROPS} />,
   profil: <User {...ICON_PROPS} />,
 };
 
@@ -58,6 +59,7 @@ const navigation = [
   { id: "domains", label: "Domaines", group: "Site web" },
   { id: "agents", label: "Agents IA", group: "Intelligence" },
   { id: "settings", label: "Configuration", group: "Intelligence" },
+  { id: "mes-smtp", label: "Mes SMTP", group: "Compte" },
   { id: "profil", label: "Mon profil", group: "Compte" },
 ];
 

@@ -28,6 +28,7 @@ import Partners from '@/views/partners/page'
 import Conseillers from '@/views/conseillers/page'
 import Settings from '@/views/settings/page'
 import Profil from '@/views/profil/page'
+import MesSmtp from '@/views/mes-smtp/page'
 
 const pageTitles: Record<string, [string, string]> = {
   dashboard: ["Vue d'ensemble", "Activité de votre agence en temps réel"],
@@ -51,6 +52,7 @@ const pageTitles: Record<string, [string, string]> = {
   domains: ['Domaines', 'Gérez vos domaines et sous-domaines'],
   agents: ['Agents IA', 'Créez et configurez vos agents'],
   settings: ['Configuration', "Modèle d'IA, passerelles, cadence et sécurité"],
+  'mes-smtp': ['Mes SMTP', "Configurez vos passerelles d'envoi email"],
   profil: ['Mon profil', 'Informations personnelles et paramètres de compte'],
 }
 
@@ -141,6 +143,7 @@ export default function AdminPage() {
       case 'domains': return <ViewErrorBoundary viewName="Domaines"><Domains /></ViewErrorBoundary>
       case 'agents': return <ViewErrorBoundary viewName="Agents IA"><Agents /></ViewErrorBoundary>
       case 'settings': return <ViewErrorBoundary viewName="Configuration"><Settings /></ViewErrorBoundary>
+      case 'mes-smtp': return <ViewErrorBoundary viewName="Mes SMTP"><MesSmtp /></ViewErrorBoundary>
       case 'profil': return <ViewErrorBoundary viewName="Profil"><Profil /></ViewErrorBoundary>
       default: return <ViewErrorBoundary viewName="Tableau de bord"><Dashboard /></ViewErrorBoundary>
     }
