@@ -411,7 +411,8 @@ export default function Campaigns({ onNavigate }: { onNavigate?: (view: string) 
       try {
         const res = await fetch(`/api/leads?search=${encodeURIComponent(searchQuery)}&limit=50`)
         const json = await res.json()
-        setSearchResults((json.data ?? []).map((l: any) => ({
+        const leads = json.data?.leads ?? json.leads ?? []
+        setSearchResults(leads.map((l: any) => ({
           id: l.id,
           firstName: l.firstName,
           lastName: l.lastName,
