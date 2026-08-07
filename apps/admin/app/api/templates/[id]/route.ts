@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { prisma, TemplateStatus } from '@kredix/db';
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses';
 import { isValidId } from '@/app/api/_lib/id-validation';
-import { requireAuth } from '../../_lib/auth-server';
+import { requireAuth, requireAdmin } from '../../_lib/auth-server';
 
 // Schéma de mise à jour — trigger volontairement absent (immutable après création).
 const updateTemplateSchema = z.object({
@@ -52,7 +52,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const [, deny] = await requireAuth();
+  const [, deny] = await requireAdmin();
   if (deny) return deny;
   try {
     const { id } = await params;
@@ -97,7 +97,7 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const [, deny] = await requireAuth();
+  const [, deny] = await requireAdmin();
   if (deny) return deny;
   try {
     const { id } = await params;

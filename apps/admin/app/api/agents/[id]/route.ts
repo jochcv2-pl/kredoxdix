@@ -1,22 +1,25 @@
 // =============================================================================
 // /api/agents/[id] — Lecture, mise à jour et suppression d'un agent.
-// systemPrompt est éditable (uniquement via l'interface admin).
+// systemPrompt est IMMUTABLE après création (verrou de sécurité — bloque tout
+// jailbreak par modification ultérieure des garde-fous). Seul requireAdmin()
+// peut accéder à ces routes.
 // =============================================================================
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@kredix/db';
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses';
-import { requireAuth } from '../../_lib/auth-server';
+import { requireAdmin } from '../../_lib/auth-server';
 import { isValidId } from '@/app/api/_lib/id-validation';
 
-// Schéma de mise à jour — systemPrompt éditable depuis l'admin.
+// Schéma de mise à jour — systemPrompt volontairement ABSENT (immutable).
+// Le prompt système contient le bloc SÉCURITÉ qui bride l'agent ; le modifier
+// après création permettrait de neutraliser ces garde-fous.
 const updateAgentSchema = z.object({
   name: z.string().optional(),
   initials: z.string().optional(),
   description: z.string().optional(),
   isActive: z.boolean().optional(),
-  systemPrompt: z.string().optional(),
   tools: z.record(z.any()).optional(),
   guardrails: z.record(z.any()).optional(),
 });
@@ -26,7 +29,7 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const [, deny] = await requireAuth();
+  const [, deny] = await requireAdmin();
   if (deny) return deny;
   try {
     const { id } = await params;
@@ -48,12 +51,12 @@ export async function GET(
   }
 }
 
-// PATCH /api/agents/[id] — met à jour les champs éditibles (incluant systemPrompt).
+// PATCH /api/agents/[id] — met à jour les champs éditables (PAS systemPrompt).
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const [, deny] = await requireAuth();
+  const [, deny] = await requireAdmin();
   if (deny) return deny;
   try {
     const { id } = await params;
@@ -83,7 +86,7 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const [, deny] = await requireAuth();
+  const [, deny] = await requireAdmin();
   if (deny) return deny;
   try {
     const { id } = await params;

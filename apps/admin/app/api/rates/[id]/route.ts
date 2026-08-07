@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { prisma } from '@kredix/db';
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses';
 import { isValidId } from '@/app/api/_lib/id-validation';
-import { requireAuth } from '../../_lib/auth-server';
+import { requireAuth, requireAdmin } from '../../_lib/auth-server';
 
 // Schéma PATCH — tous les champs éditables sauf bankId/loanType (immutables
 // après création : un changement de palier = une nouvelle entrée).
@@ -51,7 +51,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const [, deny] = await requireAuth();
+  const [, deny] = await requireAdmin();
   if (deny) return deny;
   try {
     const { id } = await params;
@@ -105,7 +105,7 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const [, deny] = await requireAuth();
+  const [, deny] = await requireAdmin();
   if (deny) return deny;
   try {
     const { id } = await params;

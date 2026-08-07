@@ -8,7 +8,7 @@ import { NextRequest } from 'next/server';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import { successResponse, errorResponse, ERR } from '../../_lib/responses';
-import { requireAuth } from '../../_lib/auth-server';
+import { requireAdmin } from '../../_lib/auth-server';
 
 // Taille maximale autorisée : 500 Ko.
 const MAX_FILE_SIZE = 500 * 1024;
@@ -123,7 +123,7 @@ async function checkImageDimensions(
 // POST /api/cms/upload — enregistre le fichier reçu dans public/uploads/.
 // Retourne { url, filename, size, width?, height?, warnings[] }.
 export async function POST(req: NextRequest) {
-  const [, deny] = await requireAuth();
+  const [, deny] = await requireAdmin();
   if (deny) return deny;
   try {
     const formData = await req.formData();

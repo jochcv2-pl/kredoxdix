@@ -12,13 +12,14 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@kredix/db';
 import { successResponse, errorResponse, ERR } from '@/app/api/_lib/responses';
 import { isValidId } from '@/app/api/_lib/id-validation';
-import { requireAuth } from '../../../_lib/auth-server';
+import { requireAdmin } from '../../../_lib/auth-server';
+import { assertPublicHostname } from '../../../_lib/ssrf-guard';
 
 export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const [, deny] = await requireAuth();
+  const [, deny] = await requireAdmin();
   if (deny) return deny;
 
   try {
@@ -33,6 +34,13 @@ export async function POST(
     }
 
     const hostname = domain.domain;
+
+    // SSRF guard : refuser les hostnames internes/privés avant tout fetch/tls.connect.
+    const ssrf = await assertPublicHostname(hostname);
+    if (!ssrf.ok) {
+      return errorResponse(`Domaine bloqué (SSRF guard) : ${ssrf.reason}`, 'SSRF_BLOCKED', undefined, 400);
+    }
+
     const results = {
       dns: { resolved: false, ips: [] as string[], error: null as string | null },
       ssl: { valid: false, issuer: null as string | null, daysLeft: null as number | null, error: null as string | null },

@@ -6,7 +6,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@kredix/db';
 import { successResponse, errorResponse, ERR } from '../../_lib/responses';
-import { requireAuth } from '../../_lib/auth-server';
+import { requireAdmin } from '../../_lib/auth-server';
 
 // Validation du nouveau nom : lettres (incl. accents), chiffres, espaces,
 // et ponctuation courante. Max 100 caractères. Empêche injections HTML/JS
@@ -17,7 +17,7 @@ const SITE_NAME_RE = /^[\p{L}\p{N}\s'.,&()\-]{1,100}$/u;
 // Body : { newName: string }
 // Retourne { oldName, newName, settingsUpdated, templatesUpdated }.
 export async function POST(req: NextRequest) {
-  const [, deny] = await requireAuth();
+  const [, deny] = await requireAdmin();
   if (deny) return deny;
   try {
     const body = (await req.json()) as { newName?: unknown };

@@ -9,7 +9,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@kredix/db';
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses';
-import { requireAuth } from '../../_lib/auth-server';
+import { requireAdmin } from '../../_lib/auth-server';
 
 const reorderSchema = z.object({
   orderedIds: z.array(z.string()).min(1, 'Au moins une étape est requise'),
@@ -17,7 +17,7 @@ const reorderSchema = z.object({
 
 // PATCH /api/pipeline-steps/reorder
 export async function PATCH(req: NextRequest) {
-  const [, deny] = await requireAuth();
+  const [, deny] = await requireAdmin();
   if (deny) return deny;
   try {
     const [data, error] = await parseBody(req, reorderSchema);

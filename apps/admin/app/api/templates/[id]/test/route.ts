@@ -11,7 +11,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@kredix/db';
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses';
-import { requireAuth } from '@/app/api/_lib/auth-server';
+import { requireAdmin } from '@/app/api/_lib/auth-server';
 import { sendTestEmail } from '@/app/api/_lib/test-send';
 
 const testSchema = z.object({
@@ -22,7 +22,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const [admin, deny] = await requireAuth();
+  const [admin, deny] = await requireAdmin();
   if (deny) return deny;
 
   const { id } = await params;

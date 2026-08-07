@@ -11,8 +11,9 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses';
-import { requireAuth } from '../../_lib/auth-server';
+import { requireAdmin } from '../../_lib/auth-server';
 import { getSetting } from '@/app/api/_lib/settings';
+import { assertPublicUrl } from '@/app/api/_lib/ssrf-guard';
 
 const schema = z.object({
   type: z.enum(['fb_pixel', 'ga4']),
@@ -23,7 +24,7 @@ const schema = z.object({
 const FETCH_TIMEOUT_MS = 8_000;
 
 export async function POST(req: NextRequest) {
-  const [, deny] = await requireAuth();
+  const [, deny] = await requireAdmin();
   if (deny) return deny;
 
   try {
@@ -49,6 +50,18 @@ export async function POST(req: NextRequest) {
         return successResponse({
           valid: true,
           message: `ID Pixel valide (${trimmed.length} chiffres). ⚠️ Configurez l'URL du site dans le CMS pour activer la vérification live.`,
+        });
+      }
+
+      // SSRF guard : refuser les URLs internes/privées (site_url est modifiable par admin,
+      // mais défense en profondeur contre toute pollution de la DB).
+      const ssrf = await assertPublicUrl(siteUrl);
+      if (!ssrf.ok) {
+        return successResponse({
+          valid: true,
+          message: `ID Pixel valide (${trimmed.length} chiffres), mais l'URL du site est bloquée (SSRF guard) : ${ssrf.reason}.`,
+          liveCheck: 'error',
+          siteUrl,
         });
       }
 

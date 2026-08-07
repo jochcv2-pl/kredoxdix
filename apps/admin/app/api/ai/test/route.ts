@@ -1,6 +1,6 @@
 import { testConnection } from '@kredix/ai';
 import { successResponse, errorResponse, ERR } from '../../_lib/responses';
-import { requireAuth } from '../../_lib/auth-server';
+import { requireAdmin } from '../../_lib/auth-server';
 
 // =============================================================================
 // POST /api/ai/test — Teste la connexion au LLM configuré.
@@ -9,7 +9,7 @@ import { requireAuth } from '../../_lib/auth-server';
 // Envoie une requête minimale au LLM et retourne le modèle + la latence.
 
 export async function POST() {
-  const [, deny] = await requireAuth();
+  const [, deny] = await requireAdmin();
   if (deny) return deny;
 
   try {

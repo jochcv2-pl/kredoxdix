@@ -9,7 +9,7 @@ import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import { prisma } from '@kredix/db';
 import { successResponse, errorResponse, ERR } from '../../_lib/responses';
-import { requireAuth } from '../../_lib/auth-server';
+import { requireAdmin } from '../../_lib/auth-server';
 import { detectPdfFields } from '../../_lib/pdf-filler';
 
 // Taille maximale d'un PDF : 10 Mo.
@@ -22,7 +22,7 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 // POST /api/document-templates/upload — enregistre le PDF, détecte les champs, crée le template.
 export async function POST(req: NextRequest) {
-  const [, deny] = await requireAuth();
+  const [, deny] = await requireAdmin();
   if (deny) return deny;
   try {
     const formData = await req.formData();

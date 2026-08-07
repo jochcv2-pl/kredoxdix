@@ -7,7 +7,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@kredix/db';
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses';
-import { requireAuth } from '../_lib/auth-server';
+import { requireAuth, requireAdmin } from '../_lib/auth-server';
 
 // Schéma de création d'un template (métadonnées uniquement, pas de fichier).
 const createTemplateSchema = z.object({
@@ -32,7 +32,7 @@ export async function GET() {
 
 // POST /api/document-templates — crée l'entrée métadonnées (sans fichier).
 export async function POST(req: NextRequest) {
-  const [, deny] = await requireAuth();
+  const [, deny] = await requireAdmin();
   if (deny) return deny;
   try {
     const [data, error] = await parseBody(req, createTemplateSchema);

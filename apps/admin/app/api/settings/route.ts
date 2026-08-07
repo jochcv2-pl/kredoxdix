@@ -7,7 +7,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma, encryptSecret, decryptSecret } from '@kredix/db';
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses';
-import { requireAuth } from '../_lib/auth-server';
+import { requireAdmin } from '../_lib/auth-server';
 
 // Schéma de création / mise à jour d'un paramètre (upsert par clé unique).
 const upsertSettingSchema = z.object({
@@ -21,7 +21,7 @@ const upsertSettingSchema = z.object({
 // Filtre optionnel par catégorie via ?category=xxx.
 // Tri par catégorie puis par clé.
 export async function GET(req: NextRequest) {
-  const [, deny] = await requireAuth();
+  const [, deny] = await requireAdmin();
   if (deny) return deny;
   try {
     const category = req.nextUrl.searchParams.get('category');
@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
 // POST /api/settings — crée ou met à jour un paramètre (upsert par clé).
 // Retourne 200 (et non 201) car un update est possible.
 export async function POST(req: NextRequest) {
-  const [, deny] = await requireAuth();
+  const [, deny] = await requireAdmin();
   if (deny) return deny;
   try {
     const [data, error] = await parseBody(req, upsertSettingSchema);

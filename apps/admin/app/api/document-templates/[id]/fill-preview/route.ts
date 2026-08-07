@@ -7,7 +7,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@kredix/db';
 import { errorResponse, ERR, parseBody } from '@/app/api/_lib/responses';
-import { requireAuth } from '../../../_lib/auth-server';
+import { requireAdmin } from '../../../_lib/auth-server';
 import { getLeadScope } from '../../../_lib/scope';
 import { isValidId } from '@/app/api/_lib/id-validation';
 import { fillPdfTemplate, PdfFillData } from '@/app/api/_lib/pdf-filler';
@@ -23,7 +23,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const [admin, deny] = await requireAuth();
+  const [admin, deny] = await requireAdmin();
   if (deny) return deny;
   try {
     const { id } = await params;

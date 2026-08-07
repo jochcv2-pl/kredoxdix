@@ -7,7 +7,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma, EmailTrigger, TemplateStatus } from '@kredix/db';
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses';
-import { requireAuth } from '../_lib/auth-server';
+import { requireAuth, requireAdmin } from '../_lib/auth-server';
 
 // Schéma de création d'un template.
 const createTemplateSchema = z.object({
@@ -42,7 +42,7 @@ export async function GET() {
 // Si le statut est 'active', les autres templates actifs du même trigger+langue
 // sont automatiquement passés en 'draft' (transaction ci-dessous).
 export async function POST(req: NextRequest) {
-  const [, deny] = await requireAuth();
+  const [, deny] = await requireAdmin();
   if (deny) return deny;
   try {
     const [data, error] = await parseBody(req, createTemplateSchema);

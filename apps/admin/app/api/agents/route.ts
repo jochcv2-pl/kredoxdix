@@ -7,7 +7,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma, AgentRole } from '@kredix/db';
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses';
-import { requireAuth } from '../_lib/auth-server';
+import { requireAdmin } from '../_lib/auth-server';
 
 // Schéma de création d'un agent (systemPrompt verrouillé, set à la création).
 const createAgentSchema = z.object({
@@ -23,7 +23,7 @@ const createAgentSchema = z.object({
 
 // GET /api/agents — liste tous les agents, triés par rôle, avec compte mémoire.
 export async function GET() {
-  const [, deny] = await requireAuth();
+  const [, deny] = await requireAdmin();
   if (deny) return deny;
   try {
     const agents = await prisma.agent.findMany({
@@ -40,7 +40,7 @@ export async function GET() {
 
 // POST /api/agents — crée un nouvel agent (409 si le rôle existe déjà).
 export async function POST(req: NextRequest) {
-  const [, deny] = await requireAuth();
+  const [, deny] = await requireAdmin();
   if (deny) return deny;
   try {
     const [data, error] = await parseBody(req, createAgentSchema);

@@ -25,7 +25,7 @@ import {
 } from '@kredix/email';
 import { generateAmortizationPDF } from '@/app/api/_lib/amortization';
 import { successResponse, errorResponse, ERR } from '@/app/api/_lib/responses';
-import { requireAuth } from '../_lib/auth-server';
+import { requireAdmin } from '../_lib/auth-server';
 
 const STEP_CONFIG: Record<string, EmailTrigger> = {
   welcome: 'reception_ack',
@@ -70,7 +70,7 @@ const bodySchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  const [, deny] = await requireAuth();
+  const [, deny] = await requireAdmin();
   if (deny) return deny;
 
   const body = await req.json().catch(() => null);

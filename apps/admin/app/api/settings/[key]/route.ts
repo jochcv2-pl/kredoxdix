@@ -10,7 +10,7 @@ import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/r
 
 // Les clés de settings sont des segments simples (ex: "site_name", "cms_hero_title").
 const KEY_RE = /^[a-z0-9_]{1,64}$/;
-import { requireAuth } from '../../_lib/auth-server';
+import { requireAdmin } from '../../_lib/auth-server';
 
 // Schéma de mise à jour — tous les champs optionnels (upsert si inexistant).
 const updateSettingSchema = z.object({
@@ -24,7 +24,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ key: string }> },
 ) {
-  const [, deny] = await requireAuth();
+  const [, deny] = await requireAdmin();
   if (deny) return deny;
   try {
     const { key } = await params;
@@ -64,7 +64,7 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ key: string }> },
 ) {
-  const [, deny] = await requireAuth();
+  const [, deny] = await requireAdmin();
   if (deny) return deny;
   try {
     const { key } = await params;

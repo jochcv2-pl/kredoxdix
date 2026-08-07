@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { generateEmail } from '@kredix/ai';
 import { successResponse, errorResponse, ERR, parseBody } from '../../_lib/responses';
-import { requireAuth } from '../../_lib/auth-server';
+import { requireAdmin } from '../../_lib/auth-server';
 
 // =============================================================================
 // POST /api/ai/generate-email — Génère le contenu d'un email via l'agent IA.
@@ -33,7 +33,7 @@ const generateSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  const [, deny] = await requireAuth();
+  const [, deny] = await requireAdmin();
   if (deny) return deny;
 
   const [data, error] = await parseBody(req, generateSchema);

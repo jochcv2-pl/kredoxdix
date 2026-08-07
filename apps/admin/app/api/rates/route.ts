@@ -7,7 +7,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@kredix/db';
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses';
-import { requireAuth } from '../_lib/auth-server';
+import { requireAuth, requireAdmin } from '../_lib/auth-server';
 
 // Schéma de création — bankId optionnel (taux générique sans banque).
 // La contrainte d'unicité est (bankId, loanType, amountMin, amountMax) ; pour
@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
 
 // POST /api/rates — crée un taux (409 si le palier existe déjà pour cette banque/type).
 export async function POST(req: NextRequest) {
-  const [, deny] = await requireAuth();
+  const [, deny] = await requireAdmin();
   if (deny) return deny;
   try {
     const [data, error] = await parseBody(req, createRateSchema);
