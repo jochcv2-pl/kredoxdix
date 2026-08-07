@@ -60,7 +60,7 @@ export const createLeadSchema = z.object({
     .min(2, "Le pays est requis")
     .max(10)
     .default("FR"),
-  loanType: z.enum(["immo", "conso", "rachat", "pro", "autre"]),
+  loanType: z.string().min(1, "Le type de prêt est requis"),
   amount: z
     .number()
     .int()

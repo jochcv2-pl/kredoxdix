@@ -27,7 +27,10 @@ interface AdminUser {
   createdAt: string
 }
 
-const LOAN_TYPES = ['immo', 'conso', 'rachat', 'pro', 'autre']
+const LOAN_TYPE_FALLBACK = [
+  { code: 'immo', label: 'immo' }, { code: 'conso', label: 'conso' },
+  { code: 'rachat', label: 'rachat' }, { code: 'pro', label: 'pro' }, { code: 'autre', label: 'autre' },
+]
 const COUNTRIES = ['FR', 'BE', 'CH', 'DE', 'LU', 'MC', 'ES', 'PT', 'IT']
 
 interface FormState {
@@ -70,6 +73,7 @@ export default function Conseillers() {
   const [creating, setCreating] = useState(false)
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null)
+  const [loanTypes, setLoanTypes] = useState<{ code: string; label: string }[]>(LOAN_TYPE_FALLBACK)
 
   const load = useCallback(async () => {
     setLoading(true); setError(null)
@@ -84,6 +88,14 @@ export default function Conseillers() {
   }, [])
 
   useEffect(() => { load() }, [load])
+
+  // DEC-K5 — Types de prêt dynamiques depuis la DB.
+  useEffect(() => {
+    fetch('/api/loan-types', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(json => setLoanTypes((json.data ?? []).map((t: { code: string; label: string }) => ({ code: t.code, label: t.label }))))
+      .catch(() => {})
+  }, [])
 
   const openCreate = () => {
     setForm(EMPTY_FORM); setEditing(null); setCreating(true); setError(null)
@@ -303,11 +315,11 @@ export default function Conseillers() {
 
           <label>Spécialités — types de prêt <span style={{ color: '#aaa' }}>(vide = tous)</span></label>
           <div className="cns-checkbox-group">
-            {LOAN_TYPES.map((t) => (
-              <label key={t} className="cns-checkbox">
-                <input type="checkbox" checked={form.loanTypes.includes(t)}
-                  onChange={() => toggleArrayValue('loanTypes', t)} />
-                {t}
+            {loanTypes.map((t) => (
+              <label key={t.code} className="cns-checkbox">
+                <input type="checkbox" checked={form.loanTypes.includes(t.code)}
+                  onChange={() => toggleArrayValue('loanTypes', t.code)} />
+                {t.label}
               </label>
             ))}
           </div>

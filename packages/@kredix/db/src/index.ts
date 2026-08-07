@@ -12,6 +12,7 @@ export {
   getContentBlock,
   getActiveLegalPages,
   getActiveBankPartners,
+  getActiveLoanTypes,
 } from './queries';
 
 // Helper notifications (création d'événements notifiables)
@@ -44,6 +45,7 @@ export type {
   Notification,
   Testimonial,
   ContentBlock,
+  LoanType,
 } from '@prisma/client';
 
 // Enums (valeurs runtime) — pour usage direct dans les apps

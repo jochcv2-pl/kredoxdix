@@ -112,3 +112,15 @@ export async function getActiveBankPartners() {
     select: { id: true, name: true, slug: true, logoUrl: true },
   });
 }
+
+/**
+ * Récupère tous les types de prêt ACTIFS (DEC-K5 dynamique).
+ * Triés par sortOrder. Utilisé par le formulaire public et le routing conseillers.
+ */
+export async function getActiveLoanTypes() {
+  return prisma.loanType.findMany({
+    where: { isActive: true },
+    orderBy: { sortOrder: 'asc' },
+    select: { id: true, code: true, label: true },
+  });
+}

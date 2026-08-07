@@ -97,6 +97,16 @@ export default function LeadForm({ prefill, whatsappNumber }: { prefill?: LeadFo
   const [duration, setDuration] = useState<string>("");
   const [monthlyPayment, setMonthlyPayment] = useState<string>("");
   const [annualRate, setAnnualRate] = useState<string>("");
+
+  // DEC-K5 — Types de prêt dynamiques depuis la DB (fallback sur liste codée si indisponible).
+  const [loanTypeOptions, setLoanTypeOptions] = useState<{ code: string; label: string }[]>([]);
+
+  useEffect(() => {
+    fetch("/api/loan-types")
+      .then((r) => r.json())
+      .then((json) => setLoanTypeOptions(json.data ?? []))
+      .catch(() => {});
+  }, []);
   const [totalCost, setTotalCost] = useState<string>("");
   const [email, setEmail] = useState("");
   const [consent, setConsent] = useState(false);
@@ -305,8 +315,11 @@ export default function LeadForm({ prefill, whatsappNumber }: { prefill?: LeadFo
             className={isTypeFilled ? "filled" : ""}
           >
             <option value="" disabled>{t("selectPlaceholder")}</option>
-            {LOAN_OPTIONS.map((type) => (
-              <option key={type} value={type}>{t(LOAN_TYPE_LABEL_KEYS[type])}</option>
+            {(loanTypeOptions.length > 0
+              ? loanTypeOptions
+              : LOAN_OPTIONS.map((lt) => ({ code: lt, label: t(LOAN_TYPE_LABEL_KEYS[lt]) }))
+            ).map((type) => (
+              <option key={type.code} value={type.code}>{type.label}</option>
             ))}
           </select>
         </div>

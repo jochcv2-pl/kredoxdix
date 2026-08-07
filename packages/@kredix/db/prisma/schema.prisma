@@ -717,3 +717,26 @@ model ContentBlock {
   @@unique([section, locale])           // 1 block par section/locale
   @@index([section, locale])
 }
+
+// -----------------------------------------------------------------------------
+// LOANTYPE — Types de prêt configurables (DEC-K5 dynamique).
+// -----------------------------------------------------------------------------
+// Le super-admin peut créer/modifier/désactiver des types de prêt depuis le CRM.
+// Ces types s'affichent dynamiquement dans le formulaire public (site web),
+// dans le routing des conseillers (loanTypes) et dans l'admin.
+//
+// La colonne Lead.loanType reste un String libre — la table LoanType est le
+// catalogue des types ACTIFS affichés dans les UI.
+// -----------------------------------------------------------------------------
+
+model LoanType {
+  id        String   @id @default(cuid())
+  code      String   @unique             // clé technique ("immo", "personnel"...)
+  label     String                       // libellé affiché ("Immobilier", "Personnel"...)
+  isActive  Boolean  @default(true)       // si false → masqué des formulaires
+  sortOrder Int      @default(0)          // ordre d'affichage
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
+}
