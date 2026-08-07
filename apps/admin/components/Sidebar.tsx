@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, UserCheck, UserCog, FolderOpen, Percent,
   Mail, Megaphone, History, Globe, LayoutTemplate,
   Star, LayoutGrid, FileText, Search, Bot, Settings, User, Activity, Building2,
-  Route, Send,
+  Route, Send, Tag,
 } from "lucide-react";
 
 const ICON_PROPS = { className: "sb-ico", size: 18, strokeWidth: 1.8 } as const;
@@ -33,6 +33,7 @@ const ICONS: Record<string, ReactNode> = {
   seo: <Search {...ICON_PROPS} />,
   agents: <Bot {...ICON_PROPS} />,
   settings: <Settings {...ICON_PROPS} />,
+  'loan-types': <Tag {...ICON_PROPS} />,
   'mes-smtp': <Send {...ICON_PROPS} />,
   profil: <User {...ICON_PROPS} />,
 };
@@ -45,6 +46,7 @@ const navigation = [
   { id: "parcours", label: "Parcours client", group: "Pilotage" },
   { id: "dossiers", label: "Dossiers", group: "Pilotage" },
   { id: "taux", label: "Taux & barèmes", group: "Pilotage" },
+  { id: "loan-types", label: "Types de prêt", group: "Pilotage" },
   { id: "emails", label: "Modèles d'emails", group: "Pilotage" },
   { id: "documents", label: "Documents modèles", group: "Pilotage" },
   { id: "campaigns", label: "Campagnes", group: "Pilotage" },
@@ -66,7 +68,7 @@ const navigation = [
 // DEC-K5 — items de menu réservés au super-admin (role 'admin').
 const SUPER_ADMIN_ONLY = new Set([
   'conseillers', 'pipeline', 'cms', 'testimonials', 'partners',
-  'content', 'legal', 'seo', 'domains', 'agents', 'settings',
+  'content', 'legal', 'seo', 'domains', 'agents', 'settings', 'loan-types',
 ]);
 
 interface SidebarProps {
