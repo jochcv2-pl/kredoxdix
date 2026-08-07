@@ -159,8 +159,10 @@ model Lead {
   notes             String?    // notes internes conseillers
 
   // Relation optionnelle : un lead peut ne pas encore être assigné.
+  // onDelete: SetNull — si le conseiller est supprimé, le lead revient à
+  // "non assigné" (au lieu d'une erreur FK). Le routing/cron peut le réassigner.
   assignedToId      String?
-  assignedTo        AdminUser? @relation("AssignedLeads", fields: [assignedToId], references: [id])
+  assignedTo        AdminUser? @relation("AssignedLeads", fields: [assignedToId], references: [id], onDelete: SetNull)
   assignedAt        DateTime?    // DEC-K5 : timestamp d'assignation (routing automatique ou manuel)
 
   // ===== MULTI-ADMIN (DEC-K5) — relations inverse pour scope EmailLog/ClientStep =====
@@ -394,8 +396,9 @@ model EmailGateway {
   isPrimary   Boolean          @default(false) // SMTP principal pour prospects/relances (UN SEUL PAR ADMIN désormais — DEC-K5)
 
   // ===== MULTI-ADMIN (DEC-K5) — SMTP exclusif par admin =====
+  // onDelete: SetNull — si l'owner est supprimé, le SMTP devient système (ownerId=null).
   ownerId     String?                          // null = SMTP système (fallback pour leads unassigned)
-  owner       AdminUser?       @relation("OwnedGateways", fields: [ownerId], references: [id])
+  owner       AdminUser?       @relation("OwnedGateways", fields: [ownerId], references: [id], onDelete: SetNull)
   isSystem    Boolean          @default(false) // true = SMTP système réservé aux leads unassigned (un seul actif)
 
   createdAt   DateTime         @default(now())
@@ -466,8 +469,9 @@ model Campaign {
   domain          Domain?        @relation(fields: [domainId], references: [id])
 
   // ===== MULTI-ADMIN (DEC-K5) — propriétaire de la campagne =====
+  // onDelete: SetNull — si l'owner est supprimé, la campagne revient au super-admin (ownerId=null).
   ownerId         String?                         // null = legacy / super-admin (tous voient)
-  owner           AdminUser?     @relation("OwnedCampaigns", fields: [ownerId], references: [id])
+  owner           AdminUser?     @relation("OwnedCampaigns", fields: [ownerId], references: [id], onDelete: SetNull)
 
   status          CampaignStatus @default(draft)
   recipientSource String                          // "validated_today" | "validated_week" | "manual" | "all_active"

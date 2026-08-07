@@ -155,6 +155,27 @@ export async function processCampaign(campaignId: string): Promise<void> {
       select: { id: true },
     });
 
+    // 3b — Préchargement de la SuppressionList en batch (anti-N+1).
+    //     Au lieu d'un findUnique par destinataire, on charge tous les emails
+    //     supprimés en une seule requête (Map pour lookup O(1)).
+    const pendingRecipients = await prisma.campaignRecipient.findMany({
+      where: { id: { in: pendingIds.map((p) => p.id) } },
+      select: { email: true },
+    });
+    const suppressedRows = await prisma.suppressionList.findMany({
+      where: { email: { in: pendingRecipients.map((p) => p.email) } },
+      select: { email: true, reason: true },
+    });
+    const suppressedMap = new Map(suppressedRows.map((s) => [s.email, s.reason]));
+
+    // 3c — Plafond journalier : initialiser le compteur UNE SEULE FOIS au début,
+    //     puis incrémenter en mémoire après chaque envoi réussi (anti-N+1).
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    let sentToday = await prisma.campaignRecipient.count({
+      where: { status: CampaignRecipientStatus.sent, sentAt: { gte: startOfToday } },
+    });
+
     for (const { id: recipientId } of pendingIds) {
       // 4a — Re-vérification du statut campagne (annulation par l'admin).
       const current = await prisma.campaign.findUnique({
@@ -184,11 +205,7 @@ export async function processCampaign(campaignId: string): Promise<void> {
       if (!recipient) continue;
 
       // 4b — Plafond journalier global (toutes campagnes confondues).
-      const startOfToday = new Date();
-      startOfToday.setHours(0, 0, 0, 0);
-      const sentToday = await prisma.campaignRecipient.count({
-        where: { status: CampaignRecipientStatus.sent, sentAt: { gte: startOfToday } },
-      });
+      //      sentToday est maintenu en mémoire (initialisé avant la boucle, incrémenté après envoi).
       if (sentToday >= dailyCap) {
         console.log(
           `[campaign ${campaignId}] Plafond journalier atteint (${sentToday}/${dailyCap}) — pause`,
@@ -196,11 +213,10 @@ export async function processCampaign(campaignId: string): Promise<void> {
         return; // reprise à la prochaine invocation (cron / appel manuel)
       }
 
-      // 4c — SuppressionList : on ne réécrit jamais à un lead désinscrit.
-      const suppressed = await prisma.suppressionList.findUnique({
-        where: { email: recipient.email },
-        select: { reason: true },
-      });
+      // 4c — SuppressionList : lookup O(1) dans le Map préchargé (anti-N+1).
+      const suppressed = suppressedMap.has(recipient.email)
+        ? { reason: suppressedMap.get(recipient.email)! }
+        : null;
       if (suppressed) {
         await prisma.campaignRecipient.update({
           where: { id: recipient.id },
@@ -307,6 +323,7 @@ export async function processCampaign(campaignId: string): Promise<void> {
             data: { sentCount: { increment: 1 } },
           }),
         ]);
+        sentToday++; // maintien en mémoire du plafond journalier (anti-N+1)
       } else {
         await prisma.$transaction([
           prisma.campaignRecipient.update({
