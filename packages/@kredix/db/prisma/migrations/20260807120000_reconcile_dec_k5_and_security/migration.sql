@@ -114,6 +114,7 @@ CREATE TABLE IF NOT EXISTS "LoanType" (
   "isActive" BOOLEAN NOT NULL DEFAULT true,
   "sortOrder" INTEGER NOT NULL DEFAULT 0,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "LoanType_pkey" PRIMARY KEY ("id")
 );
 CREATE UNIQUE INDEX IF NOT EXISTS "LoanType_code_key" ON "LoanType"("code");
@@ -141,11 +142,11 @@ WHERE t.typname = 'CampaignRecipientStatus'
 -- KRX-019 : LoanType n'était pas seedé → fallback UI en base neuve.
 -- Insertion idempotente (ON CONFLICT DO NOTHING).
 -- =============================================================================
-INSERT INTO "LoanType" ("id", "code", "label", "isActive", "sortOrder") VALUES
-  ('lt_immo',    'immo',    'Immobilier',     true, 1),
-  ('lt_conso',   'conso',   'Crédit conso',   true, 2),
-  ('lt_rachat',  'rachat',  'Rachat de crédit', true, 3),
-  ('lt_pro',     'pro',     'Prêt pro',       true, 4)
+INSERT INTO "LoanType" ("id", "code", "label", "isActive", "sortOrder", "createdAt", "updatedAt") VALUES
+  ('lt_immo',    'immo',    'Immobilier',       true, 1, NOW(), NOW()),
+  ('lt_conso',   'conso',   'Crédit conso',     true, 2, NOW(), NOW()),
+  ('lt_rachat',  'rachat',  'Rachat de crédit', true, 3, NOW(), NOW()),
+  ('lt_pro',     'pro',     'Prêt pro',         true, 4, NOW(), NOW())
 ON CONFLICT ("code") DO NOTHING;
 
 -- =============================================================================
