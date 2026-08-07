@@ -12,7 +12,7 @@
 
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { prisma, LeadStatus } from '@kredix/db'
+import { prisma, LeadStatus, assignLeadToAdmin } from '@kredix/db'
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses'
 import { requireAuth } from '../../_lib/auth-server'
 import { getLeadScope } from '../../_lib/scope'
@@ -92,7 +92,8 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // Bulk create.
+    // Bulk create — DEC-K5 : assignedToId null, routing automatique après.
+    const importStartTime = new Date()
     const created = await prisma.lead.createMany({
       data: newLeads.map((l) => ({
         firstName: l.firstName.trim(),
@@ -109,10 +110,25 @@ export async function POST(req: NextRequest) {
         companyName: l.companyName?.trim() || null,
         status: LeadStatus.new,
         sequenceActive: false,
-        assignedToId: admin!.id,
+        assignedToId: null,
       })),
-      skipDuplicates: true, // protection supplémentaire (UNIQUE sur unsubscribeToken)
+      skipDuplicates: true,
     })
+
+    // DEC-K5 — routing automatique des leads importés (mêmes règles que le site web).
+    const importEmails = newLeads.map((l) => l.email?.trim()).filter(Boolean) as string[]
+    if (importEmails.length > 0) {
+      const createdLeads = await prisma.lead.findMany({
+        where: {
+          email: { in: importEmails, mode: 'insensitive' },
+          createdAt: { gte: importStartTime },
+        },
+        select: { id: true },
+      })
+      for (const lead of createdLeads) {
+        await assignLeadToAdmin(lead.id)
+      }
+    }
 
     const duplicateCount = uniqueLeads.length - newLeads.length
 

@@ -13,7 +13,7 @@
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
-import { prisma, LeadStatus, createNotification } from '@kredix/db';
+import { prisma, LeadStatus, createNotification, assignLeadToAdmin } from '@kredix/db';
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses';
 import { requireAuth } from '../_lib/auth-server';
 import { getLeadScope } from '../_lib/scope';
@@ -181,7 +181,7 @@ const createLeadAdminSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  const [admin, deny] = await requireAuth();
+  const [, deny] = await requireAuth();
   if (deny) return deny;
 
   const [data, error] = await parseBody(req, createLeadAdminSchema);
@@ -217,16 +217,19 @@ export async function POST(req: NextRequest) {
         preferredLanguage: data.preferredLanguage,
         notes: data.notes || null,
         status: LeadStatus.new,
-        assignedToId: admin!.id,
+        // DEC-K5 — routing automatique après création (assignLeadToAdmin).
         ...seqDates,
       },
     });
 
+    // DEC-K5 — routing automatique vers le conseiller le moins chargé.
+    const routing = await assignLeadToAdmin(lead.id);
+
     // Notification : nouveau dossier créé manuellement
     await createNotification({
       type: 'new_prospect',
-      title: 'Nouveau dossier (création manuelle)',
-      message: `${lead.firstName} ${lead.lastName} — ${lead.loanType} de ${lead.amount.toLocaleString('fr-FR')}€.`,
+      title: routing.assigned ? 'Nouveau dossier (création manuelle)' : 'Dossier non assigné',
+      message: `${lead.firstName} ${lead.lastName} — ${lead.loanType} de ${lead.amount.toLocaleString('fr-FR')}€.${routing.assigned ? '' : ' ⚠ Aucun conseiller éligible.'}`,
       icon: 'user-plus',
       severity: 'info',
       linkUrl: `/leads?id=${lead.id}`,
