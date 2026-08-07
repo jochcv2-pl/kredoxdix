@@ -144,3 +144,38 @@ INSERT INTO "LoanType" ("id", "code", "label", "isActive", "sortOrder") VALUES
   ('lt_rachat',  'rachat',  'Rachat de crédit', true, 3),
   ('lt_pro',     'pro',     'Prêt pro',       true, 4)
 ON CONFLICT ("code") DO NOTHING;
+
+-- =============================================================================
+-- SECTION K — Phase 7 Bloc F : Table AuditLog (journal d'audit admin)
+-- =============================================================================
+-- Trace toute mutation d'une entité métier par un admin + actions de sécurité.
+-- Vue dédiée "Journal d'audit" (super-admin only).
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS "AuditLog" (
+  "id" TEXT NOT NULL,
+  "adminId" TEXT,
+  "action" TEXT NOT NULL,
+  "entity" TEXT NOT NULL,
+  "entityId" TEXT,
+  "diff" JSONB,
+  "metadata" JSONB,
+  "ipAddress" TEXT,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "AuditLog_pkey" PRIMARY KEY ("id")
+);
+CREATE INDEX IF NOT EXISTS "AuditLog_entity_entityId_idx" ON "AuditLog"("entity", "entityId");
+CREATE INDEX IF NOT EXISTS "AuditLog_adminId_idx" ON "AuditLog"("adminId");
+CREATE INDEX IF NOT EXISTS "AuditLog_createdAt_idx" ON "AuditLog"("createdAt");
+CREATE INDEX IF NOT EXISTS "AuditLog_action_idx" ON "AuditLog"("action");
+-- FK AdminUser avec onDelete: SetNull (préserve les logs si l'admin est supprimé).
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE constraint_name = 'AuditLog_adminId_fkey' AND table_name = 'AuditLog'
+  ) THEN
+    ALTER TABLE "AuditLog"
+      ADD CONSTRAINT "AuditLog_adminId_fkey"
+      FOREIGN KEY ("adminId") REFERENCES "AdminUser"("id") ON DELETE SET NULL;
+  END IF;
+END $$;

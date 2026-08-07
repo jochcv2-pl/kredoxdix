@@ -15,6 +15,7 @@ import bcrypt from 'bcryptjs'
 import { prisma, AdminRole } from '@kredix/db'
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses'
 import { requireAdmin } from '../../_lib/auth-server'
+import { logAudit } from '@/app/api/_lib/audit'
 
 // Champs publics d'un admin (jamais passwordHash ni twoFactorSecret).
 const publicAdminSelect = {
@@ -74,7 +75,7 @@ export async function GET() {
 
 // POST /api/admin/users — crée un nouveau compte admin.
 export async function POST(req: NextRequest) {
-  const [, deny] = await requireAdmin()
+  const [admin, deny] = await requireAdmin()
   if (deny) return deny
 
   const [data, error] = await parseBody(req, createUserSchema)
@@ -104,6 +105,16 @@ export async function POST(req: NextRequest) {
       },
       select: publicAdminSelect,
     })
+
+    // Phase 7 Bloc F — audit log.
+    await logAudit({
+      admin,
+      action: 'create',
+      entity: 'AdminUser',
+      entityId: user.id,
+      metadata: { email: user.email, role: user.role, displayName: user.displayName },
+    })
+
     return successResponse(user, 201)
   } catch {
     return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500)

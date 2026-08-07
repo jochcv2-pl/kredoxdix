@@ -16,6 +16,7 @@ import bcrypt from 'bcryptjs'
 import { prisma } from '@kredix/db'
 import { successResponse, errorResponse, ERR, parseBody } from '../../_lib/responses'
 import { getCurrentAdmin } from '@/auth'
+import { logAudit } from '../../_lib/audit'
 
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(1).max(128),
@@ -71,6 +72,14 @@ export async function POST(req: NextRequest) {
         passwordHash,
         sessionTokenVersion: { increment: 1 },
       },
+    })
+
+    // Phase 7 Bloc F — audit log.
+    await logAudit({
+      admin,
+      action: 'password_change',
+      entity: 'AdminUser',
+      entityId: admin.id,
     })
 
     return successResponse({ ok: true })

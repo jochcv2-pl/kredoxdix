@@ -30,6 +30,7 @@ import Settings from '@/views/settings/page'
 import Profil from '@/views/profil/page'
 import MesSmtp from '@/views/mes-smtp/page'
 import LoanTypes from '@/views/loan-types/page'
+import Audit from '@/views/audit/page'
 
 const pageTitles: Record<string, [string, string]> = {
   dashboard: ["Vue d'ensemble", "Activité de votre agence en temps réel"],
@@ -55,6 +56,7 @@ const pageTitles: Record<string, [string, string]> = {
   settings: ['Configuration', "Modèle d'IA, passerelles, cadence et sécurité"],
   'mes-smtp': ['Mes SMTP', "Configurez vos passerelles d'envoi email"],
   'loan-types': ['Types de prêt', 'Gérez les types affichés sur le site et dans le routing'],
+  audit: ["Journal d'audit", 'Historique des actions admin (mutations, sécurité, envois)'],
   profil: ['Mon profil', 'Informations personnelles et paramètres de compte'],
 }
 
@@ -147,6 +149,7 @@ export default function AdminPage() {
       case 'settings': return <ViewErrorBoundary viewName="Configuration"><Settings /></ViewErrorBoundary>
       case 'mes-smtp': return <ViewErrorBoundary viewName="Mes SMTP"><MesSmtp /></ViewErrorBoundary>
       case 'loan-types': return <ViewErrorBoundary viewName="Types de prêt"><LoanTypes /></ViewErrorBoundary>
+      case 'audit': return <ViewErrorBoundary viewName="Journal d'audit"><Audit /></ViewErrorBoundary>
       case 'profil': return <ViewErrorBoundary viewName="Profil"><Profil /></ViewErrorBoundary>
       default: return <ViewErrorBoundary viewName="Tableau de bord"><Dashboard /></ViewErrorBoundary>
     }

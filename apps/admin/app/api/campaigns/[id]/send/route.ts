@@ -9,6 +9,7 @@ import { requireAuth } from '../../../_lib/auth-server';
 import { getCampaignScope } from '../../../_lib/scope';
 import { isValidId } from '@/app/api/_lib/id-validation';
 import { processCampaign } from '@/app/api/_lib/campaign-sender';
+import { logAudit } from '@/app/api/_lib/audit';
 
 // POST /api/campaigns/[id]/send — passe en "sending" + lance le traitement async.
 export async function POST(
@@ -61,6 +62,15 @@ export async function POST(
     await prisma.campaign.update({
       where: { id },
       data: { status: CampaignStatus.sending, startedAt: new Date() },
+    });
+
+    // Phase 7 Bloc F — audit log.
+    await logAudit({
+      admin,
+      action: 'send',
+      entity: 'Campaign',
+      entityId: id,
+      metadata: { name: campaign.name, pendingCount },
     });
 
     // Fire-and-forget : le traitement tourne en arrière-plan.

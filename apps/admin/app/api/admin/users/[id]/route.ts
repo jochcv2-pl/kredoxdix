@@ -16,6 +16,7 @@ import { prisma, AdminRole } from '@kredix/db'
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses'
 import { isValidId } from '@/app/api/_lib/id-validation'
 import { requireAdmin } from '../../../_lib/auth-server'
+import { logAudit } from '@/app/api/_lib/audit'
 
 const publicAdminSelect = {
   id: true,
@@ -164,6 +165,19 @@ export async function PATCH(
       data: update,
       select: publicAdminSelect,
     })
+
+    // Phase 7 Bloc F — audit log.
+    await logAudit({
+      admin: me,
+      action: 'update',
+      entity: 'AdminUser',
+      entityId: id,
+      metadata: {
+        changedFields: Object.keys(update),
+        revokeSessions,
+      },
+    })
+
     void me
     return successResponse(user)
   } catch {
@@ -214,6 +228,16 @@ export async function DELETE(
     }
 
     await prisma.adminUser.delete({ where: { id } })
+
+    // Phase 7 Bloc F — audit log.
+    await logAudit({
+      admin: me,
+      action: 'delete',
+      entity: 'AdminUser',
+      entityId: id,
+      metadata: { email: existing.email, role: existing.role },
+    })
+
     return new Response(null, { status: 204 })
   } catch {
     return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500)

@@ -15,6 +15,7 @@
 import { prisma } from '@kredix/db'
 import { successResponse, errorResponse, ERR } from '../../_lib/responses'
 import { requireAuth } from '../../_lib/auth-server'
+import { logAudit } from '../../_lib/audit'
 
 export async function POST() {
   const [admin, deny] = await requireAuth()
@@ -24,6 +25,14 @@ export async function POST() {
     await prisma.adminUser.update({
       where: { id: admin!.id },
       data: { sessionTokenVersion: { increment: 1 } },
+    })
+
+    // Phase 7 Bloc F — audit log.
+    await logAudit({
+      admin,
+      action: 'session_revoke',
+      entity: 'AdminUser',
+      entityId: admin!.id,
     })
 
     return successResponse({ revoked: true })

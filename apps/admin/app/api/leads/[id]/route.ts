@@ -19,6 +19,7 @@ import { prisma, LeadStatus, SequenceExitReason, createNotification } from '@kre
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses';
 import { requireAuth } from '../../_lib/auth-server';
 import { getLeadScope } from '../../_lib/scope';
+import { logAudit } from '../../_lib/audit';
 import { isValidId } from '@/app/api/_lib/id-validation';
 
 const patchLeadSchema = z.object({
@@ -216,6 +217,14 @@ export async function DELETE(
     await prisma.emailLog.deleteMany({ where: { leadId: id } });
     await prisma.campaignRecipient.deleteMany({ where: { leadId: id } });
     await prisma.lead.delete({ where: { id } });
+
+    // Phase 7 Bloc F — audit log.
+    await logAudit({
+      admin,
+      action: 'delete',
+      entity: 'Lead',
+      entityId: id,
+    });
 
     return successResponse({ deleted: true });
   } catch (err) {

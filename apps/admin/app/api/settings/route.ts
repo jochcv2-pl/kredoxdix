@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { prisma, encryptSecret, decryptSecret } from '@kredix/db';
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses';
 import { requireAdmin } from '../_lib/auth-server';
+import { logAudit } from '../_lib/audit';
 
 // Schéma de création / mise à jour d'un paramètre (upsert par clé unique).
 const upsertSettingSchema = z.object({
@@ -54,7 +55,7 @@ export async function GET(req: NextRequest) {
 // POST /api/settings — crée ou met à jour un paramètre (upsert par clé).
 // Retourne 200 (et non 201) car un update est possible.
 export async function POST(req: NextRequest) {
-  const [, deny] = await requireAdmin();
+  const [admin, deny] = await requireAdmin();
   if (deny) return deny;
   try {
     const [data, error] = await parseBody(req, upsertSettingSchema);
@@ -80,6 +81,15 @@ export async function POST(req: NextRequest) {
         category: data.category,
         description: data.description,
       },
+    });
+
+    // Phase 7 Bloc F — audit log (on ne logge pas la value — peut être sensible).
+    await logAudit({
+      admin,
+      action: 'update',
+      entity: 'Setting',
+      entityId: data.key,
+      metadata: { category: data.category },
     });
 
     return successResponse(setting);

@@ -298,6 +298,9 @@ model AdminUser {
   gateways         EmailGateway[] @relation("OwnedGateways")
   campaigns        Campaign[]     @relation("OwnedCampaigns")
 
+  // ===== Phase 7 Bloc F — Journaux d'audit (super-admin only) =====
+  auditLogs        AuditLog[]
+
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 
@@ -749,4 +752,35 @@ model LoanType {
   updatedAt DateTime @updatedAt
 
   @@index([isActive, sortOrder])
+}
+
+// -----------------------------------------------------------------------------
+// AUDITLOG — Journal d'audit des actions admin (Phase 7 Bloc F).
+// -----------------------------------------------------------------------------
+// Trace TOUTE mutation d'une entité métier par un admin (create/update/delete)
+// + actions de sécurité (login, logout, reset mdp, révocation session, etc.).
+// `diff` contient le delta avant/après (JSON), `metadata` le contexte (IP, UA).
+// Vue dédiée "Journal d'audit" (super-admin only).
+//
+// `adminId` nullable : null = action système (cron, webhook) — pas un humain.
+// `entityId` nullable : null si action globale (ex : "export leads").
+// `onDelete: SetNull` sur admin : si l'admin est supprimé, ses logs restent
+// (traçabilité préservée) mais adminId passe à null.
+// -----------------------------------------------------------------------------
+model AuditLog {
+  id          String     @id @default(cuid())
+  adminId     String?
+  admin       AdminUser? @relation(fields: [adminId], references: [id], onDelete: SetNull)
+  action      String                       // "create" | "update" | "delete" | "login" | "logout" | "password_change" | "session_revoke" | "export" | ...
+  entity      String                       // "Lead" | "Campaign" | "AdminUser" | "EmailTemplate" | "Setting" | "EmailGateway" | ...
+  entityId    String?                      // ID de l'entité (null si action globale)
+  diff        Json?                        // delta avant/après (optionnel)
+  metadata    Json?                        // contexte additionnel (IP, user-agent, raison, etc.)
+  ipAddress   String?                      // IP de l'auteur (si applicable)
+  createdAt   DateTime   @default(now())
+
+  @@index([entity, entityId])
+  @@index([adminId])
+  @@index([createdAt])
+  @@index([action])
 }

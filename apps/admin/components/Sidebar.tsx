@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, UserCheck, UserCog, FolderOpen, Percent,
   Mail, Megaphone, History, Globe, LayoutTemplate,
   Star, LayoutGrid, FileText, Search, Bot, Settings, User, Activity, Building2,
-  Route, Send, Tag,
+  Route, Send, Tag, Shield,
 } from "lucide-react";
 
 const ICON_PROPS = { className: "sb-ico", size: 18, strokeWidth: 1.8 } as const;
@@ -35,6 +35,7 @@ const ICONS: Record<string, ReactNode> = {
   settings: <Settings {...ICON_PROPS} />,
   'loan-types': <Tag {...ICON_PROPS} />,
   'mes-smtp': <Send {...ICON_PROPS} />,
+  'audit': <Shield {...ICON_PROPS} />,
   profil: <User {...ICON_PROPS} />,
 };
 
@@ -52,6 +53,7 @@ const navigation = [
   { id: "campaigns", label: "Campagnes", group: "Pilotage" },
   { id: "pipeline", label: "Pipeline email", group: "Pilotage" },
   { id: "history", label: "Historique emails", group: "Pilotage" },
+  { id: "audit", label: "Journal d'audit", group: "Pilotage" },
   { id: "cms", label: "Contenu du site (CMS)", group: "Site web" },
   { id: "testimonials", label: "Avis & témoignages", group: "Site web" },
   { id: "partners", label: "Banques partenaires", group: "Site web" },
@@ -69,6 +71,7 @@ const navigation = [
 const SUPER_ADMIN_ONLY = new Set([
   'conseillers', 'pipeline', 'cms', 'testimonials', 'partners',
   'content', 'legal', 'seo', 'domains', 'agents', 'settings', 'loan-types',
+  'audit',
 ]);
 
 interface SidebarProps {
