@@ -7,14 +7,16 @@ import { successResponse, errorResponse, ERR } from '../../_lib/responses'
 import { requireAuth } from '../../_lib/auth-server'
 
 export async function POST() {
-  const [, deny] = await requireAuth()
+  const [admin, deny] = await requireAuth()
   if (deny) return deny
 
   try {
+    // KRX-014 : inclure les notifications ciblées au conseiller (recipientId=admin.id)
+    // ET les broadcast (recipientId=null). Avant : seules les broadcast étaient marquées lues.
     const result = await prisma.notification.updateMany({
       where: {
         readAt: null,
-        OR: [{ recipientId: null }],
+        OR: [{ recipientId: null }, { recipientId: admin!.id }],
       },
       data: { readAt: new Date() },
     })

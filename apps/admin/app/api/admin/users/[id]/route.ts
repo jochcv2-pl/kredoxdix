@@ -147,6 +147,18 @@ export async function PATCH(
     if (data.countries !== undefined) update.countries = data.countries
     if (data.maxActiveLeads !== undefined) update.maxActiveLeads = data.maxActiveLeads
 
+    // KRX-007 — Révocation session immédiate sur événements sensibles :
+    //   - reset password par super-admin → ancien JWT de l'utilisateur invalidé
+    //   - désactivation du compte → JWT invalidé (double sécurité avec isActive check)
+    //   - rétrogradation rôle → JWT invalidé (le token embarquait l'ancien rôle)
+    const revokeSessions =
+      data.password !== undefined ||
+      data.isActive === false ||
+      (data.role !== undefined && data.role !== existing.role)
+    if (revokeSessions) {
+      update.sessionTokenVersion = (existing.sessionTokenVersion ?? 0) + 1
+    }
+
     const user = await prisma.adminUser.update({
       where: { id },
       data: update,

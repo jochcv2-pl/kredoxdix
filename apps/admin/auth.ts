@@ -26,11 +26,13 @@ declare module 'next-auth' {
     user: {
       id: string
       role: string
+      sessionTokenVersion: number
     } & DefaultSession['user']
   }
 
   interface User {
     role?: string
+    sessionTokenVersion?: number
   }
 }
 
@@ -93,6 +95,9 @@ const credentialsProvider = Credentials({
       email: admin.email,
       name: admin.displayName,
       role: admin.role,
+      // KRX-007 : version du token embarquée dans le JWT — permet la révocation
+      // immédiate (getCurrentAdmin compare avec admin.sessionTokenVersion en DB).
+      sessionTokenVersion: admin.sessionTokenVersion,
     }
   },
 })
@@ -109,22 +114,29 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
   callbacks: {
     // Hérite du callback `authorized` défini dans authConfig.
 
-    // JWT : on attache le rôle au token à la connexion.
+    // JWT : on attache le rôle + la version du token à la connexion.
     async jwt({ token, user }) {
       if (user) {
-        const u = user as { role?: string }
+        const u = user as { role?: string; sessionTokenVersion?: number }
         token.role = u.role
+        if (typeof u.sessionTokenVersion === 'number') {
+          token.sessionTokenVersion = u.sessionTokenVersion
+        }
       }
       return token
     },
 
-    // Session : on expose le rôle au client.
+    // Session : on expose le rôle + la version du token au client.
     async session({ session, token }) {
       if (typeof token.sub === 'string') {
         session.user.id = token.sub
       }
       const role = (token as { role?: string }).role
       if (role) session.user.role = role
+      const tokenVersion = (token as { sessionTokenVersion?: number }).sessionTokenVersion
+      if (typeof tokenVersion === 'number') {
+        session.user.sessionTokenVersion = tokenVersion
+      }
       return session
     },
   },
@@ -141,7 +153,21 @@ export async function getCurrentAdmin() {
   // isActive check : un admin désactivé mais avec un JWT valide (24h max)
   // se voit refuser l'accès aux routes API côté serveur.
   // Le middleware (Edge) ne peut pas faire ce check DB, donc il est ici.
-  return prisma.adminUser.findFirst({
+  const admin = await prisma.adminUser.findFirst({
     where: { id: session.user.id, isActive: true },
   })
+  if (!admin) return null
+
+  // KRX-007 — Révocation session immédiate (JWT stateless).
+  // Compare la version du token (dans le JWT) avec celle en DB.
+  // Si différents → le token a été révoqué (changement mdp, désactivation,
+  // appel /api/profile/revoke-sessions). Migration douce : undefined → 0
+  // (anciens JWT avant l'ajout de sessionTokenVersion restent valides tant
+  // que admin.sessionTokenVersion === 0).
+  const tokenVersion = session.user.sessionTokenVersion ?? 0
+  if (tokenVersion !== admin.sessionTokenVersion) {
+    return null
+  }
+
+  return admin
 }

@@ -283,6 +283,12 @@ model AdminUser {
   currentActiveLeads Int        @default(0)     // dénormalisé pour perf du routing (least-loaded)
   lastAssignedAt   DateTime?    // tie-break du round-robin (le moins récent gagne en cas d'égalité de charge)
 
+  // ===== KRX-007 — Révocation session immédiate (JWT stateless) =====
+  // Incrémenté à chaque : changement de mot de passe, désactivation admin,
+  // appel à /api/profile/revoke-sessions. Le JWT embarque sessionTokenVersion ;
+  // getCurrentAdmin() compare les deux — si différents, le token est révoqué.
+  sessionTokenVersion Int       @default(0)
+
   // Deux relations distinctes sur Lead : l'assignment nominatif
   // ("AssignedLeads") et la collection générique back-referencée.
   leads            Lead[]       @relation("AssignedLeads")

@@ -51,6 +51,8 @@ ALTER TABLE "AdminUser" ADD COLUMN IF NOT EXISTS "countries" TEXT[] NOT NULL DEF
 ALTER TABLE "AdminUser" ADD COLUMN IF NOT EXISTS "maxActiveLeads" INTEGER NOT NULL DEFAULT 50;
 ALTER TABLE "AdminUser" ADD COLUMN IF NOT EXISTS "currentActiveLeads" INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE "AdminUser" ADD COLUMN IF NOT EXISTS "lastAssignedAt" TIMESTAMP(3);
+-- KRX-007 : révocation session immédiate (JWT stateless).
+ALTER TABLE "AdminUser" ADD COLUMN IF NOT EXISTS "sessionTokenVersion" INTEGER NOT NULL DEFAULT 0;
 
 -- =============================================================================
 -- SECTION C — EmailGateway champs DEC-K5 (SMTP exclusif par admin)

@@ -62,9 +62,15 @@ export async function POST(req: NextRequest) {
     }
 
     const passwordHash = await bcrypt.hash(data.newPassword, 10)
+    // KRX-007 : incrémenter sessionTokenVersion pour révoquer toutes les sessions
+    // existantes (le JWT courant inclus — l'utilisateur devra se reconnecter avec
+    // le nouveau mot de passe). S'il est sur un autre appareil, l'ancien JWT est invalidé.
     await prisma.adminUser.update({
       where: { id: admin.id },
-      data: { passwordHash },
+      data: {
+        passwordHash,
+        sessionTokenVersion: { increment: 1 },
+      },
     })
 
     return successResponse({ ok: true })

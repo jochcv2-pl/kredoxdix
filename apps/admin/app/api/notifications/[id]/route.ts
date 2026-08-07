@@ -12,7 +12,7 @@ export async function PATCH(
   _req: NextRequest,
   ctx: { params: Promise<{ id: string }> },
 ) {
-  const [, deny] = await requireAuth()
+  const [admin, deny] = await requireAuth()
   if (deny) return deny
 
   try {
@@ -21,12 +21,22 @@ export async function PATCH(
       return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404)
     }
 
-    const updated = await prisma.notification.update({
-      where: { id },
+    // KRX-013 : scope par recipientId — un conseiller ne peut marquer comme lues
+    // QUE ses notifications (ciblées via recipientId=admin.id) ou les broadcast (recipientId=null).
+    // updateMany atomique + check du count pour distinguer 404 (inexistante ou hors-scope).
+    const result = await prisma.notification.updateMany({
+      where: {
+        id,
+        OR: [{ recipientId: null }, { recipientId: admin!.id }],
+      },
       data: { readAt: new Date() },
     })
 
-    return successResponse(updated)
+    if (result.count === 0) {
+      return errorResponse(ERR.NOT_FOUND.msg, ERR.NOT_FOUND.code, undefined, 404)
+    }
+
+    return successResponse({ updated: result.count })
   } catch (err) {
     console.error('[PATCH /api/notifications/[id]] Error:', err)
     return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500)

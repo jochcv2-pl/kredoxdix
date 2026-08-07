@@ -332,7 +332,7 @@ export async function POST(req: NextRequest) {
           });
 
           if (!welcomeResult.success) {
-            console.error(`[CRON] Échec welcome → ${lead.email} (lead ${lead.id}):`, welcomeResult.error);
+            console.error(`[CRON] Échec welcome (lead ${lead.id}):`, welcomeResult.error);
             stats.errors++;
             // Reset ackSentAt → le cron réessaiera au prochain passage.
             await prisma.lead.update({
@@ -342,7 +342,7 @@ export async function POST(req: NextRequest) {
             continue;
           }
 
-          console.log(`[CRON] Welcome envoyé → ${lead.email} (lead ${lead.id})`);
+          console.log(`[CRON] Welcome envoyé (lead ${lead.id})`);
 
           // Programme l'offre à T+15min (ackSentAt déjà setté par le claim atomique).
           await prisma.lead.update({
@@ -432,7 +432,7 @@ export async function POST(req: NextRequest) {
           });
 
           if (!offerResult.success) {
-            console.error(`[CRON] Échec offer → ${lead.email} (lead ${lead.id}):`, offerResult.error);
+            console.error(`[CRON] Échec offer (lead ${lead.id}):`, offerResult.error);
             stats.errors++;
             // Reset offerSentAt → le cron réessaiera au prochain passage.
             await prisma.lead.update({
@@ -442,7 +442,7 @@ export async function POST(req: NextRequest) {
             continue;
           }
 
-          console.log(`[CRON] Offer envoyée → ${lead.email} (lead ${lead.id})`);
+          console.log(`[CRON] Offer envoyée (lead ${lead.id})`);
 
           // Programme la première relance à J+3 (offerSentAt déjà setté par le claim).
           await prisma.lead.update({
