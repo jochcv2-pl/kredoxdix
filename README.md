@@ -7,7 +7,7 @@ Courtier en financement. Compare 40 banques pour obtenir le meilleur taux de cr�
 - **Monorepo** : pnpm 11 + Turborepo
 - **Frontend** : Next.js 15 (App Router) + TypeScript + Tailwind CSS v4
 - **Backend** : Next.js API Routes + Prisma + PostgreSQL
-- **Auth** : Zitadel (auto-hébergé)
+- **Auth** : NextAuth.js v5 (Credentials + bcrypt + 2FA TOTP)
 - **Infra** : Docker Compose + Caddy + VPS Ubuntu
 
 ## Démarrage rapide (développement)
@@ -43,7 +43,7 @@ pnpm db:push
 pnpm dev
 ```
 
-L'app est disponible sur http://localhost:3000
+L'app web est disponible sur http://localhost:3100 (admin sur http://localhost:3200).
 
 ## Structure du monorepo
 
@@ -51,13 +51,13 @@ L'app est disponible sur http://localhost:3000
 kredix/
 ├── apps/
 │   ├── web/          # Landing page publique (Next.js)
-│   └── admin/        # Admin/CMS (Next.js, protégé Zitadel)
+│   └── admin/        # Admin/CMS (Next.js, protégé NextAuth)
 ├── packages/
 │   └── @kredix/
-│       ├── config/   # Configs partagées (ESLint, TSConfig, Tailwind)
 │       ├── types/    # Types TypeScript partagés
-│       ├── ui/       # Design system (tokens → composants)
 │       ├── simulator/# Logique simulateur de crédit
+│       ├── email/    # Sender + templates + settings (multi-SMTP)
+│       ├── ai/       # Client LLM (Ollama / OpenAI-compatible)
 │       └── db/       # Prisma client + schéma + migrations
 └── docs/             # Contexte projet (brand, design, etc.)
 ```

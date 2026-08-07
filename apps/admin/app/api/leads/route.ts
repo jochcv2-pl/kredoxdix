@@ -8,7 +8,7 @@
 //
 // Réponse : { data: Lead[], pagination: {...} }
 //
-// Pas d'auth pour l'instant (Zitadel futur). Cohérent avec les autres routes admin.
+// Auth : requireAuth() (toute la hiérarchie d'auth est dans auth-server.ts).
 // =============================================================================
 
 import { NextRequest } from 'next/server';

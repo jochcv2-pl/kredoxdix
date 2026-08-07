@@ -17,11 +17,11 @@
   "dependencies": {
     "@kredix/db": "workspace:*",
     "nodemailer": "^9.0.0",
-    "resend": "^4.0.0"
+    "resend": "^6.17.2"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "@types/nodemailer": "^6.4.0",
+    "@types/nodemailer": "^8.0.1",
     "typescript": "^5.7.0"
   }
 }

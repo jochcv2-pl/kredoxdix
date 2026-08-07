@@ -7,9 +7,6 @@ const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
 const nextConfig: NextConfig = withSecurityHeaders({
   reactStrictMode: true,
-  experimental: {
-    optimizePackageImports: ["@kredix/ui"],
-  },
   output: "standalone",
   // Monorepo : indiquer la racine pour le file tracing (standalone node_modules).
   // Sans cela, pnpm symlinks ne sont pas résolus et next/react manquent dans standalone.

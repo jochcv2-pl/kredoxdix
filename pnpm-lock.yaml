@@ -232,12 +232,6 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
-  packages/@kredix/config:
-    devDependencies:
-      typescript:
-        specifier: ^5.7.0
-        version: 5.9.3
-
   packages/@kredix/db:
     dependencies:
       '@kredix/types':
@@ -272,15 +266,15 @@ importers:
         specifier: ^9.0.0
         version: 9.0.3
       resend:
-        specifier: ^4.0.0
-        version: 4.8.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        specifier: ^6.17.2
+        version: 6.17.2(@react-email/render@1.1.2(react-dom@19.1.0(react@19.1.0))(react@19.1.0))
     devDependencies:
       '@types/node':
         specifier: ^22.0.0
         version: 22.20.1
       '@types/nodemailer':
-        specifier: ^6.4.0
-        version: 6.4.24
+        specifier: ^8.0.1
+        version: 8.0.1
       typescript:
         specifier: ^5.7.0
         version: 5.9.3
@@ -1385,9 +1379,6 @@ packages:
 
   '@types/node@22.20.1':
     resolution: {integrity: sha512-EANqOCF9QFyra+4pfxUcX9STKJpCLjMbObVzljIJomAWSnuSIEAvyzEU53GaajbXJEgdh0iEcPL+DGvpUd4k1Q==}
-
-  '@types/nodemailer@6.4.24':
-    resolution: {integrity: sha512-Ww4u0rT9wQNXh4JiQaIwx3QWdcOFXzOjQA2zc+jtFYNmQiT4mIUqcDin51bDFdkzKubFnQCZNK7FIHlPKQ/q9w==}
 
   '@types/nodemailer@8.0.1':
     resolution: {integrity: sha512-PxpaInm8V1JQDd4j0ds5HfvWQk8JupS1C0Picb96QJsrrRDjBH+DlK7L4ZdNSqNULhiZRQHc40nLVShaGxXAMw==}
@@ -3074,10 +3065,6 @@ packages:
   require-main-filename@2.0.0:
     resolution: {integrity: sha512-NKN5kMDylKuldxYLSUfrbo5Tuzh4hd+2E8NPPX02mZtn1VuREQToYe/ZdlJy+J3uCpfaiGF05e7B8W0iXbQHmg==}
 
-  resend@4.8.0:
-    resolution: {integrity: sha512-R8eBOFQDO6dzRTDmaMEdpqrkmgSjPpVXt4nGfWsZdYOet0kqra0xgbvTES6HmCriZEXbmGk3e0DiGIaLFTFSHA==}
-    engines: {node: '>=18'}
-
   resend@6.17.2:
     resolution: {integrity: sha512-hbaXEORFIFfT2Bh03NsA/akTTTKkD1hiuJ88ke64c5dWVV6DyoLxzFve3OiZqVOQ+JKLJ5uVkPR6hlUslpJFoA==}
     engines: {node: '>=20'}
@@ -4134,6 +4121,7 @@ snapshots:
       react: 19.1.0
       react-dom: 19.1.0(react@19.1.0)
       react-promise-suspense: 0.3.4
+    optional: true
 
   '@rollup/rollup-android-arm-eabi@4.62.2':
     optional: true
@@ -4220,6 +4208,7 @@ snapshots:
     dependencies:
       domhandler: 5.0.3
       selderee: 0.11.0
+    optional: true
 
   '@stablelib/base64@1.0.1': {}
 
@@ -4346,10 +4335,6 @@ snapshots:
   '@types/node@22.20.1':
     dependencies:
       undici-types: 6.21.0
-
-  '@types/nodemailer@6.4.24':
-    dependencies:
-      '@types/node': 22.20.1
 
   '@types/nodemailer@8.0.1':
     dependencies:
@@ -5314,7 +5299,8 @@ snapshots:
     dependencies:
       pure-rand: 6.1.0
 
-  fast-deep-equal@2.0.1: {}
+  fast-deep-equal@2.0.1:
+    optional: true
 
   fast-deep-equal@3.1.3: {}
 
@@ -5513,6 +5499,7 @@ snapshots:
       dom-serializer: 2.0.0
       htmlparser2: 8.0.2
       selderee: 0.11.0
+    optional: true
 
   htmlparser2@10.1.0:
     dependencies:
@@ -5534,6 +5521,7 @@ snapshots:
       domhandler: 5.0.3
       domutils: 3.2.2
       entities: 4.5.0
+    optional: true
 
   humanize-ms@1.2.1:
     dependencies:
@@ -5741,7 +5729,8 @@ snapshots:
     dependencies:
       dayjs: 1.11.21
 
-  leac@0.6.0: {}
+  leac@0.6.0:
+    optional: true
 
   levn@0.4.1:
     dependencies:
@@ -6046,6 +6035,7 @@ snapshots:
     dependencies:
       leac: 0.6.0
       peberminta: 0.9.0
+    optional: true
 
   path-exists@4.0.0: {}
 
@@ -6078,7 +6068,8 @@ snapshots:
       linebreak: 1.1.0
       png-js: 1.1.0
 
-  peberminta@0.9.0: {}
+  peberminta@0.9.0:
+    optional: true
 
   perfect-debounce@1.0.0: {}
 
@@ -6132,7 +6123,8 @@ snapshots:
 
   prelude-ls@1.2.1: {}
 
-  prettier@3.9.6: {}
+  prettier@3.9.6:
+    optional: true
 
   prisma@6.19.3(typescript@5.9.3):
     dependencies:
@@ -6176,6 +6168,7 @@ snapshots:
   react-promise-suspense@0.3.4:
     dependencies:
       fast-deep-equal: 2.0.1
+    optional: true
 
   react@19.1.0: {}
 
@@ -6204,13 +6197,6 @@ snapshots:
   require-directory@2.1.1: {}
 
   require-main-filename@2.0.0: {}
-
-  resend@4.8.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0):
-    dependencies:
-      '@react-email/render': 1.1.2(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
-    transitivePeerDependencies:
-      - react
-      - react-dom
 
   resend@6.17.2(@react-email/render@1.1.2(react-dom@19.1.0(react@19.1.0))(react@19.1.0)):
     dependencies:
@@ -6310,6 +6296,7 @@ snapshots:
   selderee@0.11.0:
     dependencies:
       parseley: 0.12.1
+    optional: true
 
   semver@6.3.1: {}
 
