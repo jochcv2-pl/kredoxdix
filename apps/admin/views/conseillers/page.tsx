@@ -9,6 +9,16 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 // Super-admin only : créer, configurer (routing + identité), activer/désactiver.
 // =============================================================================
 
+interface TodayLead {
+  id: string
+  firstName: string
+  lastName: string
+  amount: number
+  loanType: string
+  status: string
+  createdAt: string
+}
+
 interface AdminUser {
   id: string
   email: string
@@ -25,6 +35,7 @@ interface AdminUser {
   lastAssignedAt: string | null
   lastLoginAt: string | null
   createdAt: string
+  todayLeads: TodayLead[]
 }
 
 const LOAN_TYPE_FALLBACK = [
@@ -62,6 +73,20 @@ function getLoadColor(current: number, max: number): string {
   if (pct >= 0.8) return '#dc2626'
   if (pct >= 0.5) return '#f97316'
   return '#2B8BDE'
+}
+
+/** Heure HH:MM depuis ISO (pour affichage "arrivé à 14:32"). */
+function formatTime(iso: string): string {
+  try {
+    return new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  } catch {
+    return '—'
+  }
+}
+
+/** Montant en euros formaté court (250 000 €). */
+function formatEuro(n: number): string {
+  return n.toLocaleString('fr-FR') + ' €'
 }
 
 export default function Conseillers() {
@@ -232,6 +257,45 @@ export default function Conseillers() {
                       <div className="cns-load-bar">
                         <div className="cns-load-fill" style={{ width: `${loadPct}%`, background: loadColor }} />
                       </div>
+                    </div>
+
+                    {/* Prospects arrivés aujourd'hui */}
+                    <div className="cns-today" style={{ marginBottom: 12 }}>
+                      <details>
+                        <summary className="cns-today-summary">
+                          <span className="cns-today-label">
+                            📥 Prospects aujourd'hui
+                          </span>
+                          <span
+                            className="cns-today-count"
+                            style={{
+                              background: u.todayLeads.length > 0 ? 'var(--blue, #2B8BDE)' : '#e5e7eb',
+                              color: u.todayLeads.length > 0 ? '#fff' : '#9ca3af',
+                            }}
+                          >
+                            {u.todayLeads.length}
+                          </span>
+                        </summary>
+                        {u.todayLeads.length === 0 ? (
+                          <div className="cns-today-empty">Aucun nouveau prospect aujourd'hui.</div>
+                        ) : (
+                          <ul className="cns-today-list">
+                            {u.todayLeads.map((lead) => (
+                              <li key={lead.id} className="cns-today-item">
+                                <span className="cns-today-name">
+                                  {lead.firstName} {lead.lastName}
+                                </span>
+                                <span className="cns-today-meta">
+                                  {formatEuro(lead.amount)} · {lead.loanType} · {formatTime(lead.createdAt)}
+                                </span>
+                                <span className={`cns-today-status cns-today-status-${lead.status}`}>
+                                  {lead.status}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </details>
                     </div>
 
                     {/* Spécialités */}

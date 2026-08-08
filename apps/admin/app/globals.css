@@ -5200,3 +5200,95 @@ body {
   border-top: 1px solid var(--line, #e5e7eb);
   padding-top: 10px;
 }
+
+/* ===== Section "Prospects aujourd'hui" (vue Conseillers) ===== */
+.cns-today {
+  border: 1px solid var(--line, #e5e7eb);
+  border-radius: 8px;
+  background: #fafbfc;
+  overflow: hidden;
+}
+.cns-today summary.cns-today-summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  user-select: none;
+  transition: background 0.12s;
+}
+.cns-today summary.cns-today-summary::-webkit-details-marker { display: none; }
+.cns-today summary.cns-today-summary:hover { background: #f1f5f9; }
+.cns-today[open] > summary.cns-today-summary { border-bottom: 1px solid var(--line, #e5e7eb); }
+.cns-today-label { display: flex; align-items: center; gap: 6px; }
+.cns-today-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 11px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.cns-today-empty {
+  padding: 14px 10px;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 12px;
+  font-style: italic;
+}
+.cns-today-list {
+  list-style: none;
+  padding: 4px 0;
+  margin: 0;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.cns-today-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  border-bottom: 1px solid #f1f5f9;
+}
+.cns-today-item:last-child { border-bottom: none; }
+.cns-today-name {
+  font-weight: 600;
+  color: #1f2937;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cns-today-meta {
+  font-size: 11px;
+  color: #6b7280;
+  white-space: nowrap;
+}
+.cns-today-status {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #e5e7eb;
+  color: #6b7280;
+  flex-shrink: 0;
+}
+.cns-today-status-new { background: rgba(249, 115, 22, 0.14); color: #c2410c; }
+.cns-today-status-contacted,
+.cns-today-status-progress { background: rgba(43, 139, 222, 0.14); color: #1e40af; }
+.cns-today-status-offer,
+.cns-today-status-waiting { background: rgba(139, 92, 246, 0.14); color: #6d28d9; }
+.cns-today-status-client { background: rgba(34, 197, 94, 0.14); color: #15803d; }
+.cns-today-status-lost { background: rgba(220, 38, 38, 0.14); color: #b91c1c; }

@@ -58,19 +58,72 @@ const createUserSchema = z.object({
 // Garde-fou : au moins un admin actif doit rester en base.
 
 // GET /api/admin/users — liste tous les comptes admin.
+// Inclut l'agrégation `todayLeads` : prospects assignés à chaque admin aujourd'hui
+// (createdAt >= minuit). Une seule requête Lead + regroupement en mémoire (évite le N+1).
 export async function GET() {
   const [, deny] = await requireAdmin()
   if (deny) return deny
 
   try {
-    const users = await prisma.adminUser.findMany({
-      select: publicAdminSelect,
-      orderBy: [{ createdAt: 'asc' }],
-    })
-    return successResponse(users)
+    const [users, todayLeads] = await Promise.all([
+      prisma.adminUser.findMany({
+        select: publicAdminSelect,
+        orderBy: [{ createdAt: 'asc' }],
+      }),
+      // 1 seule requête pour tous les leads du jour (tous conseillers confondus).
+      prisma.lead.findMany({
+        where: {
+          assignedToId: { not: null },
+          createdAt: { gte: startOfToday() },
+        },
+        select: {
+          id: true,
+          assignedToId: true,
+          firstName: true,
+          lastName: true,
+          amount: true,
+          loanType: true,
+          status: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ])
+
+    // Regroupe les leads du jour par assignedToId.
+    const leadsByUser = new Map<string, typeof todayLeads>()
+    for (const lead of todayLeads) {
+      if (!lead.assignedToId) continue
+      const arr = leadsByUser.get(lead.assignedToId)
+      if (arr) arr.push(lead)
+      else leadsByUser.set(lead.assignedToId, [lead])
+    }
+
+    // Attache todayLeads à chaque user (sérialisé en DTO).
+    const result = users.map((u) => ({
+      ...u,
+      todayLeads: (leadsByUser.get(u.id) ?? []).map((l) => ({
+        id: l.id,
+        firstName: l.firstName,
+        lastName: l.lastName,
+        amount: l.amount,
+        loanType: l.loanType,
+        status: l.status,
+        createdAt: l.createdAt.toISOString(),
+      })),
+    }))
+
+    return successResponse(result)
   } catch {
     return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500)
   }
+}
+
+/** Retourne la date à minuit aujourd'hui (début de journée, fuseau serveur). */
+function startOfToday(): Date {
+  const d = new Date()
+  d.setHours(0, 0, 0, 0)
+  return d
 }
 
 // POST /api/admin/users — crée un nouveau compte admin.
