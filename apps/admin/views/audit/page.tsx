@@ -155,8 +155,11 @@ export default function AuditPage() {
       const res = await fetch(`/api/audit-logs?${params}`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const json = await res.json()
-      setLogs(json.data ?? [])
-      setPagination(json.pagination ?? null)
+      // La route retourne successResponse({ data: logs, pagination }) → enveloppé en
+      // { data: { data: [...], pagination: {...} } } par successResponse.
+      const payload = json?.data ?? {}
+      setLogs(Array.isArray(payload.data) ? payload.data : [])
+      setPagination(payload.pagination ?? null)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erreur inconnue')
       setLogs([])
