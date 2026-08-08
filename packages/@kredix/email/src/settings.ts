@@ -1,4 +1,4 @@
-import { prisma, type EmailTemplate } from '@kredix/db';
+import { prisma, type EmailTemplate, type EmailGateway } from '@kredix/db';
 
 // =============================================================================
 // @kredix/email/settings — Lecture des paramètres email depuis la DB.
@@ -81,6 +81,63 @@ export async function getGatewayForLead(leadId: string) {
     return getPrimaryGateway(lead.assignedToId);
   }
   return getSystemGateway();
+}
+
+/**
+ * VERSION BATCH de getGatewayForLead() — DEC-K5 multi-admin.
+ *
+ * Précharge en UNE seule requête tous les gateways actifs, puis retourne une
+ * closure qui applique la même hiérarchie que getGatewayForLead :
+ *   - Lead assigné → SMTP primaire du conseiller → 1er SMTP actif du conseiller → SMTP système
+ *   - Lead non assigné → SMTP système
+ *
+ * Usage : cron relance, traitements par lots (évite le N+1 : 1 requête quel que
+ *         soit le nombre de leads). Pour un seul lead, préférez getGatewayForLead().
+ *
+ * @param assignedToIds Liste des assignedToId des leads à traiter (nulls + doublons OK).
+ * @returns Fonction (assignedToId) => EmailGateway | null prête à appeler par lead.
+ */
+export async function resolveGatewaysForLeadsBatch(
+  _assignedToIds: ReadonlyArray<string | null>,
+): Promise<(assignedToId: string | null) => EmailGateway | null> {
+  // 1 requête unique : tous les gateways actifs.
+  // isPrimary/isSystem d'abord → pour chaque owner, le primaire est rencontré en 1er.
+  const gateways = await prisma.emailGateway.findMany({
+    where: { isActive: true },
+    orderBy: [{ isPrimary: 'desc' }, { isSystem: 'desc' }, { createdAt: 'asc' }],
+  });
+
+  const primaryByOwner = new Map<string, EmailGateway>();
+  const firstActiveByOwner = new Map<string, EmailGateway>();
+  let systemGateway: EmailGateway | null = null;
+
+  for (const gw of gateways) {
+    // SMTP système (isSystem=true, ownerId=null) — fallback unassigned.
+    if (gw.isSystem) {
+      if (!systemGateway) systemGateway = gw;
+      continue;
+    }
+    if (!gw.ownerId) continue; // ownerId null hors système = legacy, ignoré
+
+    if (gw.isPrimary && !primaryByOwner.has(gw.ownerId)) {
+      primaryByOwner.set(gw.ownerId, gw);
+    }
+    // 1er actif pour cet owner = primaire (grâce à orderBy) sinon autre actif.
+    if (!firstActiveByOwner.has(gw.ownerId)) {
+      firstActiveByOwner.set(gw.ownerId, gw);
+    }
+  }
+
+  return (assignedToId: string | null): EmailGateway | null => {
+    if (assignedToId) {
+      return (
+        primaryByOwner.get(assignedToId) ??
+        firstActiveByOwner.get(assignedToId) ??
+        systemGateway
+      );
+    }
+    return systemGateway;
+  };
 }
 
 /**

@@ -70,7 +70,7 @@ const bodySchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  const [, deny] = await requireAdmin();
+  const [admin, deny] = await requireAdmin();
   if (deny) return deny;
 
   const body = await req.json().catch(() => null);
@@ -82,8 +82,9 @@ export async function POST(req: NextRequest) {
   const { step, email: testEmail } = parsed.data;
   const trigger = STEP_CONFIG[step];
 
-  // 1. Gateway actif
-  const gateway = await getPrimaryGateway();
+  // 1. Gateway — SMTP primaire du super-admin connecté (cohérent avec test-send.ts).
+  //    DEC-K5 multi-admin : chaque admin teste avec SON SMTP, pas le primaire global.
+  const gateway = await getPrimaryGateway(admin!.id);
   if (!gateway) {
     return errorResponse('Aucun gateway email actif.', ERR.INTERNAL.code, undefined, 503);
   }

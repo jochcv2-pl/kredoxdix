@@ -14,6 +14,7 @@ export {
   getSystemGateway,
   getPrimaryGateway,
   getGatewayForLead,
+  resolveGatewaysForLeadsBatch,
   getGatewayForCampaign,
   getConseillerContext,
   getActiveTemplate,

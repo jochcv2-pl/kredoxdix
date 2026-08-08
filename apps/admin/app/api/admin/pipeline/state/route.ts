@@ -13,7 +13,7 @@
 import { prisma } from '@kredix/db';
 import { successResponse, errorResponse, ERR } from '../../../_lib/responses';
 import { requireAdmin } from '../../../_lib/auth-server';
-import { getSetting, getSettingNumber, getPrimaryGateway } from '../../../_lib/settings';
+import { getSetting, getSettingNumber, getSystemGateway } from '../../../_lib/settings';
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -31,8 +31,13 @@ export async function GET() {
     const dailyCap = await getSettingNumber('cadence_daily_cap', 200);
     const timeoutDays = await getSettingNumber('cadence_timeout_days', 10);
 
-    // --- Gateway actif ---
-    const gateway = await getPrimaryGateway();
+    // --- Gateway système (fallback par défaut du cron multi-admin DEC-K5).
+    // Le cron relance résout désormais le SMTP par lead (primaire du conseiller
+    // → SMTP système). On affiche donc le SMTP système comme fallback de référence.
+    const [gateway, providersCount] = await Promise.all([
+      getSystemGateway(),
+      prisma.emailGateway.count({ where: { isActive: true } }),
+    ]);
     const providerName = gateway?.label || null;
 
     // --- Compteur envois du jour ---
@@ -170,6 +175,7 @@ export async function GET() {
     return successResponse({
       paused,
       providerName,
+      providersCount,
       dailyCap,
       sentToday,
       queue: {

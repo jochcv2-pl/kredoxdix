@@ -11,6 +11,7 @@ import { Pause, Play, Mail, AlertTriangle, CheckCircle, XCircle, SkipForward } f
 interface PipelineState {
   paused: boolean
   providerName: string | null
+  providersCount: number
   dailyCap: number
   sentToday: number
   queue: {
@@ -183,7 +184,7 @@ export default function PipelineView() {
                   ⏸ En pause — reprise au prochain cycle (≤ 60s)
                 </span>
               ) : (
-                <>Actif · Provider : <b>{state.providerName || 'Aucun'}</b> · Auto-refresh 30s</>
+                <>Actif · SMTP système : <b>{state.providerName || 'Aucun'}</b> · {state.providersCount ?? '?'} SMTP actif{(state.providersCount ?? 0) > 1 ? 's' : ''} · Auto-refresh 30s</>
               )}
             </p>
           </div>

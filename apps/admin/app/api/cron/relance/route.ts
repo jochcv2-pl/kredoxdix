@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma, EmailTrigger, SequenceExitReason, createNotification } from '@kredix/db';
 import { generateEmail } from '@kredix/ai';
 import { successResponse, errorResponse, ERR } from '../../_lib/responses';
-import { getSetting, getSettingNumber, getSystemGateway } from '../../_lib/settings';
+import { getSetting, getSettingNumber, resolveGatewaysForLeadsBatch } from '../../_lib/settings';
 import { sendEmail } from '../../_lib/email-sender';
 import { interpolateTemplate, textToHtml, buildUnsubscribeUrl } from '../../_lib/template-interpolation';
 import { composeEmailHtml, loadBrandData, brandToContext } from '@kredix/email';
@@ -175,13 +175,12 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Gateway système (DEC-K5 : les leads existants sont non-assignés → SMTP système.
-    // TODO Bloc C : adapter pour getGatewayForLead par lead quand routing automatique sera actif).
-    const gateway = await getSystemGateway();
-    if (!gateway) {
-      stats.skippedNoGateway = dueLeads.length;
-      return successResponse({ ...stats, note: 'Aucun gateway actif — envois skipés' }, 200);
-    }
+    // Gateway résolu PAR LEAD (DEC-K5 multi-admin — Bloc C).
+    // Précharge en 1 requête tous les gateways actifs, puis résolution par
+    // assignedToId dans la boucle (primaire du conseiller → 1er actif → système).
+    const resolveGateway = await resolveGatewaysForLeadsBatch(
+      dueLeads.map((l) => l.assignedToId),
+    );
 
     // Charge les données de marque une fois (header/footer emails).
     const brand = await loadBrandData();
@@ -225,6 +224,15 @@ export async function POST(req: NextRequest) {
         // b) Lead sans email — skippe
         if (!lead.email) {
           stats.errors++;
+          continue;
+        }
+
+        // b-bis) Gateway résolu PAR LEAD (DEC-K5 multi-admin — Bloc C).
+        // Hiérarchie : primaire du conseiller → 1er actif du conseiller → SMTP système.
+        const gateway = resolveGateway(lead.assignedToId);
+        if (!gateway) {
+          // Aucun gateway applicable : conseiller sans SMTP ET pas de SMTP système.
+          stats.skippedNoGateway++;
           continue;
         }
 
