@@ -536,6 +536,10 @@ enum CampaignRecipientStatus {
 // EMAILLOG — historique de tous les emails envoyés à un prospect
 // -----------------------------------------------------------------------------
 // Trace chaque envoi (accueil, offre, relance, campagne) pour audit + vue Historique.
+//
+// Champs gateway* (snapshot) — ajouté pour traçabilité du SMTP utilisé par envoi.
+// Pas de FK : snapshot immuable (préserve l'historique si le gateway est supprimé).
+// Cohérent avec le pattern existant (email, templateName, subject sont déjà des snapshots).
 model EmailLog {
   id           String   @id @default(cuid())
   leadId       String?                          // null si pas lié à un lead (campaign sans lead)
@@ -550,9 +554,15 @@ model EmailLog {
   error        String?
   sentAt       DateTime       @default(now())
 
+  // ===== SNAPSHOT GATEWAY (traçabilité SMTP utilisé — DEC-K5 multi-admin) =====
+  gatewayId    String?                          // snapshot id du gateway utilisé (pas de FK)
+  gatewayLabel String?                          // snapshot "SMTP Hostinger" / "Resend"
+  fromEmail    String?                          // snapshot "mail@kredix.fr" (config.from)
+
   @@index([leadId, sentAt])
   @@index([email, sentAt])
   @@index([trigger])
+  @@index([gatewayId])
 }
 
 // -----------------------------------------------------------------------------

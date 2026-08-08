@@ -21,6 +21,7 @@ import {
   composeEmailHtml,
   loadBrandData,
   brandToContext,
+  extractGatewayInfo,
 } from '@kredix/email';
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -73,6 +74,7 @@ export async function sendReceptionAck(lead: Lead): Promise<AckResult> {
           subject: template ? interpolateTemplate(template.subject, { lead, siteUrl, brand: brandToContext(brand) }) : 'Accusé de réception',
           status: 'skipped',
           error: "Aucun gateway email actif. Configurez et activez un fournisseur dans Paramètres → Emails.",
+          ...extractGatewayInfo(gateway),
         },
       });
     } catch { /* non bloquant */ }
@@ -116,6 +118,7 @@ export async function sendReceptionAck(lead: Lead): Promise<AckResult> {
         subject,
         status: result.success ? 'sent' : 'failed',
         error: result.error,
+        ...extractGatewayInfo(gateway),
       },
     });
   } catch {

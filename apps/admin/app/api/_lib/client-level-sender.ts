@@ -17,7 +17,7 @@ import {
   type EmailTemplate,
   type DocumentTemplate,
 } from '@kredix/db';
-import { getSetting, getGatewayForLead } from './settings';
+import { getSetting, getGatewayForLead, extractGatewayInfo } from './settings';
 import { sendEmail, type EmailAttachment } from './email-sender';
 import { interpolateTemplate, textToHtml, buildUnsubscribeUrl } from './template-interpolation';
 import { composeEmailHtml, loadBrandData, brandToContext } from '@kredix/email';
@@ -270,6 +270,7 @@ export async function sendClientLevelEmail(
       subject,
       status: sendResult.success ? 'sent' : 'failed',
       error: sendResult.success ? null : sendResult.error || 'Unknown error',
+      ...extractGatewayInfo(gateway),
     },
     select: { id: true },
   });

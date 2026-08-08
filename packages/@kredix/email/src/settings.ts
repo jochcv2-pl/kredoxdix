@@ -84,6 +84,25 @@ export async function getGatewayForLead(leadId: string) {
 }
 
 /**
+ * Extrait les infos snapshot d'un gateway pour stockage immuable dans EmailLog.
+ *
+ * DEC-K5 multi-admin — traçabilité du SMTP utilisé par envoi.
+ * Retourne `{}` si pas de gateway (cas "skipped no gateway") → 3 colonnes null.
+ * Pas de FK : snapshot préserve l'historique si le gateway est supprimé.
+ */
+export function extractGatewayInfo(
+  gateway: EmailGateway | null | undefined,
+): { gatewayId: string; gatewayLabel: string; fromEmail: string | null } | Record<string, never> {
+  if (!gateway) return {};
+  const config = gateway.config as { from?: string } | null;
+  return {
+    gatewayId: gateway.id,
+    gatewayLabel: gateway.label,
+    fromEmail: config?.from ?? null,
+  };
+}
+
+/**
  * VERSION BATCH de getGatewayForLead() — DEC-K5 multi-admin.
  *
  * Précharge en UNE seule requête tous les gateways actifs, puis retourne une

@@ -116,6 +116,8 @@ export async function GET() {
         error: true,
         sentAt: true,
         leadId: true,
+        gatewayLabel: true,
+        fromEmail: true,
       },
     });
 

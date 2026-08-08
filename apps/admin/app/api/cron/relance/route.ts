@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma, EmailTrigger, SequenceExitReason, createNotification } from '@kredix/db';
 import { generateEmail } from '@kredix/ai';
 import { successResponse, errorResponse, ERR } from '../../_lib/responses';
-import { getSetting, getSettingNumber, resolveGatewaysForLeadsBatch } from '../../_lib/settings';
+import { getSetting, getSettingNumber, resolveGatewaysForLeadsBatch, extractGatewayInfo } from '../../_lib/settings';
 import { sendEmail } from '../../_lib/email-sender';
 import { interpolateTemplate, textToHtml, buildUnsubscribeUrl } from '../../_lib/template-interpolation';
 import { composeEmailHtml, loadBrandData, brandToContext } from '@kredix/email';
@@ -336,6 +336,7 @@ export async function POST(req: NextRequest) {
               bodyText: finalBody,
               status: welcomeResult.success ? 'sent' : 'failed',
               error: welcomeResult.success ? null : (welcomeResult.error || 'Unknown error'),
+              ...extractGatewayInfo(gateway),
             },
           });
 
@@ -436,6 +437,7 @@ export async function POST(req: NextRequest) {
               bodyText: offerBody,
               status: offerResult.success ? 'sent' : 'failed',
               error: offerResult.success ? null : (offerResult.error || 'Unknown error'),
+              ...extractGatewayInfo(gateway),
             },
           });
 
@@ -576,6 +578,7 @@ export async function POST(req: NextRequest) {
             bodyText,
             status: sendResult.success ? 'sent' : 'failed',
             error: sendResult.success ? null : (sendResult.error || 'Unknown error'),
+            ...extractGatewayInfo(gateway),
           },
         });
 

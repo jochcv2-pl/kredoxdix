@@ -42,6 +42,8 @@ interface PipelineState {
     error: string | null
     sentAt: string
     leadId: string | null
+    gatewayLabel: string | null
+    fromEmail: string | null
   }>
   stats: {
     totalSent: number
@@ -395,6 +397,22 @@ export default function PipelineView() {
                         </div>
                         <div style={{ fontSize: 11, color: '#9ca3af' }}>
                           {log.email} · {TRIGGER_LABELS[log.trigger] || log.trigger}
+                          {log.gatewayLabel && (
+                            <span
+                              style={{
+                                marginLeft: 6,
+                                color: 'var(--blue-dark, #1e40af)',
+                                background: '#E6F1FB',
+                                padding: '1px 6px',
+                                borderRadius: 4,
+                                fontSize: 10,
+                                fontWeight: 600,
+                              }}
+                              title={log.fromEmail ? `From : ${log.fromEmail}` : 'SMTP utilisé pour cet envoi'}
+                            >
+                              {log.gatewayLabel}
+                            </span>
+                          )}
                         </div>
                         {log.status === 'failed' && log.error && (
                           <div style={{ fontSize: 11, color: 'var(--red)', marginTop: 2 }}>

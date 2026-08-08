@@ -18,6 +18,7 @@ import {
   brandToContext,
   getSetting,
   getPrimaryGateway,
+  extractGatewayInfo,
   sendEmail,
   type InterpolationContext,
 } from '@kredix/email';
@@ -121,6 +122,7 @@ export async function sendTestEmail(
         subject: `[TEST] ${subject}`,
         bodyText,
         status: 'sent',
+        ...extractGatewayInfo(gateway),
       },
     });
   } catch {

@@ -20,6 +20,7 @@ import {
   brandToContext,
   getSetting,
   getPrimaryGateway,
+  extractGatewayInfo,
   sendEmail,
   type InterpolationContext,
 } from '@kredix/email';
@@ -164,6 +165,7 @@ export async function POST(req: NextRequest) {
           subject: `[TEST PIPELINE] [${STEP_LABELS[step]}] ${subject}`,
           bodyText,
           status: 'sent',
+          ...extractGatewayInfo(gateway),
         },
       });
     } catch { /* non bloquant */ }

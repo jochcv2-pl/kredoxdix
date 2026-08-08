@@ -13,6 +13,9 @@ interface EmailLog {
   status: string
   error: string | null
   sentAt: string
+  gatewayId: string | null
+  gatewayLabel: string | null
+  fromEmail: string | null
 }
 
 const TRIGGER_LABELS: Record<string, { label: string; cls: string }> = {
@@ -169,6 +172,16 @@ export default function EmailHistory() {
           font-size: 12px;
           color: var(--slate);
         }
+        .eh-smtp {
+          white-space: nowrap;
+        }
+        .eh-smtp .badge {
+          font-size: 11px;
+        }
+        .eh-smtp .muted {
+          color: var(--slate-light, #cbd5e1);
+          font-size: 12px;
+        }
         .eh-err {
           display: block;
           font-size: 11px;
@@ -276,6 +289,7 @@ export default function EmailHistory() {
                     <th>Prospect</th>
                     <th>Type</th>
                     <th>Modèle</th>
+                    <th>SMTP</th>
                     <th>Objet</th>
                     <th>Statut</th>
                   </tr>
@@ -301,6 +315,21 @@ export default function EmailHistory() {
                           </span>
                         </td>
                         <td className="eh-template">{log.templateName || '—'}</td>
+                        <td className="eh-smtp">
+                          {log.gatewayLabel ? (
+                            <span
+                              className="badge b-contacted"
+                              title={log.fromEmail ? `From : ${log.fromEmail}` : 'From non renseigné'}
+                            >
+                              <span className="badge-dot"></span>
+                              {log.gatewayLabel}
+                            </span>
+                          ) : (
+                            <span className="muted" title="Envoi antérieur à la traçabilité SMTP (avant le 2026-08-08)">
+                              —
+                            </span>
+                          )}
+                        </td>
                         <td className="eh-subject">
                           {truncate(log.subject, 80)}
                           {log.error && log.status === 'failed' && (

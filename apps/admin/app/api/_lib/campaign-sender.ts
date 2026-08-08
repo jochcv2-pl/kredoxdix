@@ -15,7 +15,7 @@ import {
   type EmailGateway,
   type EmailTemplate,
 } from '@kredix/db';
-import { getSetting, getSettingNumber, getGatewayForCampaign } from './settings';
+import { getSetting, getSettingNumber, getGatewayForCampaign, extractGatewayInfo } from './settings';
 import { sendEmail, type EmailAttachment } from './email-sender';
 import { interpolateTemplate, textToHtml, buildUnsubscribeUrl } from './template-interpolation';
 import { composeEmailHtml, loadBrandData, brandToContext } from '@kredix/email';
@@ -232,6 +232,7 @@ export async function processCampaign(campaignId: string): Promise<void> {
             campaignId: campaignId,
             status: 'skipped',
             error: 'Recipient in suppression list',
+            ...extractGatewayInfo(gateway),
           },
         });
         continue;
@@ -308,6 +309,7 @@ export async function processCampaign(campaignId: string): Promise<void> {
           campaignId: campaignId,
           status: result.success ? 'sent' : 'failed',
           error: result.success ? null : (result.error || 'Unknown error'),
+          ...extractGatewayInfo(gateway),
         },
       });
 
