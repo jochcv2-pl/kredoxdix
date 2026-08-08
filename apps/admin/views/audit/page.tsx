@@ -138,6 +138,8 @@ export default function AuditPage() {
   const [entityFilter, setEntityFilter] = useState('')
   const [actionFilter, setActionFilter] = useState('')
   const [search, setSearch] = useState('')
+  const [fromFilter, setFromFilter] = useState('')
+  const [toFilter, setToFilter] = useState('')
   const [page, setPage] = useState(1)
 
   const fetchLogs = useCallback(async () => {
@@ -148,6 +150,8 @@ export default function AuditPage() {
       if (entityFilter) params.set('entity', entityFilter)
       if (actionFilter) params.set('action', actionFilter)
       if (search.trim()) params.set('search', search.trim())
+      if (fromFilter) params.set('from', fromFilter) // input[type=date] → ISO yyyy-mm-dd
+      if (toFilter) params.set('to', toFilter)
       const res = await fetch(`/api/audit-logs?${params}`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const json = await res.json()
@@ -160,7 +164,7 @@ export default function AuditPage() {
     } finally {
       setLoading(false)
     }
-  }, [entityFilter, actionFilter, search, page])
+  }, [entityFilter, actionFilter, search, fromFilter, toFilter, page])
 
   useEffect(() => {
     void fetchLogs()
@@ -170,6 +174,21 @@ export default function AuditPage() {
   const resetEntityFilter = (v: string) => { setEntityFilter(v); setPage(1) }
   const resetActionFilter = (v: string) => { setActionFilter(v); setPage(1) }
   const resetSearch = (v: string) => { setSearch(v); setPage(1) }
+  const resetFromFilter = (v: string) => { setFromFilter(v); setPage(1) }
+  const resetToFilter = (v: string) => { setToFilter(v); setPage(1) }
+
+  // Reset global de tous les filtres.
+  const resetAllFilters = () => {
+    setEntityFilter('')
+    setActionFilter('')
+    setSearch('')
+    setFromFilter('')
+    setToFilter('')
+    setPage(1)
+  }
+
+  const hasActiveFilters =
+    !!entityFilter || !!actionFilter || !!search.trim() || !!fromFilter || !!toFilter
 
   const total = pagination?.total ?? null
   const lastActivity = logs.length > 0 ? logs[0].createdAt : null
@@ -216,6 +235,9 @@ export default function AuditPage() {
           outline: none;
           border-color: var(--blue, #2B8BDE);
           box-shadow: 0 0 0 3px rgba(43, 139, 222, 0.12);
+        }
+        #audit .audit-field input[type="date"] {
+          min-width: 150px;
         }
         #audit .audit-toolbar .btn { height: 38px; }
         #audit .audit-meta {
@@ -411,9 +433,32 @@ export default function AuditPage() {
             onKeyDown={(e) => { if (e.key === 'Enter') void fetchLogs() }}
           />
         </div>
+        <div className="audit-field">
+          <label htmlFor="audit-from">Du</label>
+          <input
+            id="audit-from"
+            type="date"
+            value={fromFilter}
+            onChange={(e) => resetFromFilter(e.target.value)}
+          />
+        </div>
+        <div className="audit-field">
+          <label htmlFor="audit-to">Au</label>
+          <input
+            id="audit-to"
+            type="date"
+            value={toFilter}
+            onChange={(e) => resetToFilter(e.target.value)}
+          />
+        </div>
         <button className="btn btn-primary" onClick={() => void fetchLogs()}>
           Actualiser
         </button>
+        {hasActiveFilters && (
+          <button className="btn btn-secondary" onClick={resetAllFilters} disabled={loading}>
+            Réinitialiser
+          </button>
+        )}
         <div className="audit-meta">
           {loading ? (
             <span>Chargement…</span>
