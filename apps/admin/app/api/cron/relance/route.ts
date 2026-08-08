@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma, EmailTrigger, SequenceExitReason, createNotification } from '@kredix/db';
 import { generateEmail } from '@kredix/ai';
 import { successResponse, errorResponse, ERR } from '../../_lib/responses';
-import { getSetting, getSettingNumber, resolveGatewaysForLeadsBatch, extractGatewayInfo } from '../../_lib/settings';
+import { getSetting, getSettingNumber, resolveGatewaysForLeadsBatch, getLastSentByGateway, extractGatewayInfo } from '../../_lib/settings';
 import { sendEmail } from '../../_lib/email-sender';
 import { interpolateTemplate, textToHtml, buildUnsubscribeUrl } from '../../_lib/template-interpolation';
 import { composeEmailHtml, loadBrandData, brandToContext } from '@kredix/email';
@@ -35,16 +35,6 @@ import { verifyBearerSecret } from '../../_lib/security';
 
 const DAY = 24 * 60 * 60 * 1000;
 
-/** Pause asynchrone (utilisé pour espacer les envois anti-spam). */
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-/** Entier aléatoire inclus entre min et max. */
-function randomBetween(min: number, max: number): number {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
 export async function POST(req: NextRequest) {
   // ----- Authentification : CRON_SECRET obligatoire (comparaison timing-safe) -----
   if (!verifyBearerSecret(req.headers.get('authorization'), process.env.CRON_SECRET)) {
@@ -63,9 +53,10 @@ export async function POST(req: NextRequest) {
     // ----- Paramètres cadence -----
     const timeoutDays = await getSettingNumber('cadence_timeout_days', 10);
     const dailyCap = await getSettingNumber('cadence_daily_cap', 200);
-    // Délai aléatoire entre chaque envoi (anti-spam). Defaults: 3-8s.
+    // Rate-limiting par SMTP (anti-spam). Defaults: 3-8s. intervalMax n'est plus
+    // utilisé pour un sleep (supprimé), on garde seulement intervalMin pour le
+    // rate-limit via EmailLog. intervalMax reste lu pour compat UI future.
     const intervalMin = await getSettingNumber('cadence_interval_min', 3);
-    const intervalMax = await getSettingNumber('cadence_interval_max', 8);
 
     const stats = {
       timeouts: 0,
@@ -77,6 +68,7 @@ export async function POST(req: NextRequest) {
       errors: 0,
       skippedNoGateway: 0,
       skippedNoTemplate: 0,
+      skippedRateLimit: 0,
     };
 
     // ----- Plafond journalier réel : compter les emails déjà envoyés aujourd'hui -----
@@ -178,9 +170,10 @@ export async function POST(req: NextRequest) {
     // Gateway résolu PAR LEAD (DEC-K5 multi-admin — Bloc C).
     // Précharge en 1 requête tous les gateways actifs, puis résolution par
     // assignedToId dans la boucle (primaire du conseiller → 1er actif → système).
-    const resolveGateway = await resolveGatewaysForLeadsBatch(
-      dueLeads.map((l) => l.assignedToId),
-    );
+    const [resolveGateway, lastSentByGateway] = await Promise.all([
+      resolveGatewaysForLeadsBatch(dueLeads.map((l) => l.assignedToId)),
+      getLastSentByGateway(),
+    ]);
 
     // Charge les données de marque une fois (header/footer emails).
     const brand = await loadBrandData();
@@ -234,6 +227,19 @@ export async function POST(req: NextRequest) {
           // Aucun gateway applicable : conseiller sans SMTP ET pas de SMTP système.
           stats.skippedNoGateway++;
           continue;
+        }
+
+        // b-ter) Rate-limiting par SMTP — respecte cadence_interval_min (anti-spam).
+        // On lit le dernier envoi de ce gateway depuis la Map (préchargée + mise à
+        // jour en mémoire après chaque envoi réel). Si trop récent → skip ce lead,
+        // il sera repris au prochain run (2 min) et re-vérifié.
+        const lastSent = lastSentByGateway.get(gateway.id);
+        if (lastSent && intervalMin > 0) {
+          const elapsedSec = (now.getTime() - lastSent.getTime()) / 1000;
+          if (elapsedSec < intervalMin) {
+            stats.skippedRateLimit++;
+            continue;
+          }
         }
 
         // ================================================================
@@ -650,16 +656,16 @@ export async function POST(req: NextRequest) {
         } else {
           stats.sent++;
         }
+
+        // Rate-limiting par SMTP (cadence_interval_min) : on update la Map en mémoire
+        // après chaque envoi tenté (succès OU échec). Les prochains leads du même
+        // run qui partagent ce gateway verront cet envoi récent et seront skipés
+        // si l'intervalle minimal n'est pas respecté. Placé dans le try pour accéder
+        // à `gateway` ; exécuté pour toute itération sans `continue` préalable.
+        lastSentByGateway.set(gateway.id, new Date());
       } catch (err) {
         console.error(`[CRON RELANCE] Erreur lead ${lead.id}:`, err instanceof Error ? err.message : String(err));
         stats.errors++;
-      }
-
-      // ----- Délai anti-spam entre les envois (sauf après le dernier lead) -----
-      // Espacement aléatoire configurable dans CRM > Paramètres > Cadence.
-      if (intervalMax > 0 && lead !== dueLeads[dueLeads.length - 1]) {
-        const delaySec = randomBetween(intervalMin, intervalMax);
-        await sleep(delaySec * 1000);
       }
     }
 

@@ -15,7 +15,7 @@ import {
   type EmailGateway,
   type EmailTemplate,
 } from '@kredix/db';
-import { getSetting, getSettingNumber, getGatewayForCampaign, extractGatewayInfo } from './settings';
+import { getSetting, getSettingNumber, getGatewayForCampaign, getLastSentByGateway, extractGatewayInfo } from './settings';
 import { sendEmail, type EmailAttachment } from './email-sender';
 import { interpolateTemplate, textToHtml, buildUnsubscribeUrl } from './template-interpolation';
 import { composeEmailHtml, loadBrandData, brandToContext } from '@kredix/email';
@@ -136,6 +136,11 @@ export async function processCampaign(campaignId: string): Promise<void> {
     const dailyCap = await getSettingNumber('cadence_daily_cap', 200);
     const siteUrl = await getSetting('site_url', '');
     const brand = await loadBrandData();
+
+    // Rate-limiting partagé cron ↔ campagnes : précharge le dernier envoi de
+    // chaque gateway (depuis EmailLog). Permet de respecter la cadence même si
+    // le cron a envoyé récemment via le même SMTP.
+    const lastSentByGateway = await getLastSentByGateway();
 
     const template = campaign.template as EmailTemplate;
 
@@ -342,9 +347,20 @@ export async function processCampaign(campaignId: string): Promise<void> {
         ]);
       }
 
-      // 4h — Espacement aléatoire (anti-spam) entre chaque envoi.
-      const delaySec = randomBetween(intervalMin, intervalMax);
-      await sleep(delaySec * 1000);
+      // 4h — Rate-limiting par SMTP (cadence_interval_min/max).
+      // Garantit que le gateway attend au moins ~intervalMin sec entre 2 envois.
+      // Calcule le temps restant depuis le dernier envoi de ce gateway (cron OU
+      // campagne), avec une dose aléatoire dans [intervalMin, intervalMax] pour
+      // éviter la régularité parfaite (anti-spam).
+      const lastSent = lastSentByGateway.get(gateway.id);
+      const elapsedSec = lastSent ? (Date.now() - lastSent.getTime()) / 1000 : Infinity;
+      const targetInterval = randomBetween(intervalMin, intervalMax);
+      const waitSec = Math.max(0, targetInterval - elapsedSec);
+      if (waitSec > 0) {
+        await sleep(waitSec * 1000);
+      }
+      // Update la Map pour le prochain destinataire du même run.
+      lastSentByGateway.set(gateway.id, new Date());
     }
 
     // 5 — Tous les destinataires traités : campagne terminée.

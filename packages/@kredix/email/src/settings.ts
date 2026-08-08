@@ -103,6 +103,40 @@ export function extractGatewayInfo(
 }
 
 /**
+ * Précharge en 1 seule requête SQL le dernier envoi (sentAt) pour chaque gateway.
+ *
+ * Utilisé pour le rate-limiting par SMTP (cron relance + campaign-sender).
+ * Avant chaque envoi, le caller vérifie si le gateway a déjà envoyé récemment
+ * et skip le lead si l'intervalle minimal n'est pas respecté.
+ *
+ * @returns Map<gatewayId, Date du dernier envoi>. Mutable : le caller l'update
+ *          après chaque envoi réel (succès OU échec) pour les prochains leads
+ *          du même run.
+ *
+ * Performance : 1 requête groupBy sur EmailLog (gatewayId, max(sentAt)), filtrée
+ * sur les dernières 24h + status in ['sent', 'failed'] (les 'skipped' ne comptent
+ * pas — pas d'envoi réel).
+ */
+export async function getLastSentByGateway(): Promise<Map<string, Date>> {
+  const result = await prisma.emailLog.groupBy({
+    by: ['gatewayId'],
+    where: {
+      gatewayId: { not: null },
+      sentAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+      status: { in: ['sent', 'failed'] },
+    },
+    _max: { sentAt: true },
+  });
+  const map = new Map<string, Date>();
+  for (const r of result) {
+    if (r.gatewayId && r._max.sentAt) {
+      map.set(r.gatewayId, r._max.sentAt);
+    }
+  }
+  return map;
+}
+
+/**
  * VERSION BATCH de getGatewayForLead() — DEC-K5 multi-admin.
  *
  * Précharge en UNE seule requête tous les gateways actifs, puis retourne une

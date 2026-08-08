@@ -15,6 +15,7 @@ export {
   getPrimaryGateway,
   getGatewayForLead,
   resolveGatewaysForLeadsBatch,
+  getLastSentByGateway,
   extractGatewayInfo,
   getGatewayForCampaign,
   getConseillerContext,
