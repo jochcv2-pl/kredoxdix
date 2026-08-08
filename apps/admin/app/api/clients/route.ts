@@ -33,6 +33,9 @@ interface ClientListItem {
   steps: ClientStepInfo[];
   currentLevel: number;
   updatedAt: Date;
+  assignedToId: string | null;
+  assignedToName: string | null;
+  assignedToRole: string | null;
 }
 
 // GET /api/clients — liste paginée des clients + progression du parcours 7 niveaux.
@@ -56,6 +59,8 @@ export async function GET() {
         monthlyPayment: true,
         status: true,
         updatedAt: true,
+        assignedToId: true,
+        assignedTo: { select: { displayName: true, role: true } },
       },
     });
 
@@ -83,6 +88,8 @@ export async function GET() {
       const currentLevel = leadSteps.reduce((max, s) => Math.max(max, s.level), 0);
       return {
         ...lead,
+        assignedToName: lead.assignedTo?.displayName ?? null,
+        assignedToRole: lead.assignedTo?.role ?? null,
         steps: leadSteps,
         currentLevel,
       };

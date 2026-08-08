@@ -65,6 +65,8 @@ interface Contact {
   status: ContactStatus
   validateur?: string
   langue: string
+  assigneA: string | null    // displayName du conseiller assigné (null = non assigné)
+  assigneRole: string | null // role du conseiller ('admin' | 'advisor' | ...)
 }
 
 interface ApiLead {
@@ -91,6 +93,9 @@ interface ApiLead {
   ackSentAt: string | null
   createdAt: string
   updatedAt: string
+  assignedToId: string | null
+  assignedToName: string | null
+  assignedToRole: string | null
 }
 
 function makeInitials(firstName: string, lastName: string): string {
@@ -149,6 +154,8 @@ function mapLeadToContact(lead: ApiLead): Contact {
     totalCost: lead.totalCost ?? null,
     status: lead.status,
     langue: lead.preferredLanguage || 'de',
+    assigneA: lead.assignedToName,
+    assigneRole: lead.assignedToRole,
   }
 }
 
@@ -1049,6 +1056,7 @@ export default function Contacts() {
                   <th>Pays</th>
                   <th>Source</th>
                   <th>Reçu le</th>
+                  <th>Assigné à</th>
                   <th>Suivi</th>
                   <th>Statut</th>
                   <th style={{ textAlign: 'right' }}>Action</th>
@@ -1084,6 +1092,25 @@ export default function Contacts() {
                       <td>{c.pays}</td>
                       <td>{c.source}</td>
                       <td>{c.recu}</td>
+                      <td>
+                        {c.assigneA ? (
+                          <span
+                            className={`badge ${c.assigneRole === 'admin' ? 'b-progress' : 'b-contacted'}`}
+                            title={c.assigneRole === 'admin' ? 'Super-admin' : c.assigneRole === 'advisor' ? 'Conseiller' : c.assigneRole ?? ''}
+                          >
+                            <span className="badge-dot"></span>
+                            {c.assigneA}
+                          </span>
+                        ) : (
+                          <span
+                            className="badge b-wait"
+                            title="Aucun conseiller assigné — SMTP système utilisé par défaut"
+                          >
+                            <span className="badge-dot"></span>
+                            Non assigné
+                          </span>
+                        )}
+                      </td>
                       <td>
                         <div className="suivi-cell">
                           <span className={`suivi-item ${c.elapsedMin < 60 ? 'suivi-hot' : c.elapsedMin < 1440 ? 'suivi-warm' : 'suivi-cold'}`}>

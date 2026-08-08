@@ -45,6 +45,9 @@ interface Client {
   steps: ClientStepInfo[]
   currentLevel: number
   updatedAt: string
+  assignedToId: string | null
+  assignedToName: string | null
+  assignedToRole: string | null
 }
 
 interface SendTarget {
@@ -376,6 +379,17 @@ export default function Clients() {
                         {formatEuro(client.monthlyPayment)}/mois
                       </span>
                     )}
+                    <span
+                      className="clt2-tag"
+                      style={{
+                        background: client.assignedToName ? '#E6F1FB' : 'rgba(245, 158, 11, 0.14)',
+                        color: client.assignedToName ? 'var(--blue-dark, #1e40af)' : 'var(--amber, #d97706)',
+                      }}
+                      title={client.assignedToName ? `Assigné à ${client.assignedToName}${client.assignedToRole === 'admin' ? ' (super-admin)' : client.assignedToRole === 'advisor' ? ' (conseiller)' : ''}` : 'Aucun conseiller assigné — SMTP système utilisé'}
+                    >
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                      {client.assignedToName ?? 'Non assigné'}
+                    </span>
                   </div>
                   <div className="clt2-bar-wrap">
                     <div className="clt2-bar-track">

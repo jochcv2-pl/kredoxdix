@@ -54,6 +54,9 @@ interface LeadListItem {
   ackSentAt: string | null;
   createdAt: string;
   updatedAt: string;
+  assignedToId: string | null;
+  assignedToName: string | null;
+  assignedToRole: string | null;
 }
 
 // GET /api/leads — liste paginée filtrée.
@@ -108,6 +111,9 @@ export async function GET(req: NextRequest) {
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * pageSize,
         take: pageSize,
+        include: {
+          assignedTo: { select: { displayName: true, role: true } },
+        },
       }),
       prisma.lead.count({ where }),
     ]);
@@ -135,6 +141,9 @@ export async function GET(req: NextRequest) {
       ackSentAt: l.ackSentAt ? l.ackSentAt.toISOString() : null,
       createdAt: l.createdAt.toISOString(),
       updatedAt: l.updatedAt.toISOString(),
+      assignedToId: l.assignedToId,
+      assignedToName: l.assignedTo?.displayName ?? null,
+      assignedToRole: l.assignedTo?.role ?? null,
     }));
 
     return successResponse({
