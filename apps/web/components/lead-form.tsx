@@ -485,6 +485,8 @@ export default function LeadForm({ prefill, whatsappNumber }: { prefill?: LeadFo
         </a>
       </div>
 
+      <p className="btn-social-note">{t("socialNote")}</p>
+
       <style>{`
         .lf-consent {
           display: flex;

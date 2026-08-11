@@ -1,5 +1,5 @@
 import { getTranslations } from "next-intl/server";
-import { Shield, CheckCircle, Award, Key, TrendingUp, RefreshCw, Cpu, Bot, Phone, Mail, UserPlus, BarChart3, Download, Check, MessageCircle } from "lucide-react";
+import { Shield, CheckCircle, Award, Key, TrendingUp, RefreshCw, Cpu, Bot, Phone, Mail, UserPlus, BarChart3, Download, Check, MessageCircle, Star } from "lucide-react";
 import Navbar from "@/components/navbar";
 import SimulatorAndForm from "@/components/simulator-and-form";
 import TestimonialsCarousel from "./TestimonialsCarousel";
@@ -95,7 +95,18 @@ export default async function HomePage({
         <div className="grid-bg"></div>
         <div className="wrap">
           <div className="hero-inner">
-            <span className="hero-eyebrow">{t("eyebrow")}</span>
+            <span className="hero-eyebrow">
+              <span className="hero-stars" aria-hidden="true">
+                <Star size={11} fill="currentColor" stroke="none" />
+                <Star size={11} fill="currentColor" stroke="none" />
+                <Star size={11} fill="currentColor" stroke="none" />
+                <Star size={11} fill="currentColor" stroke="none" />
+                <span className="hero-stars-partial">
+                  <Star size={11} fill="currentColor" stroke="none" />
+                </span>
+              </span>
+              {t("eyebrow")}
+            </span>
             <h1>
               {t.rich("title", {
                 highlight: (chunks) => <span className="mark">{chunks}</span>,

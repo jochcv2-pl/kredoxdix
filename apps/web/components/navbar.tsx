@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import LangSwitcher from "@/components/lang-switcher";
 
 /**
@@ -34,13 +35,13 @@ export default function Navbar({ siteName = "Kredix", logoUrl }: { siteName?: st
   return (
     <header className="nav">
       <div className="nav-inner">
-        <a href="#top" className="logo" onClick={() => setOpen(false)}>
+        <Link href="/" className="logo" onClick={() => setOpen(false)}>
           {logoUrl ? (
             <img src={logoUrl} alt={siteName} style={{ maxHeight: 36 }} />
           ) : (
             siteName
           )}
-        </a>
+        </Link>
         <nav className={`nav-menu${open ? " open" : ""}`} id="navMenu">
           <a href="#services" onClick={() => setOpen(false)}>
             {t("services")}
