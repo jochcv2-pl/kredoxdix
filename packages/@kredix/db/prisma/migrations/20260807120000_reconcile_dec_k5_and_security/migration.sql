@@ -19,28 +19,6 @@
 -- =============================================================================
 
 -- =============================================================================
--- SECTION A — KRX-004 : onDelete: SetNull sur FK multi-admin
--- =============================================================================
--- Évite l'erreur Prisma P2003 à la suppression d'un AdminUser qui possède
--- des leads / gateways / campaigns. Avec SetNull, ces ressources repassent
--- à ownerId=null (système / non assigné) automatiquement.
-
--- Lead.assignedTo → SetNull
-ALTER TABLE "Lead" DROP CONSTRAINT IF EXISTS "Lead_assignedToId_fkey";
-ALTER TABLE "Lead" ADD CONSTRAINT "Lead_assignedToId_fkey"
-  FOREIGN KEY ("assignedToId") REFERENCES "AdminUser"("id") ON DELETE SET NULL;
-
--- EmailGateway.owner → SetNull
-ALTER TABLE "EmailGateway" DROP CONSTRAINT IF EXISTS "EmailGateway_ownerId_fkey";
-ALTER TABLE "EmailGateway" ADD CONSTRAINT "EmailGateway_ownerId_fkey"
-  FOREIGN KEY ("ownerId") REFERENCES "AdminUser"("id") ON DELETE SET NULL;
-
--- Campaign.owner → SetNull
-ALTER TABLE "Campaign" DROP CONSTRAINT IF EXISTS "Campaign_ownerId_fkey";
-ALTER TABLE "Campaign" ADD CONSTRAINT "Campaign_ownerId_fkey"
-  FOREIGN KEY ("ownerId") REFERENCES "AdminUser"("id") ON DELETE SET NULL;
-
--- =============================================================================
 -- SECTION B — AdminUser champs DEC-K5 (identité conseiller + routing)
 -- =============================================================================
 ALTER TABLE "AdminUser" ADD COLUMN IF NOT EXISTS "firstName" TEXT;
@@ -123,18 +101,16 @@ CREATE INDEX IF NOT EXISTS "LoanType_isActive_sortOrder_idx" ON "LoanType"("isAc
 -- =============================================================================
 -- SECTION I — CampaignRecipientStatus : ajout valeur 'sending' (lock worker)
 -- =============================================================================
--- ⚠️ `ALTER TYPE ... ADD VALUE` NE PEUT PAS tourner dans un bloc transactionnel
--- (Prisma migrate deploy wrap chaque migration dans une transaction → erreur
--- "ALTER TYPE ... ADD cannot run inside a transaction block").
--- Contournement : INSERT direct dans pg_enum (transactionnable + idempotent via NOT EXISTS).
-INSERT INTO pg_enum (enumtypid, enumlabel, enumsortorder)
-SELECT t.oid, 'sending',
-       COALESCE((SELECT MAX(enumsortorder) FROM pg_enum WHERE enumtypid = t.oid), 0) + 1
-FROM pg_type t
-WHERE t.typname = 'CampaignRecipientStatus'
-  AND NOT EXISTS (
-    SELECT 1 FROM pg_enum e WHERE e.enumtypid = t.oid AND e.enumlabel = 'sending'
-  );
+-- ⚠️ Correction 2026-08-11 : l'ancien INSERT direct dans pg_enum échouait sur
+-- PostgreSQL 12+ (colonne `oid` NOT NULL n'est plus auto-assignée sur INSERT
+-- manuel dans pg_enum depuis PG 12 → erreur 23502 "null value in column oid").
+-- Remplacé par `ALTER TYPE ... ADD VALUE IF NOT EXISTS` qui :
+--   - est idempotent (IF NOT EXISTS skip si déjà présent)
+--   - est supporté dans une transaction depuis PostgreSQL 12+
+--     (Prisma migrate deploy wrap chaque migration dans un tx)
+--   - ne peut pas être utilisé dans la même transaction, mais aucune
+--     migration ultérieure n'utilise 'sending' avant commit
+ALTER TYPE "CampaignRecipientStatus" ADD VALUE IF NOT EXISTS 'sending';
 
 -- =============================================================================
 -- SECTION J — Seed LoanType par défaut (immo / conso / rachat / pro)
@@ -183,3 +159,32 @@ BEGIN
       FOREIGN KEY ("adminId") REFERENCES "AdminUser"("id") ON DELETE SET NULL;
   END IF;
 END $$;
+
+-- =============================================================================
+-- SECTION A — KRX-004 : onDelete: SetNull sur FK multi-admin
+-- =============================================================================
+-- ⚠️ PLACÉE EN FIN de migration (correction 2026-08-11).
+-- Les colonnes `EmailGateway.ownerId` et `Campaign.ownerId` sont ajoutées en
+-- SECTION C/D ci-dessus. PostgreSQL exige que la colonne existe AVANT de
+-- créer la FK qui la référence (sinon erreur 42703 "column ... does not exist").
+-- `Lead.assignedToId` existe depuis 0_init → sa FK peut être recréée ici.
+-- Sur une DB déjà à jour via `db push`, les DROP/ADD CONSTRAINT sont idempotents.
+-- =============================================================================
+-- Évite l'erreur Prisma P2003 à la suppression d'un AdminUser qui possède
+-- des leads / gateways / campaigns. Avec SetNull, ces ressources repassent
+-- à ownerId=null (système / non assigné) automatiquement.
+
+-- Lead.assignedTo → SetNull
+ALTER TABLE "Lead" DROP CONSTRAINT IF EXISTS "Lead_assignedToId_fkey";
+ALTER TABLE "Lead" ADD CONSTRAINT "Lead_assignedToId_fkey"
+  FOREIGN KEY ("assignedToId") REFERENCES "AdminUser"("id") ON DELETE SET NULL;
+
+-- EmailGateway.owner → SetNull
+ALTER TABLE "EmailGateway" DROP CONSTRAINT IF EXISTS "EmailGateway_ownerId_fkey";
+ALTER TABLE "EmailGateway" ADD CONSTRAINT "EmailGateway_ownerId_fkey"
+  FOREIGN KEY ("ownerId") REFERENCES "AdminUser"("id") ON DELETE SET NULL;
+
+-- Campaign.owner → SetNull
+ALTER TABLE "Campaign" DROP CONSTRAINT IF EXISTS "Campaign_ownerId_fkey";
+ALTER TABLE "Campaign" ADD CONSTRAINT "Campaign_ownerId_fkey"
+  FOREIGN KEY ("ownerId") REFERENCES "AdminUser"("id") ON DELETE SET NULL;
