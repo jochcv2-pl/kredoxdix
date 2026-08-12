@@ -33,6 +33,7 @@ export const ERR = {
   NOT_FOUND: { msg: 'Ressource introuvable', code: 'NOT_FOUND' },
   CONFLICT: { msg: 'Conflit de ressource', code: 'CONFLICT' },
   UNAUTHORIZED: { msg: 'Non autorisé', code: 'UNAUTHORIZED' },
+  FORBIDDEN: { msg: 'Accès refusé', code: 'FORBIDDEN' },
   INTERNAL: { msg: 'Erreur interne', code: 'INTERNAL_ERROR' },
 } as const;
 

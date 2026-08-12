@@ -81,6 +81,15 @@ export function getClientStepScope(admin: Pick<AdminUser, 'id' | 'role'>): Prism
 }
 
 /**
+ * Scope pour LeadTracking : filtre par lead.assignedToId (les étapes tracking des leads du conseiller).
+ * Le super-admin voit tous les tracking.
+ * Système INDÉPENDANT du pipeline email (Q1 s44) — voir TrackingStep / LeadTracking.
+ */
+export function getLeadTrackingScope(admin: Pick<AdminUser, 'id' | 'role'>): Prisma.LeadTrackingWhereInput {
+  return isSuperAdmin(admin) ? {} : { lead: { assignedToId: admin.id } }
+}
+
+/**
  * Scope pour CampaignRecipient : filtre par campaign.ownerId.
  * Le super-admin voit tous les destinataires.
  */

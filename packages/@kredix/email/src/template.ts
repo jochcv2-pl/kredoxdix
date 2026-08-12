@@ -1,4 +1,5 @@
 import type { Lead } from '@kredix/db';
+import { generateTrackingToken } from '@kredix/db';
 
 // =============================================================================
 // @kredix/email/template — Interpolation des variables {{...}} dans les emails.
@@ -107,6 +108,23 @@ export function buildUnsubscribeUrl(lead: InterpolationContext['lead'], siteUrl:
   return `${siteUrl}/api/unsubscribe?t=${lead.unsubscribeToken}`;
 }
 
+/**
+ * Construit l'URL magique de la page /suivi pour un lead.
+ * Le client clique → atterrit directement sur son suivi (pas de saisie du code).
+ * Token stateless anti-énumération (cf. @kredix/db isValidTrackingToken).
+ *
+ * Format : {siteUrl}/{locale}/suivi?ref=KREDIX-XXXXXXXX&token=YYYY
+ */
+export function buildSuiviUrl(
+  lead: InterpolationContext['lead'],
+  siteUrl: string,
+  reference: string,
+): string {
+  const locale = lead.preferredLanguage ?? 'fr';
+  const token = generateTrackingToken(lead.id);
+  return `${siteUrl}/${locale}/suivi?ref=${encodeURIComponent(reference)}&token=${token}`;
+}
+
 export function interpolateTemplate(text: string, ctx: InterpolationContext): string {
   const { lead, siteUrl, customMessage, brand, advisor } = ctx;
   const unsubscribeUrl = buildUnsubscribeUrl(lead, siteUrl);
@@ -115,7 +133,12 @@ export function interpolateTemplate(text: string, ctx: InterpolationContext): st
   const locale = getLocale(lang);
 
   // Référence demande : prefix + 8 premiers chars du CUID.
-  const reference = `KREDIX-${lead.id.slice(-8).toUpperCase()}`;
+  // Référence publique : priorité à lead.reference (DB s44), fallback calcul à la volée
+  // (rétro-compat leads pré-migration qui n'ont pas encore reference setté).
+  const reference = lead.reference ?? `KREDIX-${lead.id.slice(-8).toUpperCase()}`;
+
+  // Lien magique page /suivi (anti-énumération via token stateless).
+  const suiviUrl = buildSuiviUrl(lead, siteUrl, reference);
 
   // Dates formatées selon la locale du lead.
   const dateSoumission = lead.createdAt
@@ -180,6 +203,7 @@ export function interpolateTemplate(text: string, ctx: InterpolationContext): st
     '{{email_conseiller}}': emailConseiller,
     '{{adresse_siege}}': brand?.agencyAddress ?? '',
     '{{lien_desabonnement}}': unsubscribeUrl,
+    '{{lien_suivi}}': suiviUrl,
   };
 
   let result = text;

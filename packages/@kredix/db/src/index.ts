@@ -23,6 +23,14 @@ export type { CreateNotificationInput } from './notifications';
 export { assignLeadToAdmin, recalcAdminLoad, recalcAllAdminLoads } from './routing';
 export type { RoutingResult } from './routing';
 
+// Helpers leads (s44 — référence publique pour page /suivi)
+export {
+  generateLeadReference,
+  POPULATE_LEAD_REFERENCES_SQL,
+  generateTrackingToken,
+  isValidTrackingToken,
+} from './lead-helpers';
+
 // Types
 export type {
   Lead,

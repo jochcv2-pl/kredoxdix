@@ -186,6 +186,26 @@
     "row5Label": "Dossiers financiados",
     "row5Value": "350+"
   },
+  "Tracking": {
+    "title": "Acompanhamento do seu processo",
+    "subtitle": "Introduza o seu número de referência para ver o progresso em tempo real.",
+    "inputLabel": "O seu número de referência",
+    "submitButton": "Ver progresso",
+    "hint": "Número do seu email de confirmação (formato KREDIX-XXXXXXXX).",
+    "notFound": "Referência não encontrada. Verifique o seu número de referência.",
+    "invalid": "Formato inválido. Formato esperado: KREDIX-XXXXXXXX.",
+    "rateLimited": "Muitas tentativas. Aguarde um minuto.",
+    "genericError": "Ocorreu um erro. Tente novamente.",
+    "loading": "A procurar o seu processo...",
+    "yourReference": "A sua referência",
+    "newSearch": "Nova pesquisa",
+    "statusLabel": "Estado do processo",
+    "advisorLabel": "Consultor",
+    "stepsDone": "etapas concluídas",
+    "validatedOn": "Validada em",
+    "by": "por",
+    "noSteps": "Ainda não há etapas de acompanhamento disponíveis para o seu processo."
+  },
   "Footer": {
     "description": "Corretor de financiamento. Comparamos 40 bancos para lhe conseguir as melhores condições de crédito, gratuitamente e sem compromisso.",
     "col1Title": "Serviços",

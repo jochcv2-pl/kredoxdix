@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { prisma, createNotification, assignLeadToAdmin } from "@kredix/db";
+import { prisma, createNotification, assignLeadToAdmin, generateLeadReference } from "@kredix/db";
 import { createLeadSchema, errorResponse, successResponse } from "../validators";
 import { computeSequenceInitDates } from "../_lib/email-ack";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limiter";
@@ -55,28 +55,36 @@ export async function POST(request: NextRequest) {
     const hasEmail = !!parsed.data.email;
     const seqDates = hasEmail ? computeSequenceInitDates() : {};
 
-    const lead = await prisma.lead.create({
-      data: {
-        firstName: parsed.data.firstName,
-        lastName: parsed.data.lastName,
-        phone: parsed.data.phone,
-        email: parsed.data.email || null,
-        city: parsed.data.city,
-        street: parsed.data.street || null,
-        zipCode: parsed.data.zipCode || null,
-        country: parsed.data.country,
-        loanType: parsed.data.loanType,
-        amount: parsed.data.amount,
-        durationYears: parsed.data.durationYears,
-        monthlyPayment: parsed.data.monthlyPayment ?? null,
-        annualRate: parsed.data.annualRate ?? null,
-        totalCost: parsed.data.totalCost ?? null,
-        employmentStatus: parsed.data.employmentStatus,
-        preferredLanguage: parsed.data.preferredLanguage,
-        whatsappConsent: parsed.data.whatsappConsent,
-        ...seqDates,
-      },
-    });
+    const lead = await prisma.$transaction(async (tx) => {
+      const created = await tx.lead.create({
+        data: {
+          firstName: parsed.data.firstName,
+          lastName: parsed.data.lastName,
+          phone: parsed.data.phone,
+          email: parsed.data.email || null,
+          city: parsed.data.city,
+          street: parsed.data.street || null,
+          zipCode: parsed.data.zipCode || null,
+          country: parsed.data.country,
+          loanType: parsed.data.loanType,
+          amount: parsed.data.amount,
+          durationYears: parsed.data.durationYears,
+          monthlyPayment: parsed.data.monthlyPayment ?? null,
+          annualRate: parsed.data.annualRate ?? null,
+          totalCost: parsed.data.totalCost ?? null,
+          employmentStatus: parsed.data.employmentStatus,
+          preferredLanguage: parsed.data.preferredLanguage,
+          whatsappConsent: parsed.data.whatsappConsent,
+          ...seqDates,
+        },
+      })
+      // Génère la référence publique KREDIX-XXXXXXXX (s44 — page /suivi client).
+      // Nécessite l'id Prisma, donc en 2 temps dans une transaction.
+      return await tx.lead.update({
+        where: { id: created.id },
+        data: { reference: generateLeadReference(created.id) },
+      })
+    })
 
     // ----- Envoi accusé de réception (Agent Accueil) -----
     // DÉPLACÉ VERS LE CRON — le welcome email est envoyé 5 min après la création

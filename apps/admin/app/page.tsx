@@ -31,6 +31,7 @@ import Profil from '@/views/profil/page'
 import MesSmtp from '@/views/mes-smtp/page'
 import LoanTypes from '@/views/loan-types/page'
 import Audit from '@/views/audit/page'
+import SuiviDossier from '@/views/suivi-dossier/page'
 
 const pageTitles: Record<string, [string, string]> = {
   dashboard: ["Vue d'ensemble", "Activité de votre agence en temps réel"],
@@ -137,6 +138,7 @@ export default function AdminPage() {
       case 'documents': return <ViewErrorBoundary viewName="Documents"><Documents /></ViewErrorBoundary>
       case 'campaigns': return <ViewErrorBoundary viewName="Campagnes"><Campaigns onNavigate={setViewId} /></ViewErrorBoundary>
       case 'pipeline': return <ViewErrorBoundary viewName="Pipeline"><Pipeline /></ViewErrorBoundary>
+      case 'suivi-dossier': return <ViewErrorBoundary viewName="Suivi dossier"><SuiviDossier /></ViewErrorBoundary>
       case 'history': return <ViewErrorBoundary viewName="Historique"><EmailHistory /></ViewErrorBoundary>
       case 'cms': return <ViewErrorBoundary viewName="CMS"><CMS /></ViewErrorBoundary>
       case 'testimonials': return <ViewErrorBoundary viewName="Témoignages"><Testimonials /></ViewErrorBoundary>

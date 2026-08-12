@@ -169,6 +169,7 @@ model Lead {
   // Permettent le filtrage relationnel : getEmailLogScope() / getClientStepScope()
   emailLogs         EmailLog[]                     // historique des emails envoyés à ce lead
   clientSteps       ClientStep[]                   // parcours client (7 niveaux)
+  trackings         LeadTracking[]                 // étapes de suivi manuel (page suivi client)
 
   // ===== MOTEUR DE PROSPECTION / RELANCE =====
   // L'Agent Accueil accuse réception (<5 min) puis annonce un rappel 48h.
@@ -191,6 +192,12 @@ model Lead {
   // Le prospect clique → route publique → SuppressionList + fermeture séquence.
   unsubscribeToken  String       @unique @default(cuid())
   unsubscribedAt    DateTime?
+
+  // ===== RÉFÉRENCE PUBLIQUE (page suivi client /suivi) =====
+  // Format : KREDIX-XXXXXXXX (8 derniers chars du id, majuscules).
+  // Nullable pour rétro-compat : leads existants migrés avec ce calcul.
+  // Les nouveaux leads l'ont à la création (POST /api/leads).
+  reference         String?     @unique
 
   createdAt         DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
@@ -300,6 +307,7 @@ model AdminUser {
 
   // ===== Phase 7 Bloc F — Journaux d'audit (super-admin only) =====
   auditLogs        AuditLog[]
+  trackingValidations LeadTracking[]               // étapes tracking validées par cet admin
 
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
@@ -665,6 +673,53 @@ model PipelineStep {
   clientSteps   ClientStep[]
 
   @@index([order])
+}
+
+// -----------------------------------------------------------------------------
+// TRACKINGSTEP — Étapes de suivi dossier (manuelles, INDÉPENDANTES du pipeline email)
+// -----------------------------------------------------------------------------
+// Système de suivi public : le conseiller valide manuellement chaque étape
+// du dossier client. AUCUNE envoi d'email — purement affichage page /suivi.
+// Indépendant de PipelineStep (qui gère les envois d'emails automatiques).
+// Configurable par le super-admin dans le menu CRM "Suivi dossier".
+model TrackingStep {
+  id          String   @id @default(cuid())
+  order       Int                                // position dans le parcours (1, 2, 3...)
+  name        String                             // "Dossier reçu"
+  description String?                            // court texte affiché au client sur la page /suivi
+  icon        String?                            // nom d'icône lucide-react optionnel (ex: "check-circle")
+  isActive    Boolean  @default(true)            // désactivé = masqué côté admin ET page suivi
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  leadTrackings LeadTracking[]
+
+  @@index([isActive, order])
+}
+
+// -----------------------------------------------------------------------------
+// LEADTRACKING — Validation d'une étape TrackingStep pour un lead donné
+// -----------------------------------------------------------------------------
+// Une entrée = une étape validée pour un lead (pas de doublon possible).
+// AUCUNE envoi d'email — purement marquage manuel déclenché par le conseiller.
+// Visible côté client via la page /suivi (endpoint public /api/public/track).
+//
+// Rôles (Q7) : validation par le conseiller assigné au lead OU super-admin.
+// Dévalidation (Q9) : le validateur peut dévalider sa propre validation,
+//                    le super-admin peut dévalider n'importe laquelle.
+model LeadTracking {
+  id              String        @id @default(cuid())
+  leadId          String
+  lead            Lead          @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  trackingStepId  String
+  trackingStep    TrackingStep  @relation(fields: [trackingStepId], references: [id], onDelete: Cascade)
+  validatedById   String?                              // FK AdminUser (qui a validé)
+  validatedBy     AdminUser?    @relation(fields: [validatedById], references: [id], onDelete: SetNull)
+  validatedAt     DateTime      @default(now())
+  note            String?                              // note interne (jamais affichée au client)
+
+  @@unique([leadId, trackingStepId])                  // 1 validation par étape par lead
+  @@index([leadId])
 }
 
 // -----------------------------------------------------------------------------

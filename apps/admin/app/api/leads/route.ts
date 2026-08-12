@@ -13,7 +13,7 @@
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
-import { prisma, LeadStatus, createNotification, assignLeadToAdmin } from '@kredix/db';
+import { prisma, LeadStatus, createNotification, assignLeadToAdmin, generateLeadReference } from '@kredix/db';
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses';
 import { requireAuth } from '../_lib/auth-server';
 import { getLeadScope } from '../_lib/scope';
@@ -33,6 +33,7 @@ const VALID_STATUSES: ReadonlySet<string> = new Set([
 
 interface LeadListItem {
   id: string;
+  reference: string | null;       // s44 — KREDIX-XXXXXXXX (page /suivi client)
   firstName: string;
   lastName: string;
   email: string | null;
@@ -120,6 +121,7 @@ export async function GET(req: NextRequest) {
 
     const data: LeadListItem[] = leads.map((l) => ({
       id: l.id,
+      reference: l.reference,
       firstName: l.firstName,
       lastName: l.lastName,
       email: l.email,
@@ -206,29 +208,37 @@ export async function POST(req: NextRequest) {
       relanceCount: 0,
     } : {};
 
-    const lead = await prisma.lead.create({
-      data: {
-        firstName: data.firstName,
-        lastName: data.lastName,
-        email: data.email || null,
-        phone: data.phone,
-        city: data.city,
-        street: data.street || null,
-        zipCode: data.zipCode || null,
-        country: data.country,
-        loanType: data.loanType,
-        amount: data.amount,
-        durationYears: data.durationYears,
-        monthlyPayment: data.monthlyPayment ?? null,
-        annualRate: data.annualRate ?? null,
-        totalCost: data.totalCost ?? null,
-        employmentStatus: data.employmentStatus,
-        preferredLanguage: data.preferredLanguage,
-        notes: data.notes || null,
-        status: LeadStatus.new,
-        // DEC-K5 — routing automatique après création (assignLeadToAdmin).
-        ...seqDates,
-      },
+    const lead = await prisma.$transaction(async (tx) => {
+      const created = await tx.lead.create({
+        data: {
+          firstName: data.firstName,
+          lastName: data.lastName,
+          email: data.email || null,
+          phone: data.phone,
+          city: data.city,
+          street: data.street || null,
+          zipCode: data.zipCode || null,
+          country: data.country,
+          loanType: data.loanType,
+          amount: data.amount,
+          durationYears: data.durationYears,
+          monthlyPayment: data.monthlyPayment ?? null,
+          annualRate: data.annualRate ?? null,
+          totalCost: data.totalCost ?? null,
+          employmentStatus: data.employmentStatus,
+          preferredLanguage: data.preferredLanguage,
+          notes: data.notes || null,
+          status: LeadStatus.new,
+          // DEC-K5 — routing automatique après création (assignLeadToAdmin).
+          ...seqDates,
+        },
+      })
+      // Génère la référence publique KREDIX-XXXXXXXX (s44 — page /suivi client).
+      // Nécessite l'id Prisma, donc en 2 temps dans une transaction.
+      return await tx.lead.update({
+        where: { id: created.id },
+        data: { reference: generateLeadReference(created.id) },
+      })
     });
 
     // DEC-K5 — routing automatique vers le conseiller le moins chargé.

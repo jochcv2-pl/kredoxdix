@@ -186,6 +186,26 @@
     "row5Label": "Dossiers financés",
     "row5Value": "350+"
   },
+  "Tracking": {
+    "title": "Suivi de votre dossier",
+    "subtitle": "Entrez votre numéro de référence pour voir l'avancement en temps réel.",
+    "inputLabel": "Votre numéro de référence",
+    "submitButton": "Voir l'avancement",
+    "hint": "Numéro reçu dans votre email de confirmation (format KREDIX-XXXXXXXX).",
+    "notFound": "Référence introuvable. Vérifiez votre numéro de référence.",
+    "invalid": "Format invalide. Le format attendu est KREDIX-XXXXXXXX.",
+    "rateLimited": "Trop de tentatives. Patientez une minute.",
+    "genericError": "Une erreur est survenue. Réessayez.",
+    "loading": "Recherche de votre dossier...",
+    "yourReference": "Votre référence",
+    "newSearch": "Nouvelle recherche",
+    "statusLabel": "Statut du dossier",
+    "advisorLabel": "Conseiller",
+    "stepsDone": "étapes complétées",
+    "validatedOn": "Validée le",
+    "by": "par",
+    "noSteps": "Aucune étape de suivi n'est encore disponible pour votre dossier."
+  },
   "Footer": {
     "description": "Courtier en financement. Nous comparons 40 banques pour vous obtenir les meilleures conditions de crédit, gratuitement et sans engagement.",
     "col1Title": "Services",

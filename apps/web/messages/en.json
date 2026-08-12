@@ -186,6 +186,26 @@
     "row5Label": "Files funded",
     "row5Value": "350+"
   },
+  "Tracking": {
+    "title": "Track your application",
+    "subtitle": "Enter your reference number to see real-time progress.",
+    "inputLabel": "Your reference number",
+    "submitButton": "View progress",
+    "hint": "Number from your confirmation email (format KREDIX-XXXXXXXX).",
+    "notFound": "Reference not found. Please check your reference number.",
+    "invalid": "Invalid format. Expected format: KREDIX-XXXXXXXX.",
+    "rateLimited": "Too many attempts. Please wait a minute.",
+    "genericError": "An error occurred. Please try again.",
+    "loading": "Searching your file...",
+    "yourReference": "Your reference",
+    "newSearch": "New search",
+    "statusLabel": "File status",
+    "advisorLabel": "Advisor",
+    "stepsDone": "steps completed",
+    "validatedOn": "Validated on",
+    "by": "by",
+    "noSteps": "No tracking steps are available for your file yet."
+  },
   "Footer": {
     "description": "Financing broker. We compare 40 banks to get you the best credit conditions, free and with no commitment.",
     "col1Title": "Services",

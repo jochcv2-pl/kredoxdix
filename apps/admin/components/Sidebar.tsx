@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, UserCheck, UserCog, FolderOpen, Percent,
   Mail, Megaphone, History, Globe, LayoutTemplate,
   Star, LayoutGrid, FileText, Search, Bot, Settings, User, Activity, Building2,
-  Route, Send, Tag, Shield,
+  Route, Send, Tag, Shield, ClipboardCheck,
 } from "lucide-react";
 
 const ICON_PROPS = { className: "sb-ico", size: 18, strokeWidth: 1.8 } as const;
@@ -36,6 +36,7 @@ const ICONS: Record<string, ReactNode> = {
   'loan-types': <Tag {...ICON_PROPS} />,
   'mes-smtp': <Send {...ICON_PROPS} />,
   'audit': <Shield {...ICON_PROPS} />,
+  'suivi-dossier': <ClipboardCheck {...ICON_PROPS} />,
   profil: <User {...ICON_PROPS} />,
 };
 
@@ -52,6 +53,7 @@ const navigation = [
   { id: "documents", label: "Documents modèles", group: "Pilotage" },
   { id: "campaigns", label: "Campagnes", group: "Pilotage" },
   { id: "pipeline", label: "Pipeline email", group: "Pilotage" },
+  { id: "suivi-dossier", label: "Suivi dossier", group: "Pilotage" },
   { id: "history", label: "Historique emails", group: "Pilotage" },
   { id: "audit", label: "Journal d'audit", group: "Pilotage" },
   { id: "cms", label: "Contenu du site (CMS)", group: "Site web" },

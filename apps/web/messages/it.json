@@ -186,6 +186,26 @@
     "row5Label": "Pratiche finanziate",
     "row5Value": "350+"
   },
+  "Tracking": {
+    "title": "Monitoraggio della tua pratica",
+    "subtitle": "Inserisci il tuo numero di riferimento per vedere l'avanzamento in tempo reale.",
+    "inputLabel": "Il tuo numero di riferimento",
+    "submitButton": "Vedi avanzamento",
+    "hint": "Numero dalla tua email di conferma (formato KREDIX-XXXXXXXX).",
+    "notFound": "Riferimento non trovato. Verifica il tuo numero di riferimento.",
+    "invalid": "Formato non valido. Formato atteso: KREDIX-XXXXXXXX.",
+    "rateLimited": "Troppi tentativi. Attendi un minuto.",
+    "genericError": "Si è verificato un errore. Riprova.",
+    "loading": "Ricerca della tua pratica...",
+    "yourReference": "Il tuo riferimento",
+    "newSearch": "Nuova ricerca",
+    "statusLabel": "Stato della pratica",
+    "advisorLabel": "Consulente",
+    "stepsDone": "passaggi completati",
+    "validatedOn": "Convalidata il",
+    "by": "da",
+    "noSteps": "Nessuna fase di monitoraggio ancora disponibile per la tua pratica."
+  },
   "Footer": {
     "description": "Mediatore di finanziamenti. Confrontiamo 40 banche per ottenerti le migliori condizioni di credito, gratis e senza impegno.",
     "col1Title": "Servizi",

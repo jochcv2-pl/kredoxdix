@@ -186,6 +186,26 @@
     "row5Label": "Expedientes financiados",
     "row5Value": "350+"
   },
+  "Tracking": {
+    "title": "Seguimiento de su expediente",
+    "subtitle": "Introduzca su número de referencia para ver el progreso en tiempo real.",
+    "inputLabel": "Su número de referencia",
+    "submitButton": "Ver progreso",
+    "hint": "Número de su email de confirmación (formato KREDIX-XXXXXXXX).",
+    "notFound": "Referencia no encontrada. Verifique su número de referencia.",
+    "invalid": "Formato inválido. Formato esperado: KREDIX-XXXXXXXX.",
+    "rateLimited": "Demasiados intentos. Espere un minuto.",
+    "genericError": "Se produjo un error. Inténtelo de nuevo.",
+    "loading": "Buscando su expediente...",
+    "yourReference": "Su referencia",
+    "newSearch": "Nueva búsqueda",
+    "statusLabel": "Estado del expediente",
+    "advisorLabel": "Asesor",
+    "stepsDone": "pasos completados",
+    "validatedOn": "Validado el",
+    "by": "por",
+    "noSteps": "Aún no hay pasos de seguimiento disponibles para su expediente."
+  },
   "Footer": {
     "description": "Intermediario de financiación. Comparamos 40 bancos para conseguirte las mejores condiciones de crédito, gratis y sin compromiso.",
     "col1Title": "Servicios",

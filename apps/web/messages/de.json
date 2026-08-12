@@ -186,6 +186,26 @@
     "row5Label": "Finanzierte Dossiers",
     "row5Value": "350+"
   },
+  "Tracking": {
+    "title": "Antragsverfolgung",
+    "subtitle": "Geben Sie Ihre Referenznummer ein, um den aktuellen Stand zu sehen.",
+    "inputLabel": "Ihre Referenznummer",
+    "submitButton": "Stand anzeigen",
+    "hint": "Nummer aus Ihrer Bestätigungs-E-Mail (Format KREDIX-XXXXXXXX).",
+    "notFound": "Referenz nicht gefunden. Bitte überprüfen Sie Ihre Referenznummer.",
+    "invalid": "Ungültiges Format. Erwartetes Format: KREDIX-XXXXXXXX.",
+    "rateLimited": "Zu viele Versuche. Bitte warten Sie eine Minute.",
+    "genericError": "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.",
+    "loading": "Suche nach Ihrem Vorgang...",
+    "yourReference": "Ihre Referenz",
+    "newSearch": "Neue Suche",
+    "statusLabel": "Vorgangsstatus",
+    "advisorLabel": "Berater",
+    "stepsDone": "Schritte abgeschlossen",
+    "validatedOn": "Bestätigt am",
+    "by": "von",
+    "noSteps": "Für Ihren Vorgang sind noch keine Verfolgungsschritte verfügbar."
+  },
   "Footer": {
     "description": "Finanzierungsmakler. Wir vergleichen 40 Banken, um Ihnen die besten Kreditkonditionen zu sichern – kostenlos und unverbindlich.",
     "col1Title": "Leistungen",

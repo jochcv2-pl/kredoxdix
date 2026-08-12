@@ -12,7 +12,7 @@
 
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { prisma, LeadStatus, assignLeadToAdmin } from '@kredix/db'
+import { prisma, LeadStatus, assignLeadToAdmin, POPULATE_LEAD_REFERENCES_SQL } from '@kredix/db'
 import { successResponse, errorResponse, ERR, parseBody } from '@/app/api/_lib/responses'
 import { requireAuth } from '../../_lib/auth-server'
 import { getLeadScope } from '../../_lib/scope'
@@ -114,6 +114,11 @@ export async function POST(req: NextRequest) {
       })),
       skipDuplicates: true,
     })
+
+    // s44 — Populate référence publique pour les leads nouvellement créés.
+    // createMany ne permet pas de calculer reference à la volée (dépend de l'id
+    // généré par Prisma). On le fait en un seul UPDATE SQL batch.
+    await prisma.$executeRawUnsafe(POPULATE_LEAD_REFERENCES_SQL)
 
     // DEC-K5 — routing automatique des leads importés (mêmes règles que le site web).
     const importEmails = newLeads.map((l) => l.email?.trim()).filter(Boolean) as string[]
