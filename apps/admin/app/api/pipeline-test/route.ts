@@ -48,6 +48,7 @@ const STEPS_WITH_PDF = new Set(['offer', 'relance_1', 'relance_2']);
 
 const TEST_LEAD: InterpolationContext['lead'] = {
   id: 'test-pipeline-0001',
+  reference: 'KREDIX-TEST0001',
   firstName: 'Jean',
   lastName: 'Dupont',
   email: 'test@kredix.fr',

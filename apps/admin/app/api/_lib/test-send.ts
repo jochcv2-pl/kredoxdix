@@ -26,6 +26,7 @@ import {
 /** Données de test réalistes pour l'interpolation des variables {{...}}. */
 const TEST_LEAD: InterpolationContext['lead'] = {
   id: 'test-lead-0001',
+  reference: 'KREDIX-TEST0001',
   firstName: 'Jean',
   lastName: 'Dupont',
   email: 'test@kredix.fr',

@@ -66,6 +66,7 @@ export interface InterpolationContext {
     | 'loanType'
     | 'companyName'
     | 'id'
+    | 'reference'
     | 'createdAt'
     | 'offerSentAt'
     | 'unsubscribeToken'
