@@ -6,6 +6,7 @@
     "services": "I nostri servizi",
     "howItWorks": "Come funziona",
     "contact": "Contattaci",
+    "suivi": "Monitoraggio",
     "cta": "Simula il mio prestito"
   },
   "Hero": {
@@ -217,6 +218,8 @@
     "col2Link1": "Come funziona",
     "col2Link2": "Simulatore",
     "col2Link3": "Contattaci",
+    "col3Title": "La mia pratica",
+    "col3Link1": "Monitora la mia pratica",
     "legal": "Kredix · Intermediario in operazioni bancarie e di pagamento · ORIAS n° 00000000 · © 2026",
     "legalMentions": "Note Legali",
     "legalCgu": "Termini di Uso",

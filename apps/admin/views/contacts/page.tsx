@@ -43,6 +43,7 @@ const SOURCE_LABELS_REVERSE: Record<string, string> = Object.fromEntries(
 
 interface Contact {
   id: string
+  reference: string | null
   firstName: string
   lastName: string
   initials: string
@@ -71,6 +72,7 @@ interface Contact {
 
 interface ApiLead {
   id: string
+  reference: string | null
   firstName: string
   lastName: string
   email: string | null
@@ -133,6 +135,7 @@ function formatElapsed(min: number): string {
 function mapLeadToContact(lead: ApiLead): Contact {
   return {
     id: lead.id,
+    reference: lead.reference ?? null,
     firstName: lead.firstName,
     lastName: lead.lastName,
     initials: makeInitials(lead.firstName, lead.lastName),
@@ -1051,11 +1054,10 @@ export default function Contacts() {
               <thead>
                 <tr>
                   <th>Contact</th>
+                  <th>Référence</th>
                   <th>Montant</th>
-                  <th>Adresse</th>
-                  <th>Pays</th>
-                  <th>Source</th>
-                  <th>Reçu le</th>
+                  <th>Adresse et Pays</th>
+                  <th>Source et Reçu le</th>
                   <th>Assigné à</th>
                   <th>Suivi</th>
                   <th>Statut</th>
@@ -1081,6 +1083,15 @@ export default function Contacts() {
                         </div>
                       </td>
                       <td>
+                        {c.reference ? (
+                          <code style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--slate)', background: 'var(--slate-soft, #f1f5f9)', padding: '2px 6px', borderRadius: 4 }}>
+                            {c.reference}
+                          </code>
+                        ) : (
+                          <span style={{ color: 'var(--slate-light)', fontSize: 12 }}>—</span>
+                        )}
+                      </td>
+                      <td>
                         {c.amount && c.amount > 0
                           ? <span style={{ fontWeight: 500, fontSize: 12 }}>{c.amount.toLocaleString('fr-FR')} €{c.monthlyPayment ? <span style={{ fontSize: 11, color: 'var(--slate-light)', fontWeight: 400, marginLeft: 4 }}>({c.monthlyPayment.toLocaleString('fr-FR')} €/mois)</span> : ''}</span>
                           : <span style={{ color: 'var(--slate-light)', fontSize: 12 }}>—</span>
@@ -1088,10 +1099,14 @@ export default function Contacts() {
                       </td>
                       <td>
                         <span style={{ fontSize: 12 }}>{c.rue ? `${c.rue}, ` : ''}{c.codePostal ? `${c.codePostal} ` : ''}{c.ville}{c.rue || c.codePostal ? '' : '—'}</span>
+                        {c.pays && c.pays !== '—' && (
+                          <small style={{ display: 'block', fontSize: 11, color: 'var(--slate-light)', marginTop: 2 }}>{c.pays}</small>
+                        )}
                       </td>
-                      <td>{c.pays}</td>
-                      <td>{c.source}</td>
-                      <td>{c.recu}</td>
+                      <td>
+                        <div style={{ fontSize: 12 }}>{c.source}</div>
+                        <small style={{ color: 'var(--slate-light)', fontSize: 11 }}>{c.recu}</small>
+                      </td>
                       <td>
                         {c.assigneA ? (
                           <span

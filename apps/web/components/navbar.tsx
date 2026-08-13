@@ -52,6 +52,9 @@ export default function Navbar({ siteName = "Kredix", logoUrl }: { siteName?: st
           <a href="#contact" onClick={() => setOpen(false)}>
             {t("contact")}
           </a>
+          <Link href="/suivi" onClick={() => setOpen(false)}>
+            {t("suivi")}
+          </Link>
         </nav>
         <div className="nav-right">
           <LangSwitcher />

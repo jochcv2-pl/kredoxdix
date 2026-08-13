@@ -6,6 +6,7 @@
     "services": "Unsere Leistungen",
     "howItWorks": "So funktioniert es",
     "contact": "Kontakt",
+    "suivi": "Antragsverfolgung",
     "cta": "Kredit simulieren"
   },
   "Hero": {
@@ -217,6 +218,8 @@
     "col2Link1": "So funktioniert es",
     "col2Link2": "Rechner",
     "col2Link3": "Kontakt",
+    "col3Title": "Mein Vorgang",
+    "col3Link1": "Vorgang verfolgen",
     "legal": "Kredix · Vermittler für Bank- und Zahlungsdienste · ORIAS Nr. 00000000 · © 2026",
     "legalMentions": "Impressum",
     "legalCgu": "Nutzungsbedingungen",

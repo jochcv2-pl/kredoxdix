@@ -6,6 +6,7 @@
     "services": "Our services",
     "howItWorks": "How it works",
     "contact": "Contact us",
+    "suivi": "Track application",
     "cta": "Simulate my loan"
   },
   "Hero": {
@@ -217,6 +218,8 @@
     "col2Link1": "How it works",
     "col2Link2": "Simulator",
     "col2Link3": "Contact us",
+    "col3Title": "My application",
+    "col3Link1": "Track my application",
     "legal": "Kredix · Banking and payment services intermediary · ORIAS n° 00000000 · © 2026",
     "legalMentions": "Legal Notice",
     "legalCgu": "Terms of Use",

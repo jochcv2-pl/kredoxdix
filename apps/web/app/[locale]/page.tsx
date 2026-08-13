@@ -343,6 +343,10 @@ export default async function HomePage({
                 <a href="#simulateur">{tFooter("col2Link2")}</a>
                 <a href="#contact">{tFooter("col2Link3")}</a>
               </div>
+              <div className="footer-col">
+                <h4>{tFooter("col3Title")}</h4>
+                <a href={`/${locale}/suivi`}>{tFooter("col3Link1")}</a>
+              </div>
             </div>
           </div>
           <div className="footer-bottom">

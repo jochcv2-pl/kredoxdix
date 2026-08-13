@@ -6,6 +6,7 @@
     "services": "Os nossos serviços",
     "howItWorks": "Como funciona",
     "contact": "Contacte-nos",
+    "suivi": "Acompanhamento",
     "cta": "Simular o meu crédito"
   },
   "Hero": {
@@ -217,6 +218,8 @@
     "col2Link1": "Como funciona",
     "col2Link2": "Simulador",
     "col2Link3": "Contacte-nos",
+    "col3Title": "O meu processo",
+    "col3Link1": "Acompanhar o meu processo",
     "legal": "Kredix · Intermediário em operações bancárias e de pagamento · ORIAS n° 00000000 · © 2026",
     "legalMentions": "Aviso Legal",
     "legalCgu": "Termos de Uso",
