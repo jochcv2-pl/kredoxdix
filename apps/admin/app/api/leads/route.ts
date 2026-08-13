@@ -34,6 +34,7 @@ const VALID_STATUSES: ReadonlySet<string> = new Set([
 interface LeadListItem {
   id: string;
   reference: string | null;       // s44 — KREDIX-XXXXXXXX (page /suivi client)
+  source: string;                 // s44 — origine : "site" | "manual" | "csv"
   firstName: string;
   lastName: string;
   email: string | null;
@@ -122,6 +123,7 @@ export async function GET(req: NextRequest) {
     const data: LeadListItem[] = leads.map((l) => ({
       id: l.id,
       reference: l.reference,
+      source: l.source,
       firstName: l.firstName,
       lastName: l.lastName,
       email: l.email,
@@ -229,6 +231,7 @@ export async function POST(req: NextRequest) {
           preferredLanguage: data.preferredLanguage,
           notes: data.notes || null,
           status: LeadStatus.new,
+          source: 'manual',  // s44 — ajout manuel depuis le CRM
           // DEC-K5 — routing automatique après création (assignLeadToAdmin).
           ...seqDates,
         },

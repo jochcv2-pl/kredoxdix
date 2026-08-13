@@ -109,6 +109,7 @@ export async function POST(req: NextRequest) {
         preferredLanguage: l.preferredLanguage || 'fr',
         companyName: l.companyName?.trim() || null,
         status: LeadStatus.new,
+        source: 'csv',  // s44 — import CSV
         sequenceActive: false,
         assignedToId: null,
       })),

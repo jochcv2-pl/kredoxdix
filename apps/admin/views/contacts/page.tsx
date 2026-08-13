@@ -41,6 +41,15 @@ const SOURCE_LABELS_REVERSE: Record<string, string> = Object.fromEntries(
   Object.entries(SOURCE_LABELS).map(([k, v]) => [v, k])
 )
 
+// s44 — Labels pour la source du lead (champ Lead.source).
+// Distinct de SOURCE_LABELS (qui mappe les codes pays).
+const LEAD_SOURCE_LABELS: Record<string, string> = {
+  site: 'Site',
+  manual: 'Ajout manuel',
+  csv: 'Import CSV',
+  api: 'API',
+}
+
 interface Contact {
   id: string
   reference: string | null
@@ -73,6 +82,7 @@ interface Contact {
 interface ApiLead {
   id: string
   reference: string | null
+  source: string
   firstName: string
   lastName: string
   email: string | null
@@ -136,6 +146,7 @@ function mapLeadToContact(lead: ApiLead): Contact {
   return {
     id: lead.id,
     reference: lead.reference ?? null,
+    source: LEAD_SOURCE_LABELS[lead.source] ?? lead.source ?? 'Site',
     firstName: lead.firstName,
     lastName: lead.lastName,
     initials: makeInitials(lead.firstName, lead.lastName),
@@ -145,7 +156,6 @@ function mapLeadToContact(lead: ApiLead): Contact {
     rue: lead.street || '',
     codePostal: lead.zipCode || '',
     pays: SOURCE_LABELS[lead.country] ?? lead.country ?? '—',
-    source: 'Formulaire site',
     recu: formatDateRecu(lead.createdAt),
     elapsedMin: calcElapsedMin(lead.createdAt),
     ackSent: !!lead.ackSentAt,
@@ -1058,9 +1068,8 @@ export default function Contacts() {
                   <th>Montant</th>
                   <th>Adresse et Pays</th>
                   <th>Source et Reçu le</th>
-                  <th>Assigné à</th>
+                  <th>Assigné à / Statut</th>
                   <th>Suivi</th>
-                  <th>Statut</th>
                   <th style={{ textAlign: 'right' }}>Action</th>
                 </tr>
               </thead>
@@ -1108,23 +1117,31 @@ export default function Contacts() {
                         <small style={{ color: 'var(--slate-light)', fontSize: 11 }}>{c.recu}</small>
                       </td>
                       <td>
-                        {c.assigneA ? (
-                          <span
-                            className={`badge ${c.assigneRole === 'admin' ? 'b-progress' : 'b-contacted'}`}
-                            title={c.assigneRole === 'admin' ? 'Super-admin' : c.assigneRole === 'advisor' ? 'Conseiller' : c.assigneRole ?? ''}
-                          >
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          {c.assigneA ? (
+                            <span
+                              className={`badge ${c.assigneRole === 'admin' ? 'b-progress' : 'b-contacted'}`}
+                              style={{ fontSize: 10 }}
+                              title={c.assigneRole === 'admin' ? 'Super-admin' : c.assigneRole === 'advisor' ? 'Conseiller' : c.assigneRole ?? ''}
+                            >
+                              <span className="badge-dot"></span>
+                              {c.assigneA}
+                            </span>
+                          ) : (
+                            <span
+                              className="badge b-wait"
+                              style={{ fontSize: 10 }}
+                              title="Aucun conseiller assigné — SMTP système utilisé par défaut"
+                            >
+                              <span className="badge-dot"></span>
+                              Non assigné
+                            </span>
+                          )}
+                          <span className={`badge ${cfg.class}`}>
                             <span className="badge-dot"></span>
-                            {c.assigneA}
+                            {cfg.label}
                           </span>
-                        ) : (
-                          <span
-                            className="badge b-wait"
-                            title="Aucun conseiller assigné — SMTP système utilisé par défaut"
-                          >
-                            <span className="badge-dot"></span>
-                            Non assigné
-                          </span>
-                        )}
+                        </div>
                       </td>
                       <td>
                         <div className="suivi-cell">
@@ -1139,12 +1156,6 @@ export default function Contacts() {
                             {c.relanceCount > 0 ? `${c.relanceCount}/3 relances` : '0/3 relance'}
                           </span>
                         </div>
-                      </td>
-                      <td className="st">
-                        <span className={`badge ${cfg.class}`}>
-                          <span className="badge-dot"></span>
-                          {cfg.label}
-                        </span>
                       </td>
                       <td style={{ textAlign: 'right' }}>
                         <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end', alignItems: 'center' }}>
@@ -1264,8 +1275,9 @@ export default function Contacts() {
           <label>Source</label>
           <select>
             <option>Toutes les sources</option>
-            <option>Formulaire site</option>
-            <option>WhatsApp</option>
+            <option>Site</option>
+            <option>Ajout manuel</option>
+            <option>Import CSV</option>
           </select>
         </div>
         <div className="modal-fg">

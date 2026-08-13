@@ -158,6 +158,10 @@ model Lead {
   whatsappConsent   Boolean    @default(false) // consentement RGPD explicite
   notes             String?    // notes internes conseillers
 
+  // s44 — Source du lead pour distinguer l'origine dans le CRM.
+  // "site" = formulaire public (défaut), "manual" = ajout admin, "csv" = import.
+  source            String     @default("site")
+
   // Relation optionnelle : un lead peut ne pas encore être assigné.
   // onDelete: SetNull — si le conseiller est supprimé, le lead revient à
   // "non assigné" (au lieu d'une erreur FK). Le routing/cron peut le réassigner.
