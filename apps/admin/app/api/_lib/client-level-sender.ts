@@ -72,6 +72,7 @@ export async function sendClientLevelEmail(
     where: { id: leadId },
     select: {
       id: true,
+      reference: true,
       firstName: true,
       lastName: true,
       email: true,
@@ -154,6 +155,7 @@ export async function sendClientLevelEmail(
   // 6 — Interpolation sujet + corps (avec variables marque injectées).
   const leadData = {
     id: lead.id,
+    reference: lead.reference,
     firstName: lead.firstName,
     lastName: lead.lastName,
     email: lead.email,

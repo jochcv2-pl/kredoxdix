@@ -330,11 +330,9 @@ function ConfigTab({ steps, loading, reload }: {
       )}
 
       <Modal
-        open={creating}
+        isOpen={creating}
         onClose={closeModal}
         title={editing ? `Éditer « ${editing.name} »` : 'Nouvelle étape de suivi'}
-        primaryLabel={saving ? 'Enregistrement…' : 'Enregistrer'}
-        onPrimary={save}
       >
         <label style={{ display: 'block', marginBottom: 12 }}>
           <span style={{ fontSize: 13, fontWeight: 600 }}>Nom de l&apos;étape *</span>
@@ -377,10 +375,22 @@ function ConfigTab({ steps, loading, reload }: {
           />
           <span style={{ fontSize: 14 }}>Étape active (visible côté client)</span>
         </label>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
+          <button type="button" className="sd-icon-btn" onClick={closeModal}>Annuler</button>
+          <button
+            type="button"
+            className="sd-icon-btn"
+            style={{ background: '#eff6ff', color: '#2563eb', borderColor: '#bfdbfe', fontWeight: 600 }}
+            onClick={save}
+            disabled={saving || !form.name.trim()}
+          >
+            {saving ? 'Enregistrement…' : 'Enregistrer'}
+          </button>
+        </div>
       </Modal>
 
       <ConfirmDialog
-        open={!!deleteTarget}
+        isOpen={!!deleteTarget}
         title="Supprimer cette étape ?"
         message={
           <>
@@ -531,15 +541,13 @@ function TrackingTab({ steps, loadingSteps }: {
       )}
 
       <Modal
-        open={!!selectedLead}
+        isOpen={!!selectedLead}
         onClose={() => setSelectedLead(null)}
         title={
           selectedLead
             ? `Suivi — ${selectedLead.firstName} ${selectedLead.lastName} (${selectedLead.reference ?? '—'})`
             : ''
         }
-        primaryLabel="Fermer"
-        onPrimary={() => setSelectedLead(null)}
       >
         {loadingDetail ? (
           <p>Chargement de l&apos;avancement…</p>

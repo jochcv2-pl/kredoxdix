@@ -146,6 +146,7 @@ export async function POST(req: NextRequest) {
       take: Math.min(remainingToday, 50), // max 50 par run + respecte le plafond journalier restant
       select: {
         id: true,
+        reference: true,
         email: true,
         firstName: true,
         lastName: true,

@@ -247,6 +247,7 @@ export async function processCampaign(campaignId: string): Promise<void> {
       const ctx = {
         lead: {
           id: recipient.leadId ?? recipient.id,
+          reference: null,  // s44 — campagne = recipients hors lead formel, fallback template.ts calcule depuis id
           firstName: recipient.firstName ?? '',
           lastName: recipient.lastName ?? '',
           email: recipient.email,
