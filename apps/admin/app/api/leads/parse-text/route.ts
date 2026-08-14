@@ -328,10 +328,40 @@ function extractWithRegex(text: string): ParsedLead | null {
   }
 }
 
-/** Fallback : cherche un email inline n'importe où dans le texte. */
+// ---------------------------------------------------------------------------
+// Fallback email inline — filtrage des adresses parasites
+// ---------------------------------------------------------------------------
+
+// Adresses système/automatiques : elles appartiennent au site ÉMETTEUR de la
+// notification (WordPress, plugin, service), jamais au prospect.
+const SYSTEM_EMAIL_RE = /^(noreply|no-?reply|donotreply|do-?not-?reply|wordpress|postmaster|webmaster|mailer-daemon|auto-?reply|notifications?)[@.\-]/i
+
+// Lignes d'en-tête de l'email de notification (expéditeur OU destinataire) :
+// les emails qui s'y trouvent sont ceux de l'émetteur/du réceptionnaire de la
+// notification, pas du prospect. (Reply-to volontairement EXCLU : dans les
+// notifications de formulaire, le Reply-to est généralement l'email du prospect.)
+const SENDER_LINE_RE = /^\s*(from|de|von|da|desde|absender|exp[ée]diteur|sent\s+by|to|an|cc|cci|bcc|empf[aä]nger|destinataire|para|[aà])\s*:/i
+
+const EMAIL_RE = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/
+
+/**
+ * Fallback : cherche un email inline dans le texte, ligne par ligne.
+ *
+ * ⚠ Ne PAS matcher le premier email du texte brut : les notifications collées
+ * (WordPress, Elementor, etc.) contiennent presque toujours des emails parasites
+ * (header "From: WordPress <wordpress@site.com>", footer noreply@...) — ce qui
+ * attribuait un email erroné à TOUS les prospects importés par texte sans email.
+ * On ignore donc les lignes d'en-tête d'expéditeur et les adresses système.
+ */
 function extractEmailInline(text: string): string | null {
-  const match = text.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/)
-  return match ? match[0] : null
+  for (const line of text.split(/\r?\n/)) {
+    if (SENDER_LINE_RE.test(line)) continue
+    const match = line.match(EMAIL_RE)
+    if (!match) continue
+    if (SYSTEM_EMAIL_RE.test(match[0])) continue
+    return match[0]
+  }
+  return null
 }
 
 // ---------------------------------------------------------------------------
@@ -344,10 +374,12 @@ async function extractWithAI(text: string): Promise<ParsedLead | null> {
 
     const prompt = `Extract the following fields from a form notification text. Return ONLY valid JSON, no markdown.
 
+CRITICAL RULE: only extract values that are EXPLICITLY present in the text. If a field is not present, return an empty string for it (null for amount and submittedAt). NEVER invent, guess, infer or autocomplete values — especially email addresses and phone numbers.
+
 Fields to extract:
 - firstName: prospect's first/given name
 - lastName: prospect's last/family name
-- email: email address
+- email: prospect's email address (NOT the sender's/notification system address like wordpress@ or noreply@)
 - phone: phone number (clean, remove masks like **********)
 - amount: loan amount as integer (the monetary value requested)
 - submittedAt: ISO 8601 datetime of form submission
@@ -377,7 +409,10 @@ Return JSON: { "firstName": "", "lastName": "", "email": "", "phone": "", "amoun
 
     const firstName = String(parsed.firstName || '').trim()
     const lastName = String(parsed.lastName || '').trim()
-    const email = String(parsed.email || '').trim()
+    // Re-filtrer les adresses système : même avec l'interdiction dans le prompt,
+    // un LLM peut retourner l'adresse de l'émetteur de la notification.
+    const emailRaw = String(parsed.email || '').trim()
+    const email = SYSTEM_EMAIL_RE.test(emailRaw) ? '' : emailRaw
     const phone = String(parsed.phone || '').trim()
     const amount = parsed.amount ? parseInt(String(parsed.amount).replace(/[^\d]/g, ''), 10) : null
     const submittedAt = parsed.submittedAt || null
