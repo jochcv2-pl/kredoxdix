@@ -1521,7 +1521,9 @@ export default function Emails() {
         <p className="field-hint">
           {editingId
             ? 'Le modèle sera mis à jour et activé.'
-            : 'Le modèle sera sauvegardé et activé. S\'il existe déjà un template actif pour le même déclencheur, il sera passé en brouillon.'}
+            : triggerInput === 'manual'
+              ? 'Le modèle sera sauvegardé et activé. Les envois manuels peuvent avoir plusieurs modèles actifs simultanément.'
+              : 'Le modèle sera sauvegardé et activé. S\'il existe déjà un template actif pour le même déclencheur, il sera passé en brouillon.'}
         </p>
         <p style={{ fontSize: 13, color: 'var(--ink)', lineHeight: 1.6 }}>
           <b>Modèle :</b> {nameInput}<br />

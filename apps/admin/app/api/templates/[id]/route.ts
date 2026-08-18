@@ -70,7 +70,10 @@ export async function PATCH(
     // Mise à jour + désactivation des autres actifs pour ce trigger + langue (transaction).
     // Pas de conflict check : si on active ce template, les autres du même trigger+langue
     // sont automatiquement passés en draft.
-    const activating = data.status === 'active';
+    // EXCEPTION trigger 'manual' (voir POST /api/templates) : plusieurs modèles
+    // manuels actifs simultanément sont légitimes (bibliothèque d'envois ponctuels).
+    // NB : le PATCH ne permet pas de changer le trigger — existing.trigger fait foi.
+    const activating = data.status === 'active' && existing.trigger !== 'manual';
     const template = await prisma.$transaction(async (tx) => {
       if (activating) {
         await tx.emailTemplate.updateMany({

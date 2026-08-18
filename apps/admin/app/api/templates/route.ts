@@ -41,6 +41,9 @@ export async function GET() {
 // POST /api/templates — crée un template.
 // Si le statut est 'active', les autres templates actifs du même trigger+langue
 // sont automatiquement passés en 'draft' (transaction ci-dessous).
+// EXCEPTION trigger 'manual' : l'envoi manuel choisit toujours explicitement
+// le modèle (envoi ponctuel, campagne) — aucun findFirst automatique ne le
+// consomme. Une bibliothèque de modèles manuels actifs est donc légitime.
 export async function POST(req: NextRequest) {
   const [, deny] = await requireAdmin();
   if (deny) return deny;
@@ -48,9 +51,8 @@ export async function POST(req: NextRequest) {
     const [data, error] = await parseBody(req, createTemplateSchema);
     if (error) return error;
 
-    // Création + désactivation des autres actifs pour ce trigger + langue (transaction).
     const template = await prisma.$transaction(async (tx) => {
-      if (data.status === 'active') {
+      if (data.status === 'active' && data.trigger !== EmailTrigger.manual) {
         await tx.emailTemplate.updateMany({
           where: { trigger: data.trigger, status: 'active', language: data.language },
           data: { status: 'draft' },
