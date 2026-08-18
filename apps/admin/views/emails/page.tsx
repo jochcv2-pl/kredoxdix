@@ -243,6 +243,10 @@ export default function Emails() {
   const [adhocSubject, setAdhocSubject] = useState('');
   const [adhocBody, setAdhocBody] = useState('');
   const [adhocIsHtml, setAdhocIsHtml] = useState(false);
+  // Étape 2 — bascule Source / Aperçu + édition WYSIWYG dans l'iframe.
+  const [adhocView, setAdhocView] = useState<'source' | 'preview'>('source');
+  const [adhocInlineEditing, setAdhocInlineEditing] = useState(false);
+  const adhocIframeRef = useRef<HTMLIFrameElement>(null);
   const [adhocSending, setAdhocSending] = useState(false);
   const [adhocResult, setAdhocResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
@@ -753,7 +757,11 @@ export default function Emails() {
     // Pré-remplit le contenu éditable depuis le modèle (étape 2).
     setAdhocSubject(tpl.subject);
     setAdhocBody(tpl.htmlContent ?? tpl.bodyText);
-    setAdhocIsHtml(!!tpl.htmlContent);
+    const isHtml = !!tpl.htmlContent;
+    setAdhocIsHtml(isHtml);
+    // Modèle HTML → aperçu rendu par défaut ; modèle texte → source.
+    setAdhocView(isHtml ? 'preview' : 'source');
+    setAdhocInlineEditing(false);
   };
 
   const handleAdhocSend = async () => {
@@ -787,6 +795,91 @@ export default function Emails() {
       setAdhocSending(false);
     }
   };
+
+  // --- Étape 2 : aperçu rendu + édition WYSIWYG (pattern du mode import) ---
+  // Les variables sont interpolées avec les informations de l'étape 1
+  // (destinataire, prénom, nom, message) — fallbacks d'exemple pour le reste.
+
+  /** Échappe le texte brut pour affichage HTML sûr dans l'iframe. */
+  function escapeHtmlText(s: string): string {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  /** Map variables → valeurs, basée sur SAMPLE puis surchargée par l'étape 1. */
+  function buildAdhocPreviewVars(): Record<string, string> {
+    const prenom = adhocFirstName.trim() || SAMPLE['{{Prénom}}'];
+    const nom = adhocLastName.trim() || SAMPLE['{{Nom}}'];
+    const email = adhocTo.trim() || 'destinataire@exemple.com';
+    const message = adhocMessage.trim() || '(message non renseigné)';
+    return {
+      ...SAMPLE,
+      // Champs de l'étape 1 (PascalCase + snake_case)
+      '{{Prénom}}': prenom, '{{Nom}}': nom, '{{Email}}': email, '{{Message}}': message,
+      '{{prenom}}': prenom, '{{nom}}': nom,
+      // Variables snake_case courantes (valeurs d'exemple / neutres)
+      '{{nom_entreprise}}': 'Entreprise SAS',
+      '{{reference_demande}}': 'KREDIX-XXXXXXXX',
+      '{{date_soumission}}': new Date().toLocaleDateString('fr-FR'),
+      '{{date_envoi_offre}}': new Date().toLocaleDateString('fr-FR'),
+      '{{date_expiration_offre}}': new Date(Date.now() + 14 * 864e5).toLocaleDateString('fr-FR'),
+      '{{type_pret}}': 'immobilier', '{{montant_pret}}': '210 000 €',
+      '{{prenom_conseiller}}': 'Marie', '{{nom_conseiller}}': 'Lefèvre',
+      '{{nom_complet_conseiller}}': 'Marie Lefèvre',
+      '{{initiales_conseiller}}': 'ML',
+      '{{telephone_conseiller}}': '01 23 45 67 89',
+      '{{email_conseiller}}': 'contact@kredix.fr',
+      '{{adresse_siege}}': '12 rue de la Finance, 75001 Paris',
+      '{{lien_desabonnement}}': 'https://kredix.fr/api/unsubscribe?t=…',
+      '{{lien_suivi}}': 'https://kredix.fr/fr/suivi?ref=KREDIX-XXXXXXXX&token=…',
+      '{{url_formulaire}}': 'https://kredix.fr/fr#demande',
+      '{{url_messenger}}': 'https://m.me/kredix',
+    };
+  }
+
+  /** Document iframe de l'aperçu : variables interpolées + wrapper fidèle. */
+  const adhocPreviewDoc = (() => {
+    if (!adhocBody.trim()) return '';
+    const vars = buildAdhocPreviewVars();
+    const interpolated = Object.keys(vars).reduce(
+      (acc, v) => acc.split(v).join(vars[v]),
+      adhocBody,
+    );
+    if (adhocIsHtml) return buildPreviewDoc(interpolated);
+    // Modèle texte : échappement + sauts de ligne (rendu fidèle textToHtml).
+    return buildPreviewDoc(escapeHtmlText(interpolated).replace(/\n/g, '<br>'));
+  })();
+
+  /** Active l'édition directe dans l'iframe (designMode) — HTML uniquement. */
+  function startAdhocInlineEditing() {
+    if (!adhocBody.trim()) return;
+    setAdhocInlineEditing(true);
+    requestAnimationFrame(() => {
+      const iframe = adhocIframeRef.current;
+      if (iframe?.contentDocument) {
+        iframe.contentDocument.designMode = 'on';
+        iframe.contentWindow?.focus();
+      }
+    });
+  }
+
+  /** Récupère le document édité → adhocBody (les {{variables}} restent intactes). */
+  function applyAdhocInlineEdits() {
+    const doc = adhocIframeRef.current?.contentDocument;
+    if (!doc) {
+      setAdhocInlineEditing(false);
+      return;
+    }
+    const edited = normalizeVars(doc.documentElement.outerHTML);
+    setAdhocBody(edited);
+    doc.designMode = 'off';
+    setAdhocInlineEditing(false);
+  }
+
+  function cancelAdhocInlineEditing() {
+    const doc = adhocIframeRef.current?.contentDocument;
+    if (doc) doc.designMode = 'off';
+    setAdhocInlineEditing(false);
+  }
 
   const handleTestSend = async () => {
     if (!testTarget || !testEmail.trim()) return;
@@ -1612,18 +1705,92 @@ export default function Emails() {
                 />
               </div>
               <div className="test-send-field">
-                <label>
-                  {adhocIsHtml ? 'Contenu HTML' : 'Contenu texte'}
-                  <span className="field-hint" style={{ marginLeft: 6 }}>
-                    (variables {'{{...}}'} interpolées à l&apos;envoi)
-                  </span>
-                </label>
-                <textarea
-                  className={adhocIsHtml ? 'adhoc-editor-html' : ''}
-                  value={adhocBody}
-                  onChange={(e) => setAdhocBody(e.target.value)}
-                  rows={12}
-                />
+                <div className="adhoc-field-head">
+                  <label>
+                    {adhocIsHtml ? 'Contenu HTML' : 'Contenu texte'}
+                    <span className="field-hint" style={{ marginLeft: 6 }}>
+                      (variables {'{{...}}'} interpolées à l&apos;envoi)
+                    </span>
+                  </label>
+                  <div className="adhoc-view-toggle">
+                    <span
+                      className={adhocView === 'source' ? 'active' : ''}
+                      onClick={() => { if (!adhocInlineEditing) setAdhocView('source'); }}
+                    >
+                      Source
+                    </span>
+                    <span
+                      className={adhocView === 'preview' ? 'active' : ''}
+                      onClick={() => { if (!adhocInlineEditing) setAdhocView('preview'); }}
+                    >
+                      Aperçu
+                    </span>
+                  </div>
+                </div>
+
+                {adhocView === 'source' ? (
+                  <textarea
+                    className={adhocIsHtml ? 'adhoc-editor-html' : ''}
+                    value={adhocBody}
+                    onChange={(e) => setAdhocBody(e.target.value)}
+                    rows={12}
+                  />
+                ) : (
+                  <div className="adhoc-preview-wrap">
+                    <div className="adhoc-preview-toolbar">
+                      {adhocInlineEditing ? (
+                        <>
+                          <span className="adhoc-preview-hint">
+                            ✏️ Cliquez sur le texte dans l&apos;aperçu pour le modifier.
+                            Les variables {'{{...}}'} restent intactes.
+                          </span>
+                          <button className="btn btn-ghost btn-sm" onClick={cancelAdhocInlineEditing}>
+                            Annuler
+                          </button>
+                          <button className="btn btn-primary btn-sm" onClick={applyAdhocInlineEdits}>
+                            Appliquer
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <span className="adhoc-preview-hint">
+                            Aperçu avec les informations de l&apos;étape 1 (valeurs d&apos;exemple pour le reste).
+                          </span>
+                          {adhocIsHtml && (
+                            <button
+                              className="btn btn-ghost btn-sm"
+                              onClick={startAdhocInlineEditing}
+                              title="Modifier le contenu directement dans l'aperçu"
+                            >
+                              <Icon name="pencil" size={14} />
+                              Modifier dans l&apos;aperçu
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                    {adhocPreviewDoc ? (
+                      <iframe
+                        ref={adhocIframeRef}
+                        srcDoc={adhocInlineEditing ? adhocBody : adhocPreviewDoc}
+                        title="Aperçu de l'email"
+                        className="adhoc-preview-iframe"
+                        onLoad={() => {
+                          // designMode après chargement si l'édition vient d'être activée.
+                          if (adhocInlineEditing) {
+                            const iframe = adhocIframeRef.current;
+                            if (iframe?.contentDocument) {
+                              iframe.contentDocument.designMode = 'on';
+                              iframe.contentWindow?.focus();
+                            }
+                          }
+                        }}
+                      />
+                    ) : (
+                      <div className="adhoc-preview-empty">Contenu vide.</div>
+                    )}
+                  </div>
+                )}
               </div>
               {adhocResult && (
                 <div className={`test-send-result ${adhocResult.ok ? 'ok' : 'err'}`}>
