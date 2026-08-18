@@ -16,6 +16,7 @@ const previewSchema = z.object({
     'validated_week',
     'manual',
     'all_active',
+    'lost_leads',
     'import_file',
   ]),
   leadIds: z.array(z.string()).optional(),
@@ -49,6 +50,12 @@ function buildRecipientWhere(source: string, leadIds: string[] | undefined) {
     case 'all_active':
       return {
         status: { notIn: [LeadStatus.lost, LeadStatus.client] },
+        email: { not: null },
+      };
+    case 'lost_leads':
+      // Win-back : prospects perdus avec email (miroir de /api/campaigns).
+      return {
+        status: LeadStatus.lost,
         email: { not: null },
       };
     case 'manual':

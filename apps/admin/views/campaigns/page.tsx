@@ -11,7 +11,7 @@ import { Icon } from '@/components/Icon'
 
 type CampaignStatus = 'draft' | 'sending' | 'completed' | 'cancelled' | 'failed'
 
-type RecipientSource = 'validated_today' | 'validated_week' | 'manual' | 'all_active' | 'import_file'
+type RecipientSource = 'validated_today' | 'validated_week' | 'manual' | 'all_active' | 'lost_leads' | 'import_file'
 
 interface Template {
   id: string
@@ -70,6 +70,7 @@ const SOURCE_LABELS: Record<RecipientSource, string> = {
   validated_today: 'Prospects validés aujourd\'hui',
   validated_week: 'Prospects validés cette semaine',
   all_active: 'Tous les prospects actifs',
+  lost_leads: 'Prospects perdus (relance)',
   manual: 'Sélection manuelle',
   import_file: 'Importer un fichier (.csv)',
 }
@@ -1210,6 +1211,7 @@ export default function Campaigns({ onNavigate }: { onNavigate?: (view: string) 
                         src === 'validated_today' ? 'check-circle' :
                         src === 'validated_week' ? 'calendar' :
                         src === 'all_active' ? 'users' :
+                        src === 'lost_leads' ? 'refresh-cw' :
                         src === 'import_file' ? 'download' : 'user-plus'
                       } size={18} />
                     </div>

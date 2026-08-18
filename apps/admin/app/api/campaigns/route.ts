@@ -15,6 +15,7 @@ const recipientSourceSchema = z.enum([
   'validated_week',
   'manual',
   'all_active',
+  'lost_leads', // win-back : prospects perdus (relance commerciale)
   'import_file',
 ]);
 
@@ -70,6 +71,14 @@ function buildRecipientWhere(source: string, leadIds: string[] | undefined) {
       // Leads non terminaux (ni perdus ni clients) avec email.
       return {
         status: { notIn: [LeadStatus.lost, LeadStatus.client] },
+        email: { not: null },
+      };
+    case 'lost_leads':
+      // Win-back : leads marqués perdus (fin de séquence ou décision admin)
+      // avec email. La SuppressionList (désabonnés) est exclue à l'envoi par
+      // le campaign-sender, comme pour toute campagne.
+      return {
+        status: LeadStatus.lost,
         email: { not: null },
       };
     case 'manual':
