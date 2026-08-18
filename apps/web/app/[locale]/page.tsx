@@ -93,6 +93,9 @@ export default async function HomePage({
 
   // Note sous les boutons sociaux — override CMS par langue, fallback i18n.
   const socialNote = settings[`cms_social_note_${locale}`] || "";
+  // Libellés des boutons sociaux — override CMS par langue, fallback i18n.
+  const whatsappLabel = settings[`cms_social_wa_label_${locale}`] || "";
+  const messengerLabel = settings[`cms_social_ms_label_${locale}`] || "";
 
   return (
     <>
@@ -211,6 +214,8 @@ export default async function HomePage({
         rates={rates}
         whatsappNumber={whatsapp}
         socialNote={socialNote}
+        whatsappLabel={whatsappLabel}
+        messengerLabel={messengerLabel}
         showWhatsapp={showWhatsapp}
         showMessenger={showMessenger}
       />

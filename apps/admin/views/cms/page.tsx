@@ -35,6 +35,9 @@ const KEYS = {
   activeLanguages: 'cms_active_languages',
   // Formulaire public — note sous les boutons sociaux (une clé par langue).
   socialNote: (code: string) => `cms_social_note_${code}`,
+  // Formulaire public — libellés des boutons sociaux (une clé par langue).
+  waLabel: (code: string) => `cms_social_wa_label_${code}`,
+  msLabel: (code: string) => `cms_social_ms_label_${code}`,
   waVisible: 'social_whatsapp_visible',
   msVisible: 'social_messenger_visible',
 } as const
@@ -47,6 +50,26 @@ const SOCIAL_NOTE_DEFAULTS: Record<string, string> = {
   es: 'Contacte con un asesor de Kredix para un procesamiento prioritario de su solicitud, respuesta en menos de 2 horas.',
   pt: 'Contacte um consultor da Kredix para um processamento prioritário do seu pedido, resposta em menos de 2 horas.',
   it: "Contatta un consulente di Kredix per un'elaborazione prioritaria della tua richiesta, risposta in meno di 2 ore.",
+}
+
+// Libellés i18n par défaut des boutons sociaux, par langue (placeholders CMS).
+const SOCIAL_LABEL_DEFAULTS: Record<'wa' | 'ms', Record<string, string>> = {
+  wa: {
+    fr: 'Discuter sur WhatsApp',
+    en: 'Chat on WhatsApp',
+    de: 'Auf WhatsApp schreiben',
+    es: 'Chatear en WhatsApp',
+    pt: 'Falar no WhatsApp',
+    it: 'Chatta su WhatsApp',
+  },
+  ms: {
+    fr: 'Discuter sur Messenger',
+    en: 'Chat on Messenger',
+    de: 'Auf Messenger schreiben',
+    es: 'Chatear en Messenger',
+    pt: 'Falar no Messenger',
+    it: 'Chatta su Messenger',
+  },
 }
 
 // Catégories de settings par section (pour la sauvegarde indépendante).
@@ -89,6 +112,11 @@ export default function CMS() {
   const [formNote, setFormNote] = useState<Record<string, string>>(
     Object.fromEntries(Object.values(LANG_CODE).map((c) => [c, ''])),
   )
+  // Libellés des boutons WhatsApp/Messenger par langue (code → texte).
+  const [socialLabels, setSocialLabels] = useState<{ wa: Record<string, string>; ms: Record<string, string> }>({
+    wa: Object.fromEntries(Object.values(LANG_CODE).map((c) => [c, ''])),
+    ms: Object.fromEntries(Object.values(LANG_CODE).map((c) => [c, ''])),
+  })
   const [socialBtns, setSocialBtns] = useState({ whatsapp: true, messenger: true })
 
   const [loading, setLoading] = useState(true)
@@ -158,6 +186,14 @@ export default function CMS() {
             Object.values(LANG_CODE).map((c) => [c, byKey.get(KEYS.socialNote(c)) ?? '']),
           ),
         )
+        setSocialLabels({
+          wa: Object.fromEntries(
+            Object.values(LANG_CODE).map((c) => [c, byKey.get(KEYS.waLabel(c)) ?? '']),
+          ),
+          ms: Object.fromEntries(
+            Object.values(LANG_CODE).map((c) => [c, byKey.get(KEYS.msLabel(c)) ?? '']),
+          ),
+        })
         setSocialBtns({
           whatsapp: byKey.get(KEYS.waVisible) !== 'false',
           messenger: byKey.get(KEYS.msVisible) !== 'false',
@@ -292,7 +328,22 @@ export default function CMS() {
       category: 'cms.form',
       description: `Note sous les boutons sociaux du formulaire (langue ${code.toUpperCase()}). Vide = texte par défaut.`,
     }))
+    const labels = Object.values(LANG_CODE).flatMap((code) => [
+      {
+        key: KEYS.waLabel(code),
+        value: socialLabels.wa[code] ?? '',
+        category: 'cms.form',
+        description: `Libellé du bouton WhatsApp du formulaire (langue ${code.toUpperCase()}). Vide = texte par défaut.`,
+      },
+      {
+        key: KEYS.msLabel(code),
+        value: socialLabels.ms[code] ?? '',
+        category: 'cms.form',
+        description: `Libellé du bouton Messenger du formulaire (langue ${code.toUpperCase()}). Vide = texte par défaut.`,
+      },
+    ])
     saveSection('form', [
+      ...labels,
       ...notes,
       { key: KEYS.waVisible, value: socialBtns.whatsapp ? 'true' : 'false', category: 'cms.form', description: 'Visibilité du bouton WhatsApp sur le formulaire.' },
       { key: KEYS.msVisible, value: socialBtns.messenger ? 'true' : 'false', category: 'cms.form', description: 'Visibilité du bouton Messenger sur le formulaire.' },
@@ -583,6 +634,40 @@ export default function CMS() {
                 </div>
               </div>
               <p className="field-hint" style={{ marginBottom: 12 }}>
+                Titre du bouton WhatsApp, par langue. Laissez vide pour utiliser
+                le texte par défaut de la langue.
+              </p>
+              {LANGUES.map((l) => {
+                const code = LANG_CODE[l]
+                return (
+                  <div className="fg" style={{ marginBottom: 10 }} key={`wa-${code}`}>
+                    <label>Titre WhatsApp ({l})</label>
+                    <input
+                      value={socialLabels.wa[code] ?? ''}
+                      onChange={(e) => setSocialLabels((prev) => ({ ...prev, wa: { ...prev.wa, [code]: e.target.value } }))}
+                      placeholder={SOCIAL_LABEL_DEFAULTS.wa[code]}
+                    />
+                  </div>
+                )
+              })}
+              <p className="field-hint" style={{ marginBottom: 12, marginTop: 4 }}>
+                Titre du bouton Messenger, par langue. Laissez vide pour utiliser
+                le texte par défaut de la langue.
+              </p>
+              {LANGUES.map((l) => {
+                const code = LANG_CODE[l]
+                return (
+                  <div className="fg" style={{ marginBottom: 10 }} key={`ms-${code}`}>
+                    <label>Titre Messenger ({l})</label>
+                    <input
+                      value={socialLabels.ms[code] ?? ''}
+                      onChange={(e) => setSocialLabels((prev) => ({ ...prev, ms: { ...prev.ms, [code]: e.target.value } }))}
+                      placeholder={SOCIAL_LABEL_DEFAULTS.ms[code]}
+                    />
+                  </div>
+                )
+              })}
+              <p className="field-hint" style={{ marginBottom: 12, marginTop: 4 }}>
                 Note affichée sous les boutons, par langue. Laissez vide pour utiliser
                 le texte par défaut de la langue.
               </p>

@@ -15,6 +15,8 @@ type SimLoanType = Exclude<LoanType, "autre">;
  * @param rates          — paliers de taux DB passés depuis le server component parent.
  * @param whatsappNumber — numéro WhatsApp (setting contact).
  * @param socialNote     — override CMS de la note sous les boutons sociaux.
+ * @param whatsappLabel  — override CMS du libellé du bouton WhatsApp.
+ * @param messengerLabel — override CMS du libellé du bouton Messenger.
  * @param showWhatsapp   — visibilité du bouton WhatsApp (setting CMS).
  * @param showMessenger  — visibilité du bouton Messenger (setting CMS).
  */
@@ -22,12 +24,16 @@ export default function SimulatorAndForm({
   rates,
   whatsappNumber,
   socialNote,
+  whatsappLabel,
+  messengerLabel,
   showWhatsapp = true,
   showMessenger = true,
 }: {
   rates?: readonly ApplicableRate[];
   whatsappNumber?: string;
   socialNote?: string;
+  whatsappLabel?: string;
+  messengerLabel?: string;
   showWhatsapp?: boolean;
   showMessenger?: boolean;
 }) {
@@ -103,6 +109,8 @@ export default function SimulatorAndForm({
               whatsappNumber={whatsappNumber}
               rates={rates}
               socialNote={socialNote}
+              whatsappLabel={whatsappLabel}
+              messengerLabel={messengerLabel}
               showWhatsapp={showWhatsapp}
               showMessenger={showMessenger}
             />
