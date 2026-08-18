@@ -92,7 +92,7 @@ const SAMPLE: Record<string, string> = {
   '{{Téléphone}}': '06 12 34 56 78',
   '{{TypePrêt}}': 'immobilier',
   '{{Montant}}': '210 000 €',
-  '{{Durée}}': '20 ans',
+  '{{Durée}}': '20',
   '{{Mensualité}}': '1 062 €',
   '{{TAEG}}': '2,00 %',
   '{{Message}}': 'Votre dossier est complet.',

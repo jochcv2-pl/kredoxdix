@@ -27,11 +27,6 @@ const LOCALE_BY_LANG: Record<string, string> = {
   it: 'it-IT',
 };
 
-// Unités de durée par langue.
-const DURATION_UNIT_I18N: Record<string, string> = {
-  fr: 'ans', de: 'Jahre', en: 'years', es: 'años', pt: 'anos', it: 'anni',
-};
-
 // Fallback du nom du conseiller par langue.
 const ADVISOR_FALLBACK_I18N: Record<string, string> = {
   fr: 'votre conseiller', de: 'Ihr Berater', en: 'your advisor',
@@ -195,9 +190,8 @@ export function interpolateTemplate(text: string, ctx: InterpolationContext): st
       || lead.advisorName
       || (ADVISOR_FALLBACK_I18N[lang] ?? ADVISOR_FALLBACK_I18N.fr));
 
-  // Type de prêt + unités traduites.
+  // Type de prêt traduit.
   const loanTypeLabel = translateLoanType(lead.loanType, lang);
-  const durationUnit = DURATION_UNIT_I18N[lang] ?? DURATION_UNIT_I18N.fr;
 
   // Initiales du conseiller ({{initiales_conseiller}}) — même cascade de
   // résolution que prenomConseiller : admin assigné → brand.advisorName →
@@ -214,7 +208,7 @@ export function interpolateTemplate(text: string, ctx: InterpolationContext): st
     '{{Téléphone}}': lead.phone,
     '{{Montant}}': formatEuro(lead.amount, locale),
     '{{TypePrêt}}': loanTypeLabel,
-    '{{Durée}}': `${lead.durationYears} ${durationUnit}`,
+    '{{Durée}}': `${lead.durationYears}`,
     '{{Mensualité}}': lead.monthlyPayment ? formatEuro(lead.monthlyPayment, locale) : '—',
     '{{TAEG}}': lead.annualRate ? `${lead.annualRate.toFixed(2)}%` : '—',
     '{{LienDesinscription}}': unsubscribeUrl,
