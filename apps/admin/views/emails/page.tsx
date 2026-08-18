@@ -293,6 +293,13 @@ export default function Emails() {
   const [adhocView, setAdhocView] = useState<'source' | 'preview'>('source');
   const [adhocInlineEditing, setAdhocInlineEditing] = useState(false);
   const adhocIframeRef = useRef<HTMLIFrameElement>(null);
+
+  // Duplication / traduction d'un modèle (POST /api/templates/[id]/translate).
+  const [dupTarget, setDupTarget] = useState<Template | null>(null);
+  const [dupLanguage, setDupLanguage] = useState('fr');
+  const [dupName, setDupName] = useState('');
+  const [dupWorking, setDupWorking] = useState(false);
+  const [dupResult, setDupResult] = useState<{ ok: boolean; msg: string } | null>(null);
   const [adhocSending, setAdhocSending] = useState(false);
   const [adhocResult, setAdhocResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
@@ -928,6 +935,65 @@ export default function Emails() {
     setAdhocInlineEditing(false);
   }
 
+  // --- Duplication / traduction ---
+  const DUP_LANGUAGES = ['fr', 'en', 'de', 'es', 'pt', 'it'] as const;
+  const LANGUAGE_LABELS: Record<string, string> = {
+    fr: 'Français', en: 'English', de: 'Deutsch', es: 'Español', pt: 'Português', it: 'Italiano',
+  };
+
+  const openDupModal = (tpl: Template) => {
+    setDupTarget(tpl);
+    // Pré-sélection : première langue différente de celle du modèle.
+    const src = tpl.language || 'fr';
+    setDupLanguage(DUP_LANGUAGES.find((l) => l !== src) ?? 'fr');
+    setDupName(`${tpl.name} (${(DUP_LANGUAGES.find((l) => l !== src) ?? 'fr').toUpperCase()})`);
+    setDupResult(null);
+  };
+
+  const handleDupLanguageChange = (lang: string) => {
+    setDupLanguage(lang);
+    // Réajuste le titre par défaut si l'admin n'a pas personnalisé le champ.
+    if (dupTarget) {
+      const isDefaultPattern =
+        dupName === `${dupTarget.name} (${dupLanguage.toUpperCase()})` ||
+        dupName === `Copie de ${dupTarget.name}` ||
+        dupName.trim() === '';
+      if (isDefaultPattern) {
+        const same = lang === (dupTarget.language || 'fr');
+        setDupName(same ? `Copie de ${dupTarget.name}` : `${dupTarget.name} (${lang.toUpperCase()})`);
+      }
+    }
+  };
+
+  const handleDuplicate = async () => {
+    if (!dupTarget) return;
+    setDupWorking(true);
+    setDupResult(null);
+    try {
+      const res = await fetch(`/api/templates/${dupTarget.id}/translate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetLanguage: dupLanguage,
+          name: dupName.trim() || undefined,
+        }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok) {
+        const errData = json?.data ?? json;
+        throw new Error(errData?.error ?? errData?.message ?? `Échec (${res.status})`);
+      }
+      const created: Template = json?.data ?? json;
+      setTemplates((prev) => [created, ...prev]);
+      setDupResult({ ok: true, msg: `Modèle « ${created.name} » créé en brouillon ✓` });
+      setDupTarget(null);
+    } catch (e) {
+      setDupResult({ ok: false, msg: e instanceof Error ? e.message : 'Erreur inconnue' });
+    } finally {
+      setDupWorking(false);
+    }
+  };
+
   const handleTestSend = async () => {
     if (!testTarget || !testEmail.trim()) return;
     setTestSending(true);
@@ -954,6 +1020,119 @@ export default function Emails() {
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------
+  // Rendu d'une carte modèle (utilisé par les groupes Séquence ET Envois manuels).
+  // ---------------------------------------------------------------------------
+  function renderTplCard(tpl: Template) {
+    return (
+      <div className={`tpl-card2 ${tpl.status === 'active' ? 'is-active' : 'is-draft'}`} key={tpl.id}>
+        <div className="tpl2-header">
+          <div className="tpl2-header-left">
+            <span className={`tpl2-status-dot ${tpl.status === 'active' ? 'active' : 'draft'}`} />
+            <div>
+              <div className="tpl2-name">
+                {tpl.name}
+                {tpl.isConfidential && (
+                  <span className="tpl2-confidential" title="Confidentiel — l'IA ne peut pas accéder à ce modèle">
+                    <Icon name="lock" size={12} /> Confidentiel
+                  </span>
+                )}
+              </div>
+              <div className="tpl2-trigger">{TRIGGER_LABEL[tpl.trigger] ?? tpl.trigger}</div>
+            </div>
+          </div>
+          <span className={`tpl2-badge ${tpl.status === 'active' ? 'badge-active' : 'badge-draft'}`}>
+            {tpl.status === 'active' ? 'Actif' : 'Brouillon'}
+          </span>
+        </div>
+        <div className="tpl2-body">
+          <div className="tpl2-excerpt">{tpl.bodyText?.slice(0, 180) ?? '—'}{(tpl.bodyText?.length ?? 0) > 180 ? '…' : ''}</div>
+        </div>
+        <div className="tpl2-vars">
+          {(detectVars(tpl.bodyText ?? '')).slice(0, 6).map((v) => <span className="tpl2-var" key={v}>{v}</span>)}
+        </div>
+        <div className="tpl2-footer">
+          <div className="tpl2-meta">
+            <span className="tpl2-lang">{(tpl.language || 'fr').toUpperCase()}</span>
+            <span className="tpl2-type">{tpl.htmlContent ? 'HTML' : 'Visuel'}</span>
+          </div>
+          <div className="tpl2-actions">
+            {/* Boutons icônes seules — libellés complets en tooltip (title). */}
+            <button className="tpl2-btn tpl2-btn-preview" onClick={() => setPreviewTpl(tpl)} title="Aperçu de l'email" aria-label="Aperçu">
+              <Icon name="search" size={15} />
+            </button>
+            <button
+              className="tpl2-btn tpl2-btn-test"
+              onClick={() => openTestModal(tpl)}
+              title="Envoyer un email de test (données démo)"
+              aria-label="Tester"
+            >
+              <Icon name="mail" size={15} />
+            </button>
+            <button
+              className="tpl2-btn tpl2-btn-send"
+              onClick={() => openAdhocModal(tpl)}
+              title="Envoi ponctuel à un destinataire hors CRM"
+              aria-label="Envoyer"
+            >
+              <Icon name="send" size={15} />
+            </button>
+            <button
+              className="tpl2-btn tpl2-btn-dup"
+              onClick={() => openDupModal(tpl)}
+              title="Dupliquer dans une autre langue (traduction IA, variables préservées)"
+              aria-label="Dupliquer"
+            >
+              <Icon name="copy" size={15} />
+            </button>
+            <button
+              className="tpl2-btn tpl2-btn-edit"
+              onClick={() => editTemplate(tpl)}
+              title="Modifier le modèle"
+              aria-label="Modifier"
+              disabled={tpl.isConfidential}
+              style={tpl.isConfidential ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
+            >
+              <Icon name="pencil" size={15} />
+            </button>
+            <button
+              className={`tpl2-btn tpl2-btn-toggle ${tpl.status === 'active' ? 'is-on' : ''}`}
+              onClick={() => toggleTemplateStatus(tpl)}
+              title={tpl.status === 'active' ? 'Désactiver le modèle' : 'Activer le modèle'}
+              aria-label={tpl.status === 'active' ? 'Désactiver' : 'Activer'}
+            >
+              <Icon name={tpl.status === 'active' ? 'pause' : 'play'} size={15} />
+            </button>
+            <button
+              className={`tpl2-btn ${tpl.isConfidential ? 'tpl2-btn-confidential-on' : 'tpl2-btn-confidential'}`}
+              onClick={() => toggleConfidential(tpl)}
+              title={tpl.isConfidential ? 'Désactiver le mode confidentiel' : 'Activer le mode confidentiel — l\'IA ne pourra plus accéder à ce modèle'}
+              aria-label="Mode confidentiel"
+            >
+              <Icon name={tpl.isConfidential ? 'lock' : 'unlock'} size={15} />
+            </button>
+            <button
+              className="tpl2-btn tpl2-btn-delete"
+              onClick={() => setDeleteTarget(tpl)}
+              title="Supprimer"
+              aria-label="Supprimer"
+              disabled={tpl.isConfidential}
+              style={tpl.isConfidential ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
+            >
+              <Icon name="trash" size={15} />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Groupes de la liste : séquence automatique vs envois manuels.
+  // ---------------------------------------------------------------------------
+  const autoTemplates = templates.filter((t) => t.trigger !== 'manual');
+  const manualTemplates = templates.filter((t) => t.trigger === 'manual');
 
   return (
     <section className="view" id="emails">
@@ -1410,109 +1589,41 @@ export default function Emails() {
             <div className="tpl-list-count">
               {loading
                 ? 'Chargement…'
-                : `${templates.length} modèle${templates.length > 1 ? 's' : ''} · utilisés automatiquement par les agents à chaque envoi`}
+                : `${templates.length} modèle${templates.length > 1 ? 's' : ''} · ${autoTemplates.length} séquence auto · ${manualTemplates.length} envoi manuel`}
             </div>
             <button className="btn btn-primary" onClick={() => setActiveSub('generer')}>
               <Icon name="plus" size={16} />
               Nouveau modèle
             </button>
           </div>
-          <div className="tpl-grid">
-            {templates.map((tpl) => (
-              <div className={`tpl-card2 ${tpl.status === 'active' ? 'is-active' : 'is-draft'}`} key={tpl.id}>
-                <div className="tpl2-header">
-                  <div className="tpl2-header-left">
-                    <span className={`tpl2-status-dot ${tpl.status === 'active' ? 'active' : 'draft'}`} />
-                    <div>
-                      <div className="tpl2-name">
-                        {tpl.name}
-                        {tpl.isConfidential && (
-                          <span className="tpl2-confidential" title="Confidentiel — l'IA ne peut pas accéder à ce modèle">
-                            <Icon name="lock" size={12} /> Confidentiel
-                          </span>
-                        )}
-                      </div>
-                      <div className="tpl2-trigger">{TRIGGER_LABEL[tpl.trigger] ?? tpl.trigger}</div>
-                    </div>
-                  </div>
-                  <span className={`tpl2-badge ${tpl.status === 'active' ? 'badge-active' : 'badge-draft'}`}>
-                    {tpl.status === 'active' ? 'Actif' : 'Brouillon'}
-                  </span>
-                </div>
-                <div className="tpl2-body">
-                  <div className="tpl2-excerpt">{tpl.bodyText?.slice(0, 180) ?? '—'}{(tpl.bodyText?.length ?? 0) > 180 ? '…' : ''}</div>
-                </div>
-                <div className="tpl2-vars">
-                  {(detectVars(tpl.bodyText ?? '')).slice(0, 6).map((v) => <span className="tpl2-var" key={v}>{v}</span>)}
-                </div>
-                <div className="tpl2-footer">
-                  <div className="tpl2-meta">
-                    <span className="tpl2-lang">{(tpl.language || 'fr').toUpperCase()}</span>
-                    <span className="tpl2-type">{tpl.htmlContent ? 'HTML' : 'Visuel'}</span>
-                  </div>
-                  <div className="tpl2-actions">
-                    {/* Boutons icônes seules — libellés complets en tooltip (title).
-                        7 actions tiennent ainsi sur une seule ligne de carte. */}
-                    <button className="tpl2-btn tpl2-btn-preview" onClick={() => setPreviewTpl(tpl)} title="Aperçu de l'email" aria-label="Aperçu">
-                      <Icon name="search" size={15} />
-                    </button>
-                    <button
-                      className="tpl2-btn tpl2-btn-test"
-                      onClick={() => openTestModal(tpl)}
-                      title="Envoyer un email de test (données démo)"
-                      aria-label="Tester"
-                    >
-                      <Icon name="mail" size={15} />
-                    </button>
-                    <button
-                      className="tpl2-btn tpl2-btn-send"
-                      onClick={() => openAdhocModal(tpl)}
-                      title="Envoi ponctuel à un destinataire hors CRM"
-                      aria-label="Envoyer"
-                    >
-                      <Icon name="send" size={15} />
-                    </button>
-                    <button
-                      className="tpl2-btn tpl2-btn-edit"
-                      onClick={() => editTemplate(tpl)}
-                      title="Modifier le modèle"
-                      aria-label="Modifier"
-                      disabled={tpl.isConfidential}
-                      style={tpl.isConfidential ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
-                    >
-                      <Icon name="pencil" size={15} />
-                    </button>
-                    <button
-                      className={`tpl2-btn tpl2-btn-toggle ${tpl.status === 'active' ? 'is-on' : ''}`}
-                      onClick={() => toggleTemplateStatus(tpl)}
-                      title={tpl.status === 'active' ? 'Désactiver le modèle' : 'Activer le modèle'}
-                      aria-label={tpl.status === 'active' ? 'Désactiver' : 'Activer'}
-                    >
-                      <Icon name={tpl.status === 'active' ? 'pause' : 'play'} size={15} />
-                    </button>
-                    <button
-                      className={`tpl2-btn ${tpl.isConfidential ? 'tpl2-btn-confidential-on' : 'tpl2-btn-confidential'}`}
-                      onClick={() => toggleConfidential(tpl)}
-                      title={tpl.isConfidential ? 'Désactiver le mode confidentiel' : 'Activer le mode confidentiel — l\'IA ne pourra plus accéder à ce modèle'}
-                      aria-label="Mode confidentiel"
-                    >
-                      <Icon name={tpl.isConfidential ? 'lock' : 'unlock'} size={15} />
-                    </button>
-                    <button
-                      className="tpl2-btn tpl2-btn-delete"
-                      onClick={() => setDeleteTarget(tpl)}
-                      title="Supprimer"
-                      aria-label="Supprimer"
-                      disabled={tpl.isConfidential}
-                      style={tpl.isConfidential ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
-                    >
-                      <Icon name="trash" size={15} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
+
+          {/* ===== GROUPE 1 : SÉQUENCE AUTOMATIQUE (cron) ===== */}
+          <div className="tpl-group-head">
+            <Icon name="zap" size={15} />
+            <span>Séquence automatique</span>
+            <small>welcome, offre et relances envoyés par le cron</small>
           </div>
+          {autoTemplates.length === 0 ? (
+            <p className="tpl-group-empty">Aucun modèle automatique.</p>
+          ) : (
+            <div className="tpl-grid">
+              {autoTemplates.map(renderTplCard)}
+            </div>
+          )}
+
+          {/* ===== GROUPE 2 : ENVOIS MANUELS ===== */}
+          <div className="tpl-group-head">
+            <Icon name="send" size={15} />
+            <span>Envois manuels</span>
+            <small>envoi ponctuel et campagnes — plusieurs actifs possibles</small>
+          </div>
+          {manualTemplates.length === 0 ? (
+            <p className="tpl-group-empty">Aucun modèle d&apos;envoi manuel. Créez-en un avec le déclencheur « Envoi manuel ».</p>
+          ) : (
+            <div className="tpl-grid">
+              {manualTemplates.map(renderTplCard)}
+            </div>
+          )}
         </div>
       )}
 
@@ -1861,6 +1972,71 @@ export default function Emails() {
               </div>
             </>
           )}
+        </div>
+      </Modal>
+
+      {/* ===== DUPLICATE / TRANSLATE MODAL ===== */}
+      <Modal
+        isOpen={!!dupTarget}
+        onClose={() => { if (!dupWorking) setDupTarget(null) }}
+        title={`Dupliquer — ${dupTarget?.name ?? ''}`}
+      >
+        <div className="test-send-modal">
+          <p className="test-send-hint">
+            Crée une <b>copie en brouillon</b> du modèle. Si la langue choisie diffère de l&apos;original
+            ({(dupTarget?.language || 'fr').toUpperCase()}), le contenu est <b>traduit par l&apos;IA</b> du CRM —
+            les variables {'{{...}}'} sont préservées à l&apos;identique (jamais traduites). Choisis la même
+            langue pour une simple copie avec un nouveau titre.
+          </p>
+          <div className="adhoc-name-row">
+            <div className="test-send-field">
+              <label>Langue du duplicata</label>
+              <select
+                value={dupLanguage}
+                onChange={(e) => handleDupLanguageChange(e.target.value)}
+                disabled={dupWorking}
+                style={{ width: '100%', padding: '8px 10px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 14, cursor: 'pointer' }}
+              >
+                {DUP_LANGUAGES.map((l) => (
+                  <option key={l} value={l}>
+                    {LANGUAGE_LABELS[l]}{dupTarget && l === (dupTarget.language || 'fr') ? ' (langue d\'origine)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="test-send-field">
+              <label>Titre du duplicata</label>
+              <input
+                type="text"
+                value={dupName}
+                onChange={(e) => setDupName(e.target.value)}
+                disabled={dupWorking}
+                placeholder="Nom du nouveau modèle"
+              />
+            </div>
+          </div>
+          {dupResult && !dupTarget && (
+            <div className={`test-send-result ${dupResult.ok ? 'ok' : 'err'}`}>
+              <Icon name={dupResult.ok ? 'check-circle' : 'alert-triangle'} size={16} />
+              {dupResult.msg}
+            </div>
+          )}
+          {dupResult && dupTarget && (
+            <div className="test-send-result err">
+              <Icon name="alert-triangle" size={16} />
+              {dupResult.msg}
+            </div>
+          )}
+          <div className="test-send-actions">
+            <button className="btn btn-ghost" onClick={() => setDupTarget(null)} disabled={dupWorking}>Annuler</button>
+            <button
+              className="btn btn-primary"
+              onClick={handleDuplicate}
+              disabled={dupWorking || !dupName.trim()}
+            >
+              {dupWorking ? 'Traduction en cours…' : dupLanguage === (dupTarget?.language || 'fr') ? 'Dupliquer' : 'Traduire et dupliquer'}
+            </button>
+          </div>
         </div>
       </Modal>
     </section>

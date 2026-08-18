@@ -5086,6 +5086,46 @@ body {
 .tpl2-btn-send:hover {
   background: #ecfdf5;
 }
+.tpl2-btn-dup {
+  color: #7c3aed;
+}
+.tpl2-btn-dup:hover {
+  background: #f5f3ff;
+}
+/* En-têtes de groupes dans la liste des modèles (auto vs manuels) */
+.tpl-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 22px 0 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line-soft);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+}
+.tpl-group-head:first-of-type {
+  margin-top: 4px;
+}
+.tpl-group-head svg {
+  color: var(--blue, #2b8bde);
+  flex-shrink: 0;
+}
+.tpl-group-head small {
+  font-size: 11.5px;
+  font-weight: 400;
+  color: var(--slate-light, #94a3b8);
+}
+.tpl-group-empty {
+  padding: 18px 16px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--slate-light, #94a3b8);
+  font-style: italic;
+  background: var(--bg, #f8fafc);
+  border: 1px dashed var(--line, #cbd5e1);
+  border-radius: 10px;
+}
 /* Modal envoi ponctuel — textarea + rangée prénom/nom */
 .test-send-field textarea {
   width: 100%;

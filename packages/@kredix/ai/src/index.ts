@@ -8,3 +8,10 @@
 export { generateEmail, type GenerateEmailInput, type GenerateEmailOutput } from './generate';
 export { testConnection, type TestConnectionResult } from './test';
 export { getLLMClient } from './client';
+export {
+  translateEmailContent,
+  SUPPORTED_TRANSLATION_LANGUAGES,
+  type TranslateEmailInput,
+  type TranslateEmailOutput,
+  type TranslationLanguage,
+} from './translate';
