@@ -93,7 +93,7 @@ const SAMPLE: Record<string, string> = {
   '{{TypePrêt}}': 'immobilier',
   '{{Montant}}': '210 000 €',
   '{{Durée}}': '20 ans',
-  '{{Mensualité}}': '1 062 €/mois',
+  '{{Mensualité}}': '1 062 €',
   '{{TAEG}}': '2,00 %',
   '{{Message}}': 'Votre dossier est complet.',
   '{{LienDesinscription}}': 'https://kredix.fr/api/unsubscribe?t=...',

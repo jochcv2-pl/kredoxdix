@@ -32,11 +32,6 @@ const DURATION_UNIT_I18N: Record<string, string> = {
   fr: 'ans', de: 'Jahre', en: 'years', es: 'años', pt: 'anos', it: 'anni',
 };
 
-// Suffixe mensualité par langue.
-const MONTHLY_SUFFIX_I18N: Record<string, string> = {
-  fr: '/mois', de: '/Monat', en: '/month', es: '/mes', pt: '/mês', it: '/mese',
-};
-
 // Fallback du nom du conseiller par langue.
 const ADVISOR_FALLBACK_I18N: Record<string, string> = {
   fr: 'votre conseiller', de: 'Ihr Berater', en: 'your advisor',
@@ -203,7 +198,6 @@ export function interpolateTemplate(text: string, ctx: InterpolationContext): st
   // Type de prêt + unités traduites.
   const loanTypeLabel = translateLoanType(lead.loanType, lang);
   const durationUnit = DURATION_UNIT_I18N[lang] ?? DURATION_UNIT_I18N.fr;
-  const monthlySuffix = MONTHLY_SUFFIX_I18N[lang] ?? MONTHLY_SUFFIX_I18N.fr;
 
   // Initiales du conseiller ({{initiales_conseiller}}) — même cascade de
   // résolution que prenomConseiller : admin assigné → brand.advisorName →
@@ -221,7 +215,7 @@ export function interpolateTemplate(text: string, ctx: InterpolationContext): st
     '{{Montant}}': formatEuro(lead.amount, locale),
     '{{TypePrêt}}': loanTypeLabel,
     '{{Durée}}': `${lead.durationYears} ${durationUnit}`,
-    '{{Mensualité}}': lead.monthlyPayment ? `${formatEuro(lead.monthlyPayment, locale)}${monthlySuffix}` : '—',
+    '{{Mensualité}}': lead.monthlyPayment ? formatEuro(lead.monthlyPayment, locale) : '—',
     '{{TAEG}}': lead.annualRate ? `${lead.annualRate.toFixed(2)}%` : '—',
     '{{LienDesinscription}}': unsubscribeUrl,
     '{{Message}}': customMessage ?? '',
