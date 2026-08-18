@@ -12,14 +12,24 @@ type SimLoanType = Exclude<LoanType, "autre">;
  * Orchestrateur client : relie le simulateur au formulaire.
  * Reproduction exacte du HTML (.section.sim-section + .lead-grid).
  *
- * @param rates — paliers de taux DB passés depuis le server component parent.
+ * @param rates          — paliers de taux DB passés depuis le server component parent.
+ * @param whatsappNumber — numéro WhatsApp (setting contact).
+ * @param socialNote     — override CMS de la note sous les boutons sociaux.
+ * @param showWhatsapp   — visibilité du bouton WhatsApp (setting CMS).
+ * @param showMessenger  — visibilité du bouton Messenger (setting CMS).
  */
 export default function SimulatorAndForm({
   rates,
   whatsappNumber,
+  socialNote,
+  showWhatsapp = true,
+  showMessenger = true,
 }: {
   rates?: readonly ApplicableRate[];
   whatsappNumber?: string;
+  socialNote?: string;
+  showWhatsapp?: boolean;
+  showMessenger?: boolean;
 }) {
   const tSim = useTranslations("Simulator");
   const tForm = useTranslations("LeadForm");
@@ -88,7 +98,14 @@ export default function SimulatorAndForm({
             </div>
 
             {/* Formulaire à droite */}
-            <LeadForm prefill={prefill} whatsappNumber={whatsappNumber} />
+            <LeadForm
+              prefill={prefill}
+              whatsappNumber={whatsappNumber}
+              rates={rates}
+              socialNote={socialNote}
+              showWhatsapp={showWhatsapp}
+              showMessenger={showMessenger}
+            />
           </div>
         </div>
       </section>

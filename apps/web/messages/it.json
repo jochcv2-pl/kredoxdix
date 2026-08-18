@@ -120,7 +120,8 @@
     "or": "oppure",
     "whatsapp": "Chatta su WhatsApp",
     "messenger": "Chatta su Messenger",
-    "socialNote": "Contatta un consulente di Kredix per un'elaborazione prioritaria della tua richiesta, risposta in meno di 2 ore."
+    "socialNote": "Contatta un consulente di Kredix per un'elaborazione prioritaria della tua richiesta, risposta in meno di 2 ore.",
+    "autoEstimateHint": "Stima automatica in base a tipo, importo e durata — modifica liberamente."
   },
   "Services": {
     "eyebrow": "I nostri servizi",

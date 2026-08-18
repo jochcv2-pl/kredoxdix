@@ -120,7 +120,8 @@
     "or": "ou",
     "whatsapp": "Discuter sur WhatsApp",
     "messenger": "Discuter sur Messenger",
-    "socialNote": "Contactez un conseiller Kredix pour un traitement prioritaire de votre dossier, réponse en moins de 2 heures."
+    "socialNote": "Contactez un conseiller Kredix pour un traitement prioritaire de votre dossier, réponse en moins de 2 heures.",
+    "autoEstimateHint": "Estimation automatique selon le type, le montant et la durée — vous pouvez ajuster librement."
   },
   "Services": {
     "eyebrow": "Nos services",

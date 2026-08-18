@@ -33,10 +33,24 @@ const KEYS = {
   advisorName: 'advisor_name',
   agencyAddress: 'agency_address',
   activeLanguages: 'cms_active_languages',
+  // Formulaire public — note sous les boutons sociaux (une clé par langue).
+  socialNote: (code: string) => `cms_social_note_${code}`,
+  waVisible: 'social_whatsapp_visible',
+  msVisible: 'social_messenger_visible',
 } as const
 
+// Texte i18n par défaut de la note, par langue (placeholder du champ CMS).
+const SOCIAL_NOTE_DEFAULTS: Record<string, string> = {
+  fr: 'Contactez un conseiller Kredix pour un traitement prioritaire de votre dossier, réponse en moins de 2 heures.',
+  en: 'Contact a Kredix advisor for priority processing of your application, response in under 2 hours.',
+  de: 'Kontaktieren Sie einen Kredix-Berater für eine bevorzugte Bearbeitung Ihres Antrags, Antwort in weniger als 2 Stunden.',
+  es: 'Contacte con un asesor de Kredix para un procesamiento prioritario de su solicitud, respuesta en menos de 2 horas.',
+  pt: 'Contacte um consultor da Kredix para um processamento prioritário do seu pedido, resposta em menos de 2 horas.',
+  it: "Contatta un consulente di Kredix per un'elaborazione prioritaria della tua richiesta, risposta in meno di 2 ore.",
+}
+
 // Catégories de settings par section (pour la sauvegarde indépendante).
-type SectionId = 'hero' | 'services' | 'coord' | 'langues'
+type SectionId = 'hero' | 'services' | 'coord' | 'langues' | 'form'
 
 interface SettingPayload {
   key: string
@@ -71,6 +85,11 @@ export default function CMS() {
   const [languesActives, setLanguesActives] = useState<Record<string, boolean>>(
     Object.fromEntries(LANGUES.map((l) => [l, true])),
   )
+  // Formulaire public : note par langue (code → texte) + boutons sociaux.
+  const [formNote, setFormNote] = useState<Record<string, string>>(
+    Object.fromEntries(Object.values(LANG_CODE).map((c) => [c, ''])),
+  )
+  const [socialBtns, setSocialBtns] = useState({ whatsapp: true, messenger: true })
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -83,6 +102,7 @@ export default function CMS() {
     services: null,
     coord: null,
     langues: null,
+    form: null,
   })
   // Erreur par section.
   const [sectionError, setSectionError] = useState<Record<SectionId, string | null>>({
@@ -90,6 +110,7 @@ export default function CMS() {
     services: null,
     coord: null,
     langues: null,
+    form: null,
   })
 
   // Chargement initial : GET /api/settings (toutes catégories).
@@ -131,6 +152,16 @@ export default function CMS() {
         const langsCsv = byKey.get(KEYS.activeLanguages) ?? 'fr,en,de,es,pt,it'
         const active = new Set(langsCsv.split(',').map((s) => s.trim()).filter(Boolean))
         setLanguesActives(Object.fromEntries(LANGUES.map((l) => [l, active.has(LANG_CODE[l])])))
+
+        setFormNote(
+          Object.fromEntries(
+            Object.values(LANG_CODE).map((c) => [c, byKey.get(KEYS.socialNote(c)) ?? '']),
+          ),
+        )
+        setSocialBtns({
+          whatsapp: byKey.get(KEYS.waVisible) !== 'false',
+          messenger: byKey.get(KEYS.msVisible) !== 'false',
+        })
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Erreur inconnue')
       } finally {
@@ -144,6 +175,21 @@ export default function CMS() {
 
   const toggleLangue = (l: string) => {
     setLanguesActives((prev) => ({ ...prev, [l]: !prev[l] }))
+  }
+
+  // Toggle bouton social — garde : au moins un des deux doit rester visible.
+  const toggleSocialBtn = (which: 'whatsapp' | 'messenger') => {
+    setSocialBtns((prev) => {
+      if (prev[which]) {
+        const other = which === 'whatsapp' ? 'messenger' : 'whatsapp'
+        if (!prev[other]) {
+          setSectionError((s) => ({ ...s, form: 'Au moins un bouton doit rester visible.' }))
+          return prev // refus : l'autre est déjà masqué
+        }
+      }
+      setSectionError((s) => ({ ...s, form: null }))
+      return { ...prev, [which]: !prev[which] }
+    })
   }
 
   // Renomme la marque globalement (POST /api/cms/rename — transaction sur Settings + EmailTemplates).
@@ -231,6 +277,25 @@ export default function CMS() {
       .join(',')
     saveSection('langues', [
       { key: KEYS.activeLanguages, value: activeLangs, category: 'cms.i18n', description: 'Langues actives sur le site (CSV de codes).' },
+    ])
+  }
+
+  const saveForm = () => {
+    // Garde re-vérifiée à la sauvegarde (défense en profondeur).
+    if (!socialBtns.whatsapp && !socialBtns.messenger) {
+      setSectionError((s) => ({ ...s, form: 'Au moins un bouton doit rester visible.' }))
+      return
+    }
+    const notes = Object.values(LANG_CODE).map((code) => ({
+      key: KEYS.socialNote(code),
+      value: formNote[code] ?? '',
+      category: 'cms.form',
+      description: `Note sous les boutons sociaux du formulaire (langue ${code.toUpperCase()}). Vide = texte par défaut.`,
+    }))
+    saveSection('form', [
+      ...notes,
+      { key: KEYS.waVisible, value: socialBtns.whatsapp ? 'true' : 'false', category: 'cms.form', description: 'Visibilité du bouton WhatsApp sur le formulaire.' },
+      { key: KEYS.msVisible, value: socialBtns.messenger ? 'true' : 'false', category: 'cms.form', description: 'Visibilité du bouton Messenger sur le formulaire.' },
     ])
   }
 
@@ -482,6 +547,60 @@ export default function CMS() {
                </div>
             </div>
             {renderSaveBtn('langues', saveLangues)}
+          </div>
+
+          {/* ===== FORMULAIRE PUBLIC (note + boutons sociaux) ===== */}
+          <div className="panel">
+            <div className="panel-head">
+              <h3>Formulaire — boutons sociaux</h3>
+            </div>
+            <div className="panel-body" style={{ paddingTop: 16 }}>
+              <p className="field-hint" style={{ marginBottom: 12 }}>
+                Boutons « Discuter sur WhatsApp / Messenger » du formulaire public.
+                Masquez l&apos;un des deux : le bouton restant s&apos;étend automatiquement
+                en pleine largeur. Au moins un bouton doit rester visible.
+              </p>
+              <div className="tool-grid" style={{ marginBottom: 14 }}>
+                <div className="tool">
+                  <div className="tool-name">WhatsApp</div>
+                  <div
+                    className={'mini-toggle' + (socialBtns.whatsapp ? '' : ' off')}
+                    onClick={() => toggleSocialBtn('whatsapp')}
+                    title={socialBtns.whatsapp ? 'Visible — cliquer pour masquer' : 'Masqué — cliquer pour afficher'}
+                  >
+                    <div className="mini-knob"></div>
+                  </div>
+                </div>
+                <div className="tool">
+                  <div className="tool-name">Messenger</div>
+                  <div
+                    className={'mini-toggle' + (socialBtns.messenger ? '' : ' off')}
+                    onClick={() => toggleSocialBtn('messenger')}
+                    title={socialBtns.messenger ? 'Visible — cliquer pour masquer' : 'Masqué — cliquer pour afficher'}
+                  >
+                    <div className="mini-knob"></div>
+                  </div>
+                </div>
+              </div>
+              <p className="field-hint" style={{ marginBottom: 12 }}>
+                Note affichée sous les boutons, par langue. Laissez vide pour utiliser
+                le texte par défaut de la langue.
+              </p>
+              {LANGUES.map((l) => {
+                const code = LANG_CODE[l]
+                return (
+                  <div className="fg" style={{ marginBottom: 10 }} key={code}>
+                    <label>Note ({l})</label>
+                    <input
+                      value={formNote[code] ?? ''}
+                      onChange={(e) => setFormNote((prev) => ({ ...prev, [code]: e.target.value }))}
+                      placeholder={SOCIAL_NOTE_DEFAULTS[code]}
+                    />
+                  </div>
+                )
+              })}
+            </div>
+            {renderSaveBtn('form', saveForm)}
           </div>
         </div>
       </div>

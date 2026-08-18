@@ -120,7 +120,8 @@
     "or": "oder",
     "whatsapp": "Auf WhatsApp schreiben",
     "messenger": "Auf Messenger schreiben",
-    "socialNote": "Kontaktieren Sie einen Kredix-Berater für eine bevorzugte Bearbeitung Ihres Antrags, Antwort in weniger als 2 Stunden."
+    "socialNote": "Kontaktieren Sie einen Kredix-Berater für eine bevorzugte Bearbeitung Ihres Antrags, Antwort in weniger als 2 Stunden.",
+    "autoEstimateHint": "Automatische Schätzung basierend auf Art, Betrag und Laufzeit — passen Sie die Werte bei Bedarf an."
   },
   "Services": {
     "eyebrow": "Unsere Leistungen",

@@ -83,6 +83,17 @@ export default async function HomePage({
   // Marque : site_name alimente le footer et <title>.
   const siteName = settings.site_name || "Kredix";
 
+  // Boutons sociaux du formulaire (CMS) — défaut visible.
+  // Garde : si les deux sont masqués en DB, on réaffiche les deux
+  // (contrat "au moins un bouton" — le LeadForm applique la même défense).
+  const waVisible = settings.social_whatsapp_visible !== "false";
+  const msVisible = settings.social_messenger_visible !== "false";
+  const showWhatsapp = waVisible || !msVisible;
+  const showMessenger = msVisible || !waVisible;
+
+  // Note sous les boutons sociaux — override CMS par langue, fallback i18n.
+  const socialNote = settings[`cms_social_note_${locale}`] || "";
+
   return (
     <>
       {/* ===== NAV ===== */}
@@ -196,7 +207,13 @@ export default async function HomePage({
       </section>
 
       {/* ===== SIMULATEUR + FORMULAIRE (wrapper client) ===== */}
-      <SimulatorAndForm rates={rates} whatsappNumber={whatsapp} />
+      <SimulatorAndForm
+        rates={rates}
+        whatsappNumber={whatsapp}
+        socialNote={socialNote}
+        showWhatsapp={showWhatsapp}
+        showMessenger={showMessenger}
+      />
 
       {/* ===== NOS SERVICES (CMS-driven, fallback i18n) ===== */}
       <section

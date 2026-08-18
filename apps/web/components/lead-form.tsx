@@ -2,13 +2,19 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
+import { calculateLoan } from "@kredix/simulator";
 import {
   DURATION_OPTIONS,
   type LoanType,
   type EmploymentStatus,
+  type ApplicableRate,
 } from "@kredix/types";
 
 type SimLoanType = Exclude<LoanType, "autre">;
+
+// Types de prêt pour lesquels l'estimation automatique est possible
+// (calculateLoan repose sur des taux connus — types dynamiques custom exclus).
+const ESTIMATABLE_TYPES: readonly string[] = ["immo", "conso", "rachat", "pro"];
 
 const LOAN_OPTIONS: LoanType[] = ["immo", "conso", "rachat", "pro", "autre"];
 const STATUS_OPTIONS: EmploymentStatus[] = [
@@ -76,9 +82,29 @@ const COUNTRY_LABEL_KEYS: Record<CountryCode, `country${CountryCode}`> = {
 /**
  * Formulaire de demande — reproduction exacte du HTML (.form-card / .grid2 / .fg).
  * Autofill depuis le simulateur via la prop `prefill`.
+ * Estimation automatique : quand le prospect remplit montant + durée + type
+ * lui-même (sans passer par le simulateur), mensualité/taux/coût total se
+ * calculent via `calculateLoan` (mêmes taux DB que le simulateur).
+ * Boutons sociaux (WhatsApp/Messenger) et note visibles/configurables via settings CMS.
  * Soumission via POST /api/leads avec états UI (loading, success, error).
  */
-export default function LeadForm({ prefill, whatsappNumber }: { prefill?: LeadFormPrefill; whatsappNumber?: string }) {
+export default function LeadForm({
+  prefill,
+  whatsappNumber,
+  rates,
+  socialNote,
+  showWhatsapp = true,
+  showMessenger = true,
+}: {
+  prefill?: LeadFormPrefill;
+  whatsappNumber?: string;
+  /** Paliers de taux DB (même source que le simulateur). */
+  rates?: readonly ApplicableRate[];
+  /** Override CMS de la note sous les boutons sociaux (fallback i18n si vide). */
+  socialNote?: string;
+  showWhatsapp?: boolean;
+  showMessenger?: boolean;
+}) {
   const t = useTranslations("LeadForm");
   const tRoot = useTranslations();
   const locale = useLocale();
@@ -127,6 +153,48 @@ export default function LeadForm({ prefill, whatsappNumber }: { prefill?: LeadFo
     if (prefill.totalCost !== undefined) setTotalCost(String(prefill.totalCost));
     setShowAutofill(true);
   }, [prefill]);
+
+  // ----- Estimation automatique (même moteur que le simulateur) -----
+  // Quand montant + durée + type (estimable) sont remplis par le prospect
+  // directement dans le formulaire, on calcule mensualité / taux / coût total
+  // avec calculateLoan — donc avec les taux DB des banques partenaires quand
+  // ils sont fournis (fallback taux indicatifs sinon).
+  // Les champs restent éditables : toute saisie manuelle bascule `estimateSource`
+  // sur "manual" (le hint disparaît) jusqu'au prochain changement de montant/durée/type.
+  const [estimateSource, setEstimateSource] = useState<"none" | "auto" | "manual">("none");
+
+  useEffect(() => {
+    const amountNum = Number(amount);
+    const durationNum = Number(duration);
+    const estimable = ESTIMATABLE_TYPES.includes(loanType);
+    const isValid =
+      amount !== "" && amountNum >= 5000 &&
+      duration !== "" && durationNum >= 1 &&
+      estimable;
+    if (isValid) {
+      try {
+        const result = calculateLoan(
+          { amount: amountNum, durationYears: durationNum, loanType: loanType as SimLoanType },
+          rates,
+        );
+        setMonthlyPayment(String(result.monthlyPayment));
+        setAnnualRate(result.annualRate.toFixed(1));
+        setTotalCost(String(result.totalCost));
+        setEstimateSource("auto");
+      } catch {
+        // Entrée hors bornes pendant la saisie — on n'écrase rien.
+      }
+    } else if (estimateSource === "auto" && !estimable && loanType !== "") {
+      // Type non estimable sélectionné après une estimation automatique :
+      // les chiffres affichés correspondent à l'ancien type → on les retire
+      // (les saisies manuelles du prospect ne sont jamais effacées).
+      setMonthlyPayment("");
+      setAnnualRate("");
+      setTotalCost("");
+      setEstimateSource("none");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [amount, duration, loanType, rates]);
 
   const isAmountFilled = amount !== "";
   const isTypeFilled = loanType !== "";
@@ -354,14 +422,14 @@ export default function LeadForm({ prefill, whatsappNumber }: { prefill?: LeadFo
           </select>
         </div>
 
-        {/* Mensualité estimée (pré-remplie par le simulateur, éditable manuellement) */}
+        {/* Mensualité estimée (auto-calculée ou pré-remplie par le simulateur, éditable) */}
         <div className="fg full">
           <label className="field-label">{t("monthlyPayment")}</label>
           <div className="montant">
             <input
               type="number"
               value={monthlyPayment}
-              onChange={(e) => setMonthlyPayment(e.target.value)}
+              onChange={(e) => { setMonthlyPayment(e.target.value); setEstimateSource("manual"); }}
               placeholder="—"
               className={isMonthlyFilled ? "filled" : ""}
             />
@@ -369,7 +437,7 @@ export default function LeadForm({ prefill, whatsappNumber }: { prefill?: LeadFo
           </div>
         </div>
 
-        {/* Taux indicatif (pré-rempli par le simulateur, éditable manuellement) */}
+        {/* Taux indicatif (auto-calculé ou pré-rempli par le simulateur, éditable) */}
         <div className="fg full">
           <label className="field-label">{t("indicativeRate")}</label>
           <div className="montant">
@@ -377,7 +445,7 @@ export default function LeadForm({ prefill, whatsappNumber }: { prefill?: LeadFo
               type="number"
               step="0.1"
               value={annualRate}
-              onChange={(e) => setAnnualRate(e.target.value)}
+              onChange={(e) => { setAnnualRate(e.target.value); setEstimateSource("manual"); }}
               placeholder="—"
               className={isRateFilled ? "filled" : ""}
             />
@@ -385,19 +453,22 @@ export default function LeadForm({ prefill, whatsappNumber }: { prefill?: LeadFo
           </div>
         </div>
 
-        {/* Coût total du crédit (pré-rempli par le simulateur, éditable manuellement) */}
+        {/* Coût total du crédit (auto-calculé ou pré-rempli par le simulateur, éditable) */}
         <div className="fg full">
           <label className="field-label">{t("totalCost")}</label>
           <div className="montant">
             <input
               type="number"
               value={totalCost}
-              onChange={(e) => setTotalCost(e.target.value)}
+              onChange={(e) => { setTotalCost(e.target.value); setEstimateSource("manual"); }}
               placeholder="—"
               className={isTotalFilled ? "filled" : ""}
             />
             <span className="sfx">€</span>
           </div>
+          {estimateSource === "auto" && (
+            <span className="fhint">{t("autoEstimateHint")}</span>
+          )}
         </div>
 
         {/* Situation pro */}
@@ -459,33 +530,46 @@ export default function LeadForm({ prefill, whatsappNumber }: { prefill?: LeadFo
 
       <div className="divider"><span>{t("or")}</span></div>
 
-      {/* Boutons WhatsApp + Messenger côte à côte */}
-      <div className="btn-social-grid">
-        <a
-          href={whatsappNumber ? `https://wa.me/${whatsappNumber.replace(/[^\d]/g, "")}` : "https://wa.me/33600000000"}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="btn-wa"
-        >
-          <svg viewBox="0 0 24 24">
-            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-          </svg>
-          <span>{t("whatsapp")}</span>
-        </a>
-        <a
-          href="https://m.me/kredix"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="btn-messenger"
-        >
-          <svg viewBox="0 0 24 24">
-            <path d="M12 2C6.36 2 1.8 6.13 1.8 11.25c0 2.88 1.42 5.45 3.65 7.18V22l3.33-1.83c.95.26 1.96.4 3 .4 5.64 0 10.2-4.13 10.2-9.25S17.64 2 12 2zm1.07 12.25l-2.65-2.83-5.18 2.83 5.69-6.04 2.71 2.83 5.13-2.83-5.7 6.04z" />
-          </svg>
-          <span>{t("messenger")}</span>
-        </a>
-      </div>
+      {/* Boutons WhatsApp + Messenger — visibilité pilotée par le CMS.
+          Garde côté rendu : au moins un bouton (si les deux sont masqués en DB,
+          on réaffiche les deux plutôt que de laisser le bloc vide). */}
+      {(() => {
+        const wa = showWhatsapp || !showMessenger;
+        const ms = showMessenger || !showWhatsapp;
+        const single = wa !== ms; // un seul bouton → pleine largeur
+        return (
+          <div className={`btn-social-grid${single ? " single" : ""}`}>
+            {wa && (
+              <a
+                href={whatsappNumber ? `https://wa.me/${whatsappNumber.replace(/[^\d]/g, "")}` : "https://wa.me/33600000000"}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-wa"
+              >
+                <svg viewBox="0 0 24 24">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                </svg>
+                <span>{t("whatsapp")}</span>
+              </a>
+            )}
+            {ms && (
+              <a
+                href="https://m.me/kredix"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-messenger"
+              >
+                <svg viewBox="0 0 24 24">
+                  <path d="M12 2C6.36 2 1.8 6.13 1.8 11.25c0 2.88 1.42 5.45 3.65 7.18V22l3.33-1.83c.95.26 1.96.4 3 .4 5.64 0 10.2-4.13 10.2-9.25S17.64 2 12 2zm1.07 12.25l-2.65-2.83-5.18 2.83 5.69-6.04 2.71 2.83 5.13-2.83-5.7 6.04z" />
+                </svg>
+                <span>{t("messenger")}</span>
+              </a>
+            )}
+          </div>
+        );
+      })()}
 
-      <p className="btn-social-note">{t("socialNote")}</p>
+      <p className="btn-social-note">{socialNote?.trim() || t("socialNote")}</p>
 
       <style>{`
         .lf-consent {

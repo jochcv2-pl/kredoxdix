@@ -752,6 +752,10 @@ input[type=range]::-moz-range-thumb {
   grid-template-columns: 1fr 1fr;
   gap: 8px;
 }
+/* Un seul bouton visible (CMS) → pleine largeur, design préservé */
+.btn-social-grid.single {
+  grid-template-columns: 1fr;
+}
 .btn-messenger {
   width: 100%;
   background: #E7F0FF;
