@@ -91,10 +91,19 @@ export async function POST(req: NextRequest) {
     return errorResponse('Aucun gateway email actif.', ERR.INTERNAL.code, undefined, 503);
   }
 
-  // 2. Template actif pour ce trigger
-  const template = await prisma.emailTemplate.findFirst({
+  // 2. Template actif pour ce trigger.
+  //    Même logique que le cron relance : langue FR d'abord (données de test FR),
+  //    sinon fallback sur un template actif dans n'importe quelle langue —
+  //    sinon l'admin ne peut jamais tester si ses modèles sont en DE/EN/...
+  let template = await prisma.emailTemplate.findFirst({
     where: { trigger, status: 'active', language: 'fr' },
   });
+  if (!template) {
+    template = await prisma.emailTemplate.findFirst({
+      where: { trigger, status: 'active' },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
   if (!template) {
     return errorResponse(`Aucun template actif pour l'étape "${STEP_LABELS[step]}" (${trigger}). Créez et activez un template dans Emails.`, ERR.NOT_FOUND.code, undefined, 404);
   }

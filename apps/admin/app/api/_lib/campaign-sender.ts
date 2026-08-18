@@ -54,7 +54,19 @@ export async function getOfferAttachment(
       durationYears: true,
     },
   });
-  if (!lead || !lead.amount || !lead.durationYears) return null;
+  // Logs de diagnostic : sans eux, un PDF manquant est invisible dans docker logs
+  // (retour null silencieux) et impossible à distinguer d'un échec de génération.
+  if (!lead) {
+    console.warn(`[getOfferAttachment] Lead ${leadId} introuvable — email envoyé sans PDF`);
+    return null;
+  }
+  if (!lead.amount || !lead.durationYears) {
+    console.warn(
+      `[getOfferAttachment] Données de prêt incomplètes (lead ${leadId}) : ` +
+      `amount=${lead.amount}, durationYears=${lead.durationYears} — email envoyé sans PDF`,
+    );
+    return null;
+  }
 
   const siteName = await getSetting('site_name', 'Kredix');
 
@@ -70,6 +82,11 @@ export async function getOfferAttachment(
       lastName: fallbackLastName ?? lead.lastName,
       siteName,
     });
+
+    console.log(
+      `[getOfferAttachment] PDF généré (lead ${leadId}, ${Math.round(pdfBuffer.length / 1024)} Ko, ` +
+      `${lead.amount}€/${lead.durationYears}ans@${(lead.annualRate ?? 4.5).toFixed(2)}%)`,
+    );
 
     return {
       filename: 'tableau-amortissement.pdf',
