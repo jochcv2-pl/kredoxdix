@@ -232,6 +232,15 @@ export default function Emails() {
   const [testSending, setTestSending] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
+  // Envoi ponctuel (adhoc) — destinataire hors CRM
+  const [adhocTarget, setAdhocTarget] = useState<Template | null>(null);
+  const [adhocTo, setAdhocTo] = useState('');
+  const [adhocFirstName, setAdhocFirstName] = useState('');
+  const [adhocLastName, setAdhocLastName] = useState('');
+  const [adhocMessage, setAdhocMessage] = useState('');
+  const [adhocSending, setAdhocSending] = useState(false);
+  const [adhocResult, setAdhocResult] = useState<{ ok: boolean; msg: string } | null>(null);
+
   // Pipeline test (Bienvenue, Offre, R1, R2, R3)
   const [ptStep, setPtStep] = useState<string | null>(null);
   const [ptEmail, setPtEmail] = useState('');
@@ -725,6 +734,45 @@ export default function Emails() {
     setTestTarget(tpl);
     setTestEmail('');
     setTestResult(null);
+  };
+
+  // --- Envoi ponctuel (adhoc) ---
+  const openAdhocModal = (tpl: Template) => {
+    setAdhocTarget(tpl);
+    setAdhocTo('');
+    setAdhocFirstName('');
+    setAdhocLastName('');
+    setAdhocMessage('');
+    setAdhocResult(null);
+  };
+
+  const handleAdhocSend = async () => {
+    if (!adhocTarget || !adhocTo.trim()) return;
+    setAdhocSending(true);
+    setAdhocResult(null);
+    try {
+      const res = await fetch('/api/emails/adhoc', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          templateId: adhocTarget.id,
+          to: adhocTo.trim(),
+          firstName: adhocFirstName.trim() || undefined,
+          lastName: adhocLastName.trim() || undefined,
+          customMessage: adhocMessage.trim() || undefined,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        const errData = json?.data ?? json;
+        throw new Error(errData?.error ?? errData?.message ?? `Échec (${res.status})`);
+      }
+      setAdhocResult({ ok: true, msg: `Email envoyé à ${adhocTo.trim()} ✓` });
+    } catch (e) {
+      setAdhocResult({ ok: false, msg: e instanceof Error ? e.message : 'Erreur inconnue' });
+    } finally {
+      setAdhocSending(false);
+    }
   };
 
   const handleTestSend = async () => {
@@ -1263,6 +1311,14 @@ export default function Emails() {
                       Tester
                     </button>
                     <button
+                      className="tpl2-btn tpl2-btn-send"
+                      onClick={() => openAdhocModal(tpl)}
+                      title="Envoi ponctuel à un destinataire hors CRM"
+                    >
+                      <Icon name="send" size={15} />
+                      Envoyer
+                    </button>
+                    <button
                       className="tpl2-btn tpl2-btn-edit"
                       onClick={() => editTemplate(tpl)}
                       title="Modifier le modèle"
@@ -1448,6 +1504,78 @@ export default function Emails() {
               disabled={!testEmail.trim() || testSending}
             >
               {testSending ? 'Envoi en cours…' : 'Envoyer le test'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ===== ADHOC SEND MODAL (envoi ponctuel, destinataire hors CRM) ===== */}
+      <Modal
+        isOpen={!!adhocTarget}
+        onClose={() => setAdhocTarget(null)}
+        title={`Envoi ponctuel — ${adhocTarget?.name ?? ''}`}
+      >
+        <div className="test-send-modal">
+          <p className="test-send-hint">
+            Envoi <b>réel</b> (sans préfixe [TEST]) à l&apos;adresse de votre choix — le destinataire
+            n&apos;a pas besoin d&apos;être dans le CRM. Les variables du modèle (ex: {'{{Prénom}}'},
+            {' {{Message}}'}) sont remplies avec les informations ci-dessous ; les champs laissés
+            vides restent vides dans l&apos;email.
+          </p>
+          <div className="test-send-field">
+            <label>Adresse email du destinataire *</label>
+            <input
+              type="email"
+              value={adhocTo}
+              onChange={(e) => setAdhocTo(e.target.value)}
+              placeholder="destinataire@exemple.com"
+              autoFocus
+              onKeyDown={(e) => { if (e.key === 'Enter' && adhocTo.trim() && !adhocSending) handleAdhocSend(); }}
+            />
+          </div>
+          <div className="adhoc-name-row">
+            <div className="test-send-field">
+              <label>Prénom (optionnel)</label>
+              <input
+                type="text"
+                value={adhocFirstName}
+                onChange={(e) => setAdhocFirstName(e.target.value)}
+                placeholder="Marie"
+              />
+            </div>
+            <div className="test-send-field">
+              <label>Nom (optionnel)</label>
+              <input
+                type="text"
+                value={adhocLastName}
+                onChange={(e) => setAdhocLastName(e.target.value)}
+                placeholder="Dupont"
+              />
+            </div>
+          </div>
+          <div className="test-send-field">
+            <label>Message personnalisé (optionnel — inséré dans {'{{Message}}'})</label>
+            <textarea
+              value={adhocMessage}
+              onChange={(e) => setAdhocMessage(e.target.value)}
+              placeholder="Texte libre injecté dans la variable {{Message}} du modèle…"
+              rows={4}
+            />
+          </div>
+          {adhocResult && (
+            <div className={`test-send-result ${adhocResult.ok ? 'ok' : 'err'}`}>
+              <Icon name={adhocResult.ok ? 'check-circle' : 'alert-triangle'} size={16} />
+              {adhocResult.msg}
+            </div>
+          )}
+          <div className="test-send-actions">
+            <button className="btn btn-ghost" onClick={() => setAdhocTarget(null)}>Fermer</button>
+            <button
+              className="btn btn-primary"
+              onClick={handleAdhocSend}
+              disabled={!adhocTo.trim() || adhocSending}
+            >
+              {adhocSending ? 'Envoi en cours…' : 'Envoyer l\'email'}
             </button>
           </div>
         </div>

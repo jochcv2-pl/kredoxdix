@@ -73,7 +73,9 @@ const SOCIAL_LABEL_DEFAULTS: Record<'wa' | 'ms', Record<string, string>> = {
 }
 
 // Catégories de settings par section (pour la sauvegarde indépendante).
-type SectionId = 'hero' | 'services' | 'coord' | 'langues' | 'form'
+// Section "Formulaire" éclatée en 4 sous-sections indépendantes :
+// titres WhatsApp / titres Messenger / note / visibilité des boutons.
+type SectionId = 'hero' | 'services' | 'coord' | 'langues' | 'formWa' | 'formMs' | 'formNote' | 'formBtns'
 
 interface SettingPayload {
   key: string
@@ -130,7 +132,10 @@ export default function CMS() {
     services: null,
     coord: null,
     langues: null,
-    form: null,
+    formWa: null,
+    formMs: null,
+    formNote: null,
+    formBtns: null,
   })
   // Erreur par section.
   const [sectionError, setSectionError] = useState<Record<SectionId, string | null>>({
@@ -138,7 +143,10 @@ export default function CMS() {
     services: null,
     coord: null,
     langues: null,
-    form: null,
+    formWa: null,
+    formMs: null,
+    formNote: null,
+    formBtns: null,
   })
 
   // Chargement initial : GET /api/settings (toutes catégories).
@@ -219,11 +227,11 @@ export default function CMS() {
       if (prev[which]) {
         const other = which === 'whatsapp' ? 'messenger' : 'whatsapp'
         if (!prev[other]) {
-          setSectionError((s) => ({ ...s, form: 'Au moins un bouton doit rester visible.' }))
+          setSectionError((s) => ({ ...s, formBtns: 'Au moins un bouton doit rester visible.' }))
           return prev // refus : l'autre est déjà masqué
         }
       }
-      setSectionError((s) => ({ ...s, form: null }))
+      setSectionError((s) => ({ ...s, formBtns: null }))
       return { ...prev, [which]: !prev[which] }
     })
   }
@@ -316,35 +324,40 @@ export default function CMS() {
     ])
   }
 
-  const saveForm = () => {
-    // Garde re-vérifiée à la sauvegarde (défense en profondeur).
-    if (!socialBtns.whatsapp && !socialBtns.messenger) {
-      setSectionError((s) => ({ ...s, form: 'Au moins un bouton doit rester visible.' }))
-      return
-    }
-    const notes = Object.values(LANG_CODE).map((code) => ({
+  const saveFormWaLabels = () => {
+    saveSection('formWa', Object.values(LANG_CODE).map((code) => ({
+      key: KEYS.waLabel(code),
+      value: socialLabels.wa[code] ?? '',
+      category: 'cms.form',
+      description: `Libellé du bouton WhatsApp du formulaire (langue ${code.toUpperCase()}). Vide = texte par défaut.`,
+    })))
+  }
+
+  const saveFormMsLabels = () => {
+    saveSection('formMs', Object.values(LANG_CODE).map((code) => ({
+      key: KEYS.msLabel(code),
+      value: socialLabels.ms[code] ?? '',
+      category: 'cms.form',
+      description: `Libellé du bouton Messenger du formulaire (langue ${code.toUpperCase()}). Vide = texte par défaut.`,
+    })))
+  }
+
+  const saveFormNote = () => {
+    saveSection('formNote', Object.values(LANG_CODE).map((code) => ({
       key: KEYS.socialNote(code),
       value: formNote[code] ?? '',
       category: 'cms.form',
       description: `Note sous les boutons sociaux du formulaire (langue ${code.toUpperCase()}). Vide = texte par défaut.`,
-    }))
-    const labels = Object.values(LANG_CODE).flatMap((code) => [
-      {
-        key: KEYS.waLabel(code),
-        value: socialLabels.wa[code] ?? '',
-        category: 'cms.form',
-        description: `Libellé du bouton WhatsApp du formulaire (langue ${code.toUpperCase()}). Vide = texte par défaut.`,
-      },
-      {
-        key: KEYS.msLabel(code),
-        value: socialLabels.ms[code] ?? '',
-        category: 'cms.form',
-        description: `Libellé du bouton Messenger du formulaire (langue ${code.toUpperCase()}). Vide = texte par défaut.`,
-      },
-    ])
-    saveSection('form', [
-      ...labels,
-      ...notes,
+    })))
+  }
+
+  const saveFormBtns = () => {
+    // Garde re-vérifiée à la sauvegarde (défense en profondeur).
+    if (!socialBtns.whatsapp && !socialBtns.messenger) {
+      setSectionError((s) => ({ ...s, formBtns: 'Au moins un bouton doit rester visible.' }))
+      return
+    }
+    saveSection('formBtns', [
       { key: KEYS.waVisible, value: socialBtns.whatsapp ? 'true' : 'false', category: 'cms.form', description: 'Visibilité du bouton WhatsApp sur le formulaire.' },
       { key: KEYS.msVisible, value: socialBtns.messenger ? 'true' : 'false', category: 'cms.form', description: 'Visibilité du bouton Messenger sur le formulaire.' },
     ])
@@ -600,10 +613,10 @@ export default function CMS() {
             {renderSaveBtn('langues', saveLangues)}
           </div>
 
-          {/* ===== FORMULAIRE PUBLIC (note + boutons sociaux) ===== */}
+          {/* ===== FORMULAIRE — VISIBILITÉ DES BOUTONS ===== */}
           <div className="panel">
             <div className="panel-head">
-              <h3>Formulaire — boutons sociaux</h3>
+              <h3>Formulaire — boutons visibles</h3>
             </div>
             <div className="panel-body" style={{ paddingTop: 16 }}>
               <p className="field-hint" style={{ marginBottom: 12 }}>
@@ -611,7 +624,7 @@ export default function CMS() {
                 Masquez l&apos;un des deux : le bouton restant s&apos;étend automatiquement
                 en pleine largeur. Au moins un bouton doit rester visible.
               </p>
-              <div className="tool-grid" style={{ marginBottom: 14 }}>
+              <div className="tool-grid">
                 <div className="tool">
                   <div className="tool-name">WhatsApp</div>
                   <div
@@ -633,6 +646,16 @@ export default function CMS() {
                   </div>
                 </div>
               </div>
+            </div>
+            {renderSaveBtn('formBtns', saveFormBtns)}
+          </div>
+
+          {/* ===== FORMULAIRE — TITRE WHATSAPP ===== */}
+          <div className="panel">
+            <div className="panel-head">
+              <h3>Formulaire — titre WhatsApp</h3>
+            </div>
+            <div className="panel-body" style={{ paddingTop: 16 }}>
               <p className="field-hint" style={{ marginBottom: 12 }}>
                 Titre du bouton WhatsApp, par langue. Laissez vide pour utiliser
                 le texte par défaut de la langue.
@@ -650,7 +673,17 @@ export default function CMS() {
                   </div>
                 )
               })}
-              <p className="field-hint" style={{ marginBottom: 12, marginTop: 4 }}>
+            </div>
+            {renderSaveBtn('formWa', saveFormWaLabels)}
+          </div>
+
+          {/* ===== FORMULAIRE — TITRE MESSENGER ===== */}
+          <div className="panel">
+            <div className="panel-head">
+              <h3>Formulaire — titre Messenger</h3>
+            </div>
+            <div className="panel-body" style={{ paddingTop: 16 }}>
+              <p className="field-hint" style={{ marginBottom: 12 }}>
                 Titre du bouton Messenger, par langue. Laissez vide pour utiliser
                 le texte par défaut de la langue.
               </p>
@@ -667,14 +700,24 @@ export default function CMS() {
                   </div>
                 )
               })}
-              <p className="field-hint" style={{ marginBottom: 12, marginTop: 4 }}>
+            </div>
+            {renderSaveBtn('formMs', saveFormMsLabels)}
+          </div>
+
+          {/* ===== FORMULAIRE — NOTE SOUS LES BOUTONS ===== */}
+          <div className="panel">
+            <div className="panel-head">
+              <h3>Formulaire — note sous les boutons</h3>
+            </div>
+            <div className="panel-body" style={{ paddingTop: 16 }}>
+              <p className="field-hint" style={{ marginBottom: 12 }}>
                 Note affichée sous les boutons, par langue. Laissez vide pour utiliser
                 le texte par défaut de la langue.
               </p>
               {LANGUES.map((l) => {
                 const code = LANG_CODE[l]
                 return (
-                  <div className="fg" style={{ marginBottom: 10 }} key={code}>
+                  <div className="fg" style={{ marginBottom: 10 }} key={`note-${code}`}>
                     <label>Note ({l})</label>
                     <input
                       value={formNote[code] ?? ''}
@@ -685,7 +728,7 @@ export default function CMS() {
                 )
               })}
             </div>
-            {renderSaveBtn('form', saveForm)}
+            {renderSaveBtn('formNote', saveFormNote)}
           </div>
         </div>
       </div>
