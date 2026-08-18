@@ -1298,48 +1298,50 @@ export default function Emails() {
                     <span className="tpl2-type">{tpl.htmlContent ? 'HTML' : 'Visuel'}</span>
                   </div>
                   <div className="tpl2-actions">
-                    <button className="tpl2-btn tpl2-btn-preview" onClick={() => setPreviewTpl(tpl)} title="Aperçu de l'email">
+                    {/* Boutons icônes seules — libellés complets en tooltip (title).
+                        7 actions tiennent ainsi sur une seule ligne de carte. */}
+                    <button className="tpl2-btn tpl2-btn-preview" onClick={() => setPreviewTpl(tpl)} title="Aperçu de l'email" aria-label="Aperçu">
                       <Icon name="search" size={15} />
-                      Aperçu
                     </button>
                     <button
                       className="tpl2-btn tpl2-btn-test"
                       onClick={() => openTestModal(tpl)}
-                      title="Envoyer un email de test"
+                      title="Envoyer un email de test (données démo)"
+                      aria-label="Tester"
                     >
                       <Icon name="mail" size={15} />
-                      Tester
                     </button>
                     <button
                       className="tpl2-btn tpl2-btn-send"
                       onClick={() => openAdhocModal(tpl)}
                       title="Envoi ponctuel à un destinataire hors CRM"
+                      aria-label="Envoyer"
                     >
                       <Icon name="send" size={15} />
-                      Envoyer
                     </button>
                     <button
                       className="tpl2-btn tpl2-btn-edit"
                       onClick={() => editTemplate(tpl)}
                       title="Modifier le modèle"
+                      aria-label="Modifier"
                       disabled={tpl.isConfidential}
                       style={tpl.isConfidential ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
                     >
                       <Icon name="pencil" size={15} />
-                      Modifier
                     </button>
                     <button
                       className={`tpl2-btn tpl2-btn-toggle ${tpl.status === 'active' ? 'is-on' : ''}`}
                       onClick={() => toggleTemplateStatus(tpl)}
-                      title={tpl.status === 'active' ? 'Désactiver' : 'Activer'}
+                      title={tpl.status === 'active' ? 'Désactiver le modèle' : 'Activer le modèle'}
+                      aria-label={tpl.status === 'active' ? 'Désactiver' : 'Activer'}
                     >
                       <Icon name={tpl.status === 'active' ? 'pause' : 'play'} size={15} />
-                      {tpl.status === 'active' ? 'Désactiver' : 'Activer'}
                     </button>
                     <button
                       className={`tpl2-btn ${tpl.isConfidential ? 'tpl2-btn-confidential-on' : 'tpl2-btn-confidential'}`}
                       onClick={() => toggleConfidential(tpl)}
                       title={tpl.isConfidential ? 'Désactiver le mode confidentiel' : 'Activer le mode confidentiel — l\'IA ne pourra plus accéder à ce modèle'}
+                      aria-label="Mode confidentiel"
                     >
                       <Icon name={tpl.isConfidential ? 'lock' : 'unlock'} size={15} />
                     </button>
@@ -1347,6 +1349,7 @@ export default function Emails() {
                       className="tpl2-btn tpl2-btn-delete"
                       onClick={() => setDeleteTarget(tpl)}
                       title="Supprimer"
+                      aria-label="Supprimer"
                       disabled={tpl.isConfidential}
                       style={tpl.isConfidential ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
                     >
