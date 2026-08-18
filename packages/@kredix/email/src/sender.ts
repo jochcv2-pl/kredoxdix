@@ -184,15 +184,19 @@ async function sendViaSmtp(
 
     console.log(`[SMTP] Connecting to ${host}:${port} (encryption=${encryption}, secure=${secure}, auth=${username ? 'yes' : 'no'}, from=${params.from})`);
 
+    // Logging nodemailer détaillé (contenu MIME complet — PII) uniquement à la
+    // demande : EMAIL_SMTP_DEBUG=true dans le .env. Diagnostic ponctuel seulement,
+    // JAMAIS en prod par défaut (les emails entiers partent dans docker logs).
+    const smtpDebug = process.env.EMAIL_SMTP_DEBUG === 'true';
+
     const transporter = nodemailer.createTransport({
       host,
       port,
       secure,
       requireTLS: encryption === 'starttls',
       auth: username ? { user: username, pass: password } : undefined,
-      // Logging détaillé pour diagnostic — apparaît dans docker logs
-      debug: true,
-      logger: true,
+      debug: smtpDebug,
+      logger: smtpDebug,
     });
 
     // Vérifie la connexion SMTP avant l'envoi (révèle les erreurs d'auth/réseau).
