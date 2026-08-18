@@ -1,0 +1,3 @@
+# Fonts metrics pdfkit — JAMAIS de conversion de fin de ligne (le parser
+# AFM attend des LF exactes ; une conversion CRLF corromprait les PDF).
+*.afm -text
