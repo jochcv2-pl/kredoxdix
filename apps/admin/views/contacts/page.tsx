@@ -235,6 +235,30 @@ export default function Contacts() {
   const [validateTarget, setValidateTarget] = useState<{ id: string; name: string } | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
 
+  // ----- Envoi manuel de l'offre (POST /api/leads/[id]/send-offer) -----
+  const [offerTarget, setOfferTarget] = useState<{ id: string; name: string; email: string | null } | null>(null)
+  const [offerSending, setOfferSending] = useState(false)
+  const [offerError, setOfferError] = useState<string | null>(null)
+
+  const handleSendOffer = async () => {
+    if (!offerTarget) return
+    setOfferSending(true)
+    setOfferError(null)
+    try {
+      const res = await fetch(`/api/leads/${offerTarget.id}/send-offer`, { method: 'POST' })
+      const json = await res.json().catch(() => null)
+      if (!res.ok) {
+        const errData = json?.data ?? json
+        throw new Error(errData?.error ?? errData?.message ?? `Échec (${res.status})`)
+      }
+      setOfferTarget(null)
+    } catch (e) {
+      setOfferError(e instanceof Error ? e.message : 'Erreur inconnue')
+    } finally {
+      setOfferSending(false)
+    }
+  }
+
   // ----- Edition prospect -----
   const [editTarget, setEditTarget] = useState<string | null>(null)
   const [editData, setEditData] = useState({
@@ -1200,24 +1224,33 @@ export default function Contacts() {
                               Dossier perdu
                             </span>
                            )}
-                          {isSuperAdmin && (
-                            <button
-                              className="btn btn-ghost btn-sm"
-                              title="Assigner / Transférer"
-                              onClick={() => openAssignModal(c.id, `${c.firstName} ${c.lastName}`)}
-                              style={{ padding: '4px 8px' }}
-                            >
-                              <Icon name="user-check" size={14} />
-                            </button>
-                          )}
-                          <button
-                            className="btn btn-ghost btn-sm"
-                            title="Modifier"
-                            onClick={() => openEditModal(c.id)}
-                            style={{ padding: '4px 8px' }}
-                          >
-                            <Icon name="pencil" size={14} />
-                          </button>
+                           {isSuperAdmin && (
+                             <button
+                               className="btn btn-ghost btn-sm"
+                               title="Assigner / Transférer"
+                               onClick={() => openAssignModal(c.id, `${c.firstName} ${c.lastName}`)}
+                               style={{ padding: '4px 8px' }}
+                             >
+                               <Icon name="user-check" size={14} />
+                             </button>
+                           )}
+                           <button
+                             className="btn btn-ghost btn-sm"
+                             title="Envoyer l'offre maintenant (avec tableau d'amortissement PDF)"
+                             disabled={!c.email}
+                             onClick={() => { setOfferError(null); setOfferTarget({ id: c.id, name: `${c.firstName} ${c.lastName}`, email: c.email }) }}
+                             style={{ color: '#059669', padding: '4px 8px' }}
+                           >
+                             <Icon name="send" size={14} />
+                           </button>
+                           <button
+                             className="btn btn-ghost btn-sm"
+                             title="Modifier"
+                             onClick={() => openEditModal(c.id)}
+                             style={{ padding: '4px 8px' }}
+                           >
+                             <Icon name="pencil" size={14} />
+                           </button>
                           <button
                             className="btn btn-ghost btn-sm"
                             title="Supprimer"
@@ -1360,6 +1393,31 @@ export default function Contacts() {
           ))}
         </div>
       </Modal>
+
+      <ConfirmDialog
+        isOpen={!!offerTarget}
+        variant="info"
+        title="Envoyer l'offre maintenant"
+        message={
+          <>
+            Envoyer l&apos;offre de prêt à <strong>{offerTarget?.name}</strong>{' '}
+            (<strong>{offerTarget?.email ?? '—'}</strong>) ?
+            <br />
+            L&apos;email part immédiatement avec le tableau d&apos;amortissement en pièce jointe
+            (si les données de prêt sont complètes). La date d&apos;expiration de l&apos;offre est
+            recalculée à partir de maintenant, et la séquence automatique ne renverra pas l&apos;offre.
+            {offerError && (
+              <div style={{ marginTop: 10, color: '#c0392b', fontSize: 13 }}>
+                {offerError}{' '}
+                <span className="link" onClick={handleSendOffer}>Réessayer</span>
+              </div>
+            )}
+          </>
+        }
+        confirmLabel={offerSending ? 'Envoi…' : 'Envoyer l\'offre'}
+        onConfirm={handleSendOffer}
+        onClose={() => { if (!offerSending) setOfferTarget(null) }}
+      />
 
       <ConfirmDialog
         isOpen={!!deleteTarget}

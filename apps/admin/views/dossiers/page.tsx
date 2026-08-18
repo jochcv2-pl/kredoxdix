@@ -10,6 +10,7 @@ interface Dossier {
   id: string
   firstName: string
   lastName: string
+  email: string | null
   city: string
   country: string
   loanType: string
@@ -26,6 +27,7 @@ interface ApiLead {
   id: string
   firstName: string
   lastName: string
+  email: string | null
   city: string
   country: string
   loanType: string
@@ -84,6 +86,11 @@ export default function Dossiers() {
   const [error, setError] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
 
+  // Envoi manuel de l'offre (PDF amortissement en PJ).
+  const [offerTarget, setOfferTarget] = useState<Dossier | null>(null)
+  const [offerSending, setOfferSending] = useState(false)
+  const [offerError, setOfferError] = useState<string | null>(null)
+
   const fetchDossiers = async () => {
     setLoading(true)
     setError(null)
@@ -104,6 +111,26 @@ export default function Dossiers() {
   useEffect(() => {
     fetchDossiers()
   }, [])
+
+  // Envoi manuel de l'offre de prêt (POST /api/leads/[id]/send-offer).
+  const handleSendOffer = async () => {
+    if (!offerTarget) return
+    setOfferSending(true)
+    setOfferError(null)
+    try {
+      const res = await fetch(`/api/leads/${offerTarget.id}/send-offer`, { method: 'POST' })
+      const json = await res.json().catch(() => null)
+      if (!res.ok) {
+        const errData = json?.data ?? json
+        throw new Error(errData?.error ?? errData?.message ?? `Échec (${res.status})`)
+      }
+      setOfferTarget(null)
+    } catch (e) {
+      setOfferError(e instanceof Error ? e.message : 'Erreur inconnue')
+    } finally {
+      setOfferSending(false)
+    }
+  }
 
   return (
     <section className="view" id="dossiers">
@@ -189,6 +216,15 @@ export default function Dossiers() {
                         <td style={{ textAlign: 'right' }}>
                           <button
                             className="btn btn-ghost btn-sm"
+                            title="Envoyer l'offre maintenant (avec tableau d'amortissement PDF)"
+                            disabled={!d.email}
+                            onClick={() => { setOfferError(null); setOfferTarget(d) }}
+                            style={{ color: '#059669', padding: '4px 8px', marginRight: 4 }}
+                          >
+                            <Icon name="send" size={15} />
+                          </button>
+                          <button
+                            className="btn btn-ghost btn-sm"
                             title="Supprimer"
                             onClick={() => setDeleteTarget({ id: d.id, name: `${d.firstName} ${d.lastName}` })}
                             style={{ color: 'var(--red, #dc2626)', padding: '4px 8px' }}
@@ -205,6 +241,31 @@ export default function Dossiers() {
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={!!offerTarget}
+        variant="info"
+        title="Envoyer l'offre maintenant"
+        message={
+          <>
+            Envoyer l&apos;offre de prêt à <strong>{offerTarget?.firstName} {offerTarget?.lastName}</strong>{' '}
+            (<strong>{offerTarget?.email ?? '—'}</strong>) ?
+            <br />
+            L&apos;email part immédiatement avec le tableau d&apos;amortissement en pièce jointe
+            (si les données de prêt sont complètes). La date d&apos;expiration de l&apos;offre est
+            recalculée à partir de maintenant, et la séquence automatique ne renverra pas l&apos;offre.
+            {offerError && (
+              <div style={{ marginTop: 10, color: '#c0392b', fontSize: 13 }}>
+                {offerError}{' '}
+                <span className="link" onClick={handleSendOffer}>Réessayer</span>
+              </div>
+            )}
+          </>
+        }
+        confirmLabel={offerSending ? 'Envoi…' : 'Envoyer l\'offre'}
+        onConfirm={handleSendOffer}
+        onClose={() => { if (!offerSending) setOfferTarget(null) }}
+      />
 
       <ConfirmDialog
         isOpen={!!deleteTarget}
