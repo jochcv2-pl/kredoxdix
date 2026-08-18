@@ -40,7 +40,7 @@ const TRIGGER_LABEL: Record<string, string> = Object.fromEntries(
 // (@kredix/email/template.ts). Toute variable absente de l'interpolateur ne
 // serait jamais remplacée et resterait visible dans l'email envoyé.
 const VARS: Array<{ value: string; group: string }> = [
-  // Prospect (données du lead)
+  // Prospect (variables historiques PascalCase)
   { value: '{{Prénom}}', group: 'Prospect' },
   { value: '{{Nom}}', group: 'Prospect' },
   { value: '{{Email}}', group: 'Prospect' },
@@ -52,6 +52,29 @@ const VARS: Array<{ value: string; group: string }> = [
   { value: '{{TAEG}}', group: 'Prospect' },
   { value: '{{Message}}', group: 'Prospect' },
   { value: '{{LienDesinscription}}', group: 'Prospect' },
+  // Prospect (variables snake_case)
+  { value: '{{prenom}}', group: 'Prospect (nouvelles)' },
+  { value: '{{nom}}', group: 'Prospect (nouvelles)' },
+  { value: '{{nom_entreprise}}', group: 'Prospect (nouvelles)' },
+  { value: '{{type_pret}}', group: 'Prospect (nouvelles)' },
+  { value: '{{montant_pret}}', group: 'Prospect (nouvelles)' },
+  { value: '{{reference_demande}}', group: 'Prospect (nouvelles)' },
+  { value: '{{date_soumission}}', group: 'Prospect (nouvelles)' },
+  { value: '{{date_envoi_offre}}', group: 'Prospect (nouvelles)' },
+  { value: '{{date_expiration_offre}}', group: 'Prospect (nouvelles)' },
+  // Conseiller (cascade : admin assigné → CMS → fallback traduit)
+  { value: '{{prenom_conseiller}}', group: 'Conseiller' },
+  { value: '{{nom_conseiller}}', group: 'Conseiller' },
+  { value: '{{nom_complet_conseiller}}', group: 'Conseiller' },
+  { value: '{{initiales_conseiller}}', group: 'Conseiller' },
+  { value: '{{telephone_conseiller}}', group: 'Conseiller' },
+  { value: '{{email_conseiller}}', group: 'Conseiller' },
+  // Liens & URLs (désinscription, suivi, URLs configurables au CMS)
+  { value: '{{lien_desabonnement}}', group: 'Liens & URLs' },
+  { value: '{{lien_suivi}}', group: 'Liens & URLs' },
+  { value: '{{url_formulaire}}', group: 'Liens & URLs' },
+  { value: '{{url_messenger}}', group: 'Liens & URLs' },
+  { value: '{{url_contact_conseiller}}', group: 'Liens & URLs' },
   // Marque (données du site / agence)
   { value: '{{NomSite}}', group: 'Marque' },
   { value: '{{SiteUrl}}', group: 'Marque' },
@@ -59,6 +82,7 @@ const VARS: Array<{ value: string; group: string }> = [
   { value: '{{ContactEmail}}', group: 'Marque' },
   { value: '{{TéléphoneAgence}}', group: 'Marque' },
   { value: '{{AdresseAgence}}', group: 'Marque' },
+  { value: '{{adresse_siege}}', group: 'Marque' },
 ];
 
 const SAMPLE: Record<string, string> = {
@@ -79,6 +103,28 @@ const SAMPLE: Record<string, string> = {
   '{{ContactEmail}}': 'contact@kredix.fr',
   '{{TéléphoneAgence}}': '01 23 45 67 89',
   '{{AdresseAgence}}': '12 rue de la Finance, 75001 Paris',
+  // snake_case — valeurs d'exemple (aperçu Données réelles + mode import)
+  '{{prenom}}': 'Marie',
+  '{{nom}}': 'Lefèvre',
+  '{{nom_entreprise}}': 'Entreprise SAS',
+  '{{type_pret}}': 'immobilier',
+  '{{montant_pret}}': '210 000 €',
+  '{{reference_demande}}': 'KREDIX-XXXXXXXX',
+  '{{date_soumission}}': '05/08/2026',
+  '{{date_envoi_offre}}': '05/08/2026',
+  '{{date_expiration_offre}}': '19/08/2026',
+  '{{prenom_conseiller}}': 'Marie',
+  '{{nom_conseiller}}': 'Lefèvre',
+  '{{nom_complet_conseiller}}': 'Marie Lefèvre',
+  '{{initiales_conseiller}}': 'ML',
+  '{{telephone_conseiller}}': '01 23 45 67 89',
+  '{{email_conseiller}}': 'contact@kredix.fr',
+  '{{adresse_siege}}': '12 rue de la Finance, 75001 Paris',
+  '{{lien_desabonnement}}': 'https://kredix.fr/api/unsubscribe?t=...',
+  '{{lien_suivi}}': 'https://kredix.fr/fr/suivi?ref=KREDIX-XXXXXXXX&token=...',
+  '{{url_formulaire}}': 'https://kredix.fr/fr#demande',
+  '{{url_messenger}}': 'https://m.me/kredix',
+  '{{url_contact_conseiller}}': 'https://calendly.com/conseiller/rdv',
 };
 
 const DEFAULT_BODY = `Bonjour {{Prénom}},
