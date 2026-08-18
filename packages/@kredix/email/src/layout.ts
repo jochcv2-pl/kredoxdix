@@ -25,6 +25,8 @@ export interface EmailBrandData {
   formUrl: string;
   /** URL Messenger (setting url_messenger) — {{url_messenger}}. */
   messengerUrl: string;
+  /** URL de contact conseiller (setting url_contact_conseiller) — {{url_contact_conseiller}}. */
+  advisorContactUrl: string;
 }
 
 /**
@@ -32,7 +34,7 @@ export interface EmailBrandData {
  * Utilisé par tous les senders pour peupler le wrapper HTML + l'interpolation.
  */
 export async function loadBrandData(): Promise<EmailBrandData> {
-  const [siteName, logoUrl, siteUrl, contactEmail, agencyPhone, agencyAddress, advisorName, primaryColor, formUrl, messengerUrl] =
+  const [siteName, logoUrl, siteUrl, contactEmail, agencyPhone, agencyAddress, advisorName, primaryColor, formUrl, messengerUrl, advisorContactUrl] =
     await Promise.all([
       getSetting('site_name', 'Kredix'),
       getSetting('cms_logo_url', ''),
@@ -44,9 +46,10 @@ export async function loadBrandData(): Promise<EmailBrandData> {
       getSetting('cms_primary_color', '#2B8BDE'),
       getSetting('url_formulaire', ''),
       getSetting('url_messenger', ''),
+      getSetting('url_contact_conseiller', ''),
     ]);
 
-  return { siteName, logoUrl, siteUrl, contactEmail, agencyPhone, agencyAddress, advisorName, primaryColor, formUrl, messengerUrl };
+  return { siteName, logoUrl, siteUrl, contactEmail, agencyPhone, agencyAddress, advisorName, primaryColor, formUrl, messengerUrl, advisorContactUrl };
 }
 
 /**
@@ -62,6 +65,7 @@ export function brandToContext(brand: EmailBrandData): BrandContext {
     advisorName: brand.advisorName,
     formUrl: brand.formUrl,
     messengerUrl: brand.messengerUrl,
+    advisorContactUrl: brand.advisorContactUrl,
   };
 }
 

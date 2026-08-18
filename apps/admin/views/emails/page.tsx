@@ -833,6 +833,7 @@ export default function Emails() {
       '{{lien_suivi}}': 'https://kredix.fr/fr/suivi?ref=KREDIX-XXXXXXXX&token=…',
       '{{url_formulaire}}': 'https://kredix.fr/fr#demande',
       '{{url_messenger}}': 'https://m.me/kredix',
+      '{{url_contact_conseiller}}': 'https://calendly.com/conseiller/rdv',
     };
   }
 

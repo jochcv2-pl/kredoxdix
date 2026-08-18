@@ -34,6 +34,7 @@ const KEYS = {
   agencyAddress: 'agency_address',
   formUrl: 'url_formulaire',
   messengerUrl: 'url_messenger',
+  advisorContactUrl: 'url_contact_conseiller',
   activeLanguages: 'cms_active_languages',
   // Formulaire public — note sous les boutons sociaux (une clé par langue).
   socialNote: (code: string) => `cms_social_note_${code}`,
@@ -108,7 +109,7 @@ export default function CMS() {
     btnSecondaire: '',
   })
   const [services, setServices] = useState({ s1: '', s2: '', s3: '', s4: '' })
-  const [coord, setCoord] = useState({ tel: '', whatsapp: '', email: '', orias: '', siteUrl: '', advisorName: '', agencyAddress: '', formUrl: '', messengerUrl: '' })
+  const [coord, setCoord] = useState({ tel: '', whatsapp: '', email: '', orias: '', siteUrl: '', advisorName: '', agencyAddress: '', formUrl: '', messengerUrl: '', advisorContactUrl: '' })
   const [languesActives, setLanguesActives] = useState<Record<string, boolean>>(
     Object.fromEntries(LANGUES.map((l) => [l, true])),
   )
@@ -187,6 +188,7 @@ export default function CMS() {
           agencyAddress: byKey.get(KEYS.agencyAddress) ?? '',
           formUrl: byKey.get(KEYS.formUrl) ?? '',
           messengerUrl: byKey.get(KEYS.messengerUrl) ?? '',
+          advisorContactUrl: byKey.get(KEYS.advisorContactUrl) ?? '',
         })
 
         const langsCsv = byKey.get(KEYS.activeLanguages) ?? 'fr,en,de,es,pt,it'
@@ -319,6 +321,7 @@ export default function CMS() {
     { key: KEYS.agencyAddress, value: coord.agencyAddress, category: 'contact', description: 'Adresse du siège social.' },
     { key: KEYS.formUrl, value: coord.formUrl, category: 'contact', description: 'URL du formulaire de contact (variable email {{url_formulaire}}).' },
     { key: KEYS.messengerUrl, value: coord.messengerUrl, category: 'contact', description: 'URL Messenger (variable email {{url_messenger}}).' },
+    { key: KEYS.advisorContactUrl, value: coord.advisorContactUrl, category: 'contact', description: 'URL de contact du conseiller (variable email {{url_contact_conseiller}}).' },
   ])
 
   const saveLangues = () => {
@@ -593,6 +596,11 @@ export default function CMS() {
                 <label>URL Messenger</label>
                 <input value={coord.messengerUrl} onChange={(e) => setCoord({ ...coord, messengerUrl: e.target.value })} placeholder="https://m.me/…" />
                 <span className="field-hint" style={{ display: 'block', marginTop: 4 }}>Variable email : {'{{url_messenger}}'}</span>
+              </div>
+              <div className="fg" style={{ marginBottom: 10 }}>
+                <label>URL contact conseiller</label>
+                <input value={coord.advisorContactUrl} onChange={(e) => setCoord({ ...coord, advisorContactUrl: e.target.value })} placeholder="https://calendly.com/… ou https://wa.me/…" />
+                <span className="field-hint" style={{ display: 'block', marginTop: 4 }}>Variable email : {'{{url_contact_conseiller}}'}</span>
               </div>
               <div className="fg" style={{ marginBottom: 10 }}>
                 <label>Numéro ORIAS</label>

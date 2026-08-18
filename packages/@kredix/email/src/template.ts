@@ -95,6 +95,8 @@ export interface BrandContext {
   formUrl?: string;
   /** URL Messenger — {{url_messenger}}. */
   messengerUrl?: string;
+  /** URL de prise de contact avec le conseiller — {{url_contact_conseiller}}. */
+  advisorContactUrl?: string;
 }
 
 /** Contexte conseiller (DEC-K5 multi-admin).
@@ -245,9 +247,10 @@ export function interpolateTemplate(text: string, ctx: InterpolationContext): st
     '{{adresse_siege}}': brand?.agencyAddress ?? '',
     '{{lien_desabonnement}}': unsubscribeUrl,
     '{{lien_suivi}}': suiviUrl,
-    // URLs configurables (settings CMS url_formulaire / url_messenger)
+    // URLs configurables (settings CMS url_formulaire / url_messenger / url_contact_conseiller)
     '{{url_formulaire}}': brand?.formUrl ?? '',
     '{{url_messenger}}': brand?.messengerUrl ?? '',
+    '{{url_contact_conseiller}}': brand?.advisorContactUrl ?? '',
     // Initiales du conseiller (ex: "ML" pour Marie Lefèvre)
     '{{initiales_conseiller}}': advisorInitials,
   };
