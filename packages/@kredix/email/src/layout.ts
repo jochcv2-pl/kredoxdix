@@ -21,6 +21,10 @@ export interface EmailBrandData {
   agencyAddress: string;
   advisorName: string;
   primaryColor: string;
+  /** URL du formulaire de contact (setting url_formulaire) — {{url_formulaire}}. */
+  formUrl: string;
+  /** URL Messenger (setting url_messenger) — {{url_messenger}}. */
+  messengerUrl: string;
 }
 
 /**
@@ -28,7 +32,7 @@ export interface EmailBrandData {
  * Utilisé par tous les senders pour peupler le wrapper HTML + l'interpolation.
  */
 export async function loadBrandData(): Promise<EmailBrandData> {
-  const [siteName, logoUrl, siteUrl, contactEmail, agencyPhone, agencyAddress, advisorName, primaryColor] =
+  const [siteName, logoUrl, siteUrl, contactEmail, agencyPhone, agencyAddress, advisorName, primaryColor, formUrl, messengerUrl] =
     await Promise.all([
       getSetting('site_name', 'Kredix'),
       getSetting('cms_logo_url', ''),
@@ -38,9 +42,11 @@ export async function loadBrandData(): Promise<EmailBrandData> {
       getSetting('agency_address', ''),
       getSetting('advisor_name', ''),
       getSetting('cms_primary_color', '#2B8BDE'),
+      getSetting('url_formulaire', ''),
+      getSetting('url_messenger', ''),
     ]);
 
-  return { siteName, logoUrl, siteUrl, contactEmail, agencyPhone, agencyAddress, advisorName, primaryColor };
+  return { siteName, logoUrl, siteUrl, contactEmail, agencyPhone, agencyAddress, advisorName, primaryColor, formUrl, messengerUrl };
 }
 
 /**
@@ -54,6 +60,8 @@ export function brandToContext(brand: EmailBrandData): BrandContext {
     agencyPhone: brand.agencyPhone,
     agencyAddress: brand.agencyAddress,
     advisorName: brand.advisorName,
+    formUrl: brand.formUrl,
+    messengerUrl: brand.messengerUrl,
   };
 }
 
@@ -73,16 +81,6 @@ export async function buildInterpolationContext(
     customMessage,
     brand: brandToContext(brand),
   };
-}
-
-export interface EmailBrandData {
-  siteName: string;
-  logoUrl: string;
-  siteUrl: string;
-  contactEmail: string;
-  agencyPhone: string;
-  agencyAddress: string;
-  primaryColor: string;
 }
 
 export interface WrapEmailOptions {

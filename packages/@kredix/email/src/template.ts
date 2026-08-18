@@ -91,6 +91,10 @@ export interface BrandContext {
   agencyPhone: string;
   agencyAddress: string;
   advisorName: string;
+  /** URL du formulaire de contact — {{url_formulaire}}. */
+  formUrl?: string;
+  /** URL Messenger — {{url_messenger}}. */
+  messengerUrl?: string;
 }
 
 /** Contexte conseiller (DEC-K5 multi-admin).
@@ -124,6 +128,25 @@ export function buildSuiviUrl(
   const locale = lead.preferredLanguage ?? 'fr';
   const token = generateTrackingToken(lead.id);
   return `${siteUrl}/${locale}/suivi?ref=${encodeURIComponent(reference)}&token=${token}`;
+}
+
+/**
+ * Initiales du conseiller pour {{initiales_conseiller}}.
+ * Ex: "Marie Lefèvre" → "ML", "Jean de la Fontaine" → "JD" (particules ignorées).
+ * Retourne une chaîne vide si aucun nom exploitable.
+ */
+function buildAdvisorInitials(firstName: string | null | undefined, lastName: string | null | undefined): string {
+  // Particules courantes ignorées (de, la, van, von...).
+  const PARTICLES = new Set(['de', 'du', 'des', 'la', 'le', 'van', 'von', 'der', 'den', 'del', 'di']);
+  const words = `${firstName ?? ''} ${lastName ?? ''}`
+    .trim()
+    .split(/\s+/)
+    .filter((w) => w.length > 0 && !PARTICLES.has(w.toLowerCase()));
+  if (words.length === 0) return '';
+  return words
+    .slice(0, 2) // initiales = prénom + nom (max 2 lettres)
+    .map((w) => w[0]?.toUpperCase() ?? '')
+    .join('');
 }
 
 export function interpolateTemplate(text: string, ctx: InterpolationContext): string {
@@ -167,6 +190,13 @@ export function interpolateTemplate(text: string, ctx: InterpolationContext): st
   const durationUnit = DURATION_UNIT_I18N[lang] ?? DURATION_UNIT_I18N.fr;
   const monthlySuffix = MONTHLY_SUFFIX_I18N[lang] ?? MONTHLY_SUFFIX_I18N.fr;
 
+  // Initiales du conseiller ({{initiales_conseiller}}) — même cascade de
+  // résolution que prenomConseiller : admin assigné → brand.advisorName →
+  // lead.advisorName. Sur le nom complet du setting ("Marie Lefèvre"),
+  // le split se fait sur les espaces.
+  const advisorInitials = buildAdvisorInitials(advisor?.firstName, advisor?.lastName)
+    || buildAdvisorInitials(null, brand?.advisorName || lead.advisorName || null);
+
   const replacements: Record<string, string> = {
     // Variables lead — PascalCase FR (originales)
     '{{Prénom}}': lead.firstName,
@@ -205,6 +235,11 @@ export function interpolateTemplate(text: string, ctx: InterpolationContext): st
     '{{adresse_siege}}': brand?.agencyAddress ?? '',
     '{{lien_desabonnement}}': unsubscribeUrl,
     '{{lien_suivi}}': suiviUrl,
+    // URLs configurables (settings CMS url_formulaire / url_messenger)
+    '{{url_formulaire}}': brand?.formUrl ?? '',
+    '{{url_messenger}}': brand?.messengerUrl ?? '',
+    // Initiales du conseiller (ex: "ML" pour Marie Lefèvre)
+    '{{initiales_conseiller}}': advisorInitials,
   };
 
   let result = text;

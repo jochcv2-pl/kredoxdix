@@ -232,12 +232,17 @@ export default function Emails() {
   const [testSending, setTestSending] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
-  // Envoi ponctuel (adhoc) — destinataire hors CRM
+  // Envoi ponctuel (adhoc) — destinataire hors CRM + édition ponctuelle du contenu
   const [adhocTarget, setAdhocTarget] = useState<Template | null>(null);
+  const [adhocStep, setAdhocStep] = useState<1 | 2>(1);
   const [adhocTo, setAdhocTo] = useState('');
   const [adhocFirstName, setAdhocFirstName] = useState('');
   const [adhocLastName, setAdhocLastName] = useState('');
   const [adhocMessage, setAdhocMessage] = useState('');
+  // Contenu éditable (pré-rempli du modèle — NON sauvegardé après envoi).
+  const [adhocSubject, setAdhocSubject] = useState('');
+  const [adhocBody, setAdhocBody] = useState('');
+  const [adhocIsHtml, setAdhocIsHtml] = useState(false);
   const [adhocSending, setAdhocSending] = useState(false);
   const [adhocResult, setAdhocResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
@@ -739,11 +744,16 @@ export default function Emails() {
   // --- Envoi ponctuel (adhoc) ---
   const openAdhocModal = (tpl: Template) => {
     setAdhocTarget(tpl);
+    setAdhocStep(1);
     setAdhocTo('');
     setAdhocFirstName('');
     setAdhocLastName('');
     setAdhocMessage('');
     setAdhocResult(null);
+    // Pré-remplit le contenu éditable depuis le modèle (étape 2).
+    setAdhocSubject(tpl.subject);
+    setAdhocBody(tpl.htmlContent ?? tpl.bodyText);
+    setAdhocIsHtml(!!tpl.htmlContent);
   };
 
   const handleAdhocSend = async () => {
@@ -760,6 +770,9 @@ export default function Emails() {
           firstName: adhocFirstName.trim() || undefined,
           lastName: adhocLastName.trim() || undefined,
           customMessage: adhocMessage.trim() || undefined,
+          // Contenu édité (étape 2) — ponctuel, jamais réécrit dans le modèle.
+          subject: adhocSubject,
+          ...(adhocIsHtml ? { bodyHtml: adhocBody } : { bodyText: adhocBody }),
         }),
       });
       const json = await res.json();
@@ -1519,68 +1532,119 @@ export default function Emails() {
         title={`Envoi ponctuel — ${adhocTarget?.name ?? ''}`}
       >
         <div className="test-send-modal">
-          <p className="test-send-hint">
-            Envoi <b>réel</b> (sans préfixe [TEST]) à l&apos;adresse de votre choix — le destinataire
-            n&apos;a pas besoin d&apos;être dans le CRM. Les variables du modèle (ex: {'{{Prénom}}'},
-            {' {{Message}}'}) sont remplies avec les informations ci-dessous ; les champs laissés
-            vides restent vides dans l&apos;email.
-          </p>
-          <div className="test-send-field">
-            <label>Adresse email du destinataire *</label>
-            <input
-              type="email"
-              value={adhocTo}
-              onChange={(e) => setAdhocTo(e.target.value)}
-              placeholder="destinataire@exemple.com"
-              autoFocus
-              onKeyDown={(e) => { if (e.key === 'Enter' && adhocTo.trim() && !adhocSending) handleAdhocSend(); }}
-            />
-          </div>
-          <div className="adhoc-name-row">
-            <div className="test-send-field">
-              <label>Prénom (optionnel)</label>
-              <input
-                type="text"
-                value={adhocFirstName}
-                onChange={(e) => setAdhocFirstName(e.target.value)}
-                placeholder="Marie"
-              />
-            </div>
-            <div className="test-send-field">
-              <label>Nom (optionnel)</label>
-              <input
-                type="text"
-                value={adhocLastName}
-                onChange={(e) => setAdhocLastName(e.target.value)}
-                placeholder="Dupont"
-              />
-            </div>
-          </div>
-          <div className="test-send-field">
-            <label>Message personnalisé (optionnel — inséré dans {'{{Message}}'})</label>
-            <textarea
-              value={adhocMessage}
-              onChange={(e) => setAdhocMessage(e.target.value)}
-              placeholder="Texte libre injecté dans la variable {{Message}} du modèle…"
-              rows={4}
-            />
-          </div>
-          {adhocResult && (
-            <div className={`test-send-result ${adhocResult.ok ? 'ok' : 'err'}`}>
-              <Icon name={adhocResult.ok ? 'check-circle' : 'alert-triangle'} size={16} />
-              {adhocResult.msg}
-            </div>
+          {/* ---- ÉTAPE 1 : destinataire + variables ---- */}
+          {adhocStep === 1 && (
+            <>
+              <p className="test-send-hint">
+                Envoi <b>réel</b> (sans préfixe [TEST]) à l&apos;adresse de votre choix — le destinataire
+                n&apos;a pas besoin d&apos;être dans le CRM. Les variables du modèle (ex: {'{{prenom}}'},
+                {' {{Message}}'}) sont remplies avec les informations ci-dessous ; les champs laissés
+                vides restent vides dans l&apos;email.
+              </p>
+              <div className="test-send-field">
+                <label>Adresse email du destinataire *</label>
+                <input
+                  type="email"
+                  value={adhocTo}
+                  onChange={(e) => setAdhocTo(e.target.value)}
+                  placeholder="destinataire@exemple.com"
+                  autoFocus
+                  onKeyDown={(e) => { if (e.key === 'Enter' && adhocTo.trim()) setAdhocStep(2); }}
+                />
+              </div>
+              <div className="adhoc-name-row">
+                <div className="test-send-field">
+                  <label>Prénom (optionnel)</label>
+                  <input
+                    type="text"
+                    value={adhocFirstName}
+                    onChange={(e) => setAdhocFirstName(e.target.value)}
+                    placeholder="Marie"
+                  />
+                </div>
+                <div className="test-send-field">
+                  <label>Nom (optionnel)</label>
+                  <input
+                    type="text"
+                    value={adhocLastName}
+                    onChange={(e) => setAdhocLastName(e.target.value)}
+                    placeholder="Dupont"
+                  />
+                </div>
+              </div>
+              <div className="test-send-field">
+                <label>Message personnalisé (optionnel — inséré dans {'{{Message}}'})</label>
+                <textarea
+                  value={adhocMessage}
+                  onChange={(e) => setAdhocMessage(e.target.value)}
+                  placeholder="Texte libre injecté dans la variable {{Message}} du modèle…"
+                  rows={3}
+                />
+              </div>
+              <div className="test-send-actions">
+                <button className="btn btn-ghost" onClick={() => setAdhocTarget(null)}>Annuler</button>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => setAdhocStep(2)}
+                  disabled={!adhocTo.trim()}
+                >
+                  Continuer
+                </button>
+              </div>
+            </>
           )}
-          <div className="test-send-actions">
-            <button className="btn btn-ghost" onClick={() => setAdhocTarget(null)}>Fermer</button>
-            <button
-              className="btn btn-primary"
-              onClick={handleAdhocSend}
-              disabled={!adhocTo.trim() || adhocSending}
-            >
-              {adhocSending ? 'Envoi en cours…' : 'Envoyer l\'email'}
-            </button>
-          </div>
+
+          {/* ---- ÉTAPE 2 : édition ponctuelle du contenu ---- */}
+          {adhocStep === 2 && (
+            <>
+              <p className="test-send-hint">
+                Vérifiez et ajustez librement l&apos;objet et le contenu avant l&apos;envoi.
+                <b> Rien n&apos;est enregistré dans le modèle</b> — les modifications ne valent
+                que pour cet envoi{adhocTo ? <> vers <b>{adhocTo}</b></> : null}.
+              </p>
+              <div className="test-send-field">
+                <label>Objet</label>
+                <input
+                  type="text"
+                  value={adhocSubject}
+                  onChange={(e) => setAdhocSubject(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <div className="test-send-field">
+                <label>
+                  {adhocIsHtml ? 'Contenu HTML' : 'Contenu texte'}
+                  <span className="field-hint" style={{ marginLeft: 6 }}>
+                    (variables {'{{...}}'} interpolées à l&apos;envoi)
+                  </span>
+                </label>
+                <textarea
+                  className={adhocIsHtml ? 'adhoc-editor-html' : ''}
+                  value={adhocBody}
+                  onChange={(e) => setAdhocBody(e.target.value)}
+                  rows={12}
+                />
+              </div>
+              {adhocResult && (
+                <div className={`test-send-result ${adhocResult.ok ? 'ok' : 'err'}`}>
+                  <Icon name={adhocResult.ok ? 'check-circle' : 'alert-triangle'} size={16} />
+                  {adhocResult.msg}
+                </div>
+              )}
+              <div className="test-send-actions">
+                <button className="btn btn-ghost" onClick={() => setAdhocStep(1)} disabled={adhocSending}>
+                  ← Retour
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={handleAdhocSend}
+                  disabled={!adhocTo.trim() || !adhocSubject.trim() || !adhocBody.trim() || adhocSending}
+                >
+                  {adhocSending ? 'Envoi en cours…' : 'Envoyer l\'email'}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </Modal>
     </section>

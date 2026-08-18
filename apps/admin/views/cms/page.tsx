@@ -32,6 +32,8 @@ const KEYS = {
   siteUrl: 'site_url',
   advisorName: 'advisor_name',
   agencyAddress: 'agency_address',
+  formUrl: 'url_formulaire',
+  messengerUrl: 'url_messenger',
   activeLanguages: 'cms_active_languages',
   // Formulaire public — note sous les boutons sociaux (une clé par langue).
   socialNote: (code: string) => `cms_social_note_${code}`,
@@ -106,7 +108,7 @@ export default function CMS() {
     btnSecondaire: '',
   })
   const [services, setServices] = useState({ s1: '', s2: '', s3: '', s4: '' })
-  const [coord, setCoord] = useState({ tel: '', whatsapp: '', email: '', orias: '', siteUrl: '', advisorName: '', agencyAddress: '' })
+  const [coord, setCoord] = useState({ tel: '', whatsapp: '', email: '', orias: '', siteUrl: '', advisorName: '', agencyAddress: '', formUrl: '', messengerUrl: '' })
   const [languesActives, setLanguesActives] = useState<Record<string, boolean>>(
     Object.fromEntries(LANGUES.map((l) => [l, true])),
   )
@@ -183,6 +185,8 @@ export default function CMS() {
           siteUrl: byKey.get(KEYS.siteUrl) ?? '',
           advisorName: byKey.get(KEYS.advisorName) ?? '',
           agencyAddress: byKey.get(KEYS.agencyAddress) ?? '',
+          formUrl: byKey.get(KEYS.formUrl) ?? '',
+          messengerUrl: byKey.get(KEYS.messengerUrl) ?? '',
         })
 
         const langsCsv = byKey.get(KEYS.activeLanguages) ?? 'fr,en,de,es,pt,it'
@@ -313,6 +317,8 @@ export default function CMS() {
     { key: KEYS.siteUrl, value: coord.siteUrl, category: 'general', description: 'URL du site (utilisée pour les liens de désinscription dans les emails).' },
     { key: KEYS.advisorName, value: coord.advisorName, category: 'contact', description: 'Nom du conseiller affiché dans les emails.' },
     { key: KEYS.agencyAddress, value: coord.agencyAddress, category: 'contact', description: 'Adresse du siège social.' },
+    { key: KEYS.formUrl, value: coord.formUrl, category: 'contact', description: 'URL du formulaire de contact (variable email {{url_formulaire}}).' },
+    { key: KEYS.messengerUrl, value: coord.messengerUrl, category: 'contact', description: 'URL Messenger (variable email {{url_messenger}}).' },
   ])
 
   const saveLangues = () => {
@@ -577,6 +583,16 @@ export default function CMS() {
               <div className="fg" style={{ marginBottom: 10 }}>
                 <label>Adresse du siège social</label>
                 <input value={coord.agencyAddress} onChange={(e) => setCoord({ ...coord, agencyAddress: e.target.value })} placeholder="Ex : 12 rue de la Finance, 75001 Paris" />
+              </div>
+              <div className="fg" style={{ marginBottom: 10 }}>
+                <label>URL du formulaire de contact</label>
+                <input value={coord.formUrl} onChange={(e) => setCoord({ ...coord, formUrl: e.target.value })} placeholder="https://…/demande" />
+                <span className="field-hint" style={{ display: 'block', marginTop: 4 }}>Variable email : {'{{url_formulaire}}'}</span>
+              </div>
+              <div className="fg" style={{ marginBottom: 10 }}>
+                <label>URL Messenger</label>
+                <input value={coord.messengerUrl} onChange={(e) => setCoord({ ...coord, messengerUrl: e.target.value })} placeholder="https://m.me/…" />
+                <span className="field-hint" style={{ display: 'block', marginTop: 4 }}>Variable email : {'{{url_messenger}}'}</span>
               </div>
               <div className="fg" style={{ marginBottom: 10 }}>
                 <label>Numéro ORIAS</label>

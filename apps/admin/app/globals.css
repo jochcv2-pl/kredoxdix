@@ -5108,6 +5108,13 @@ body {
   grid-template-columns: 1fr 1fr;
   gap: 12px;
 }
+/* Éditeur HTML de l'envoi ponctuel (étape 2) — source lisible */
+.test-send-field textarea.adhoc-editor-html {
+  font-family: ui-monospace, 'Cascadia Code', 'Consolas', monospace;
+  font-size: 12.5px;
+  line-height: 1.55;
+  min-height: 260px;
+}
 
 /* =============================================================================
    DEC-K5 — Vue Gestion des conseillers

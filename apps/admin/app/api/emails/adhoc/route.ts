@@ -39,6 +39,11 @@ const adhocSchema = z.object({
   firstName: z.string().max(80).optional(),
   lastName: z.string().max(80).optional(),
   customMessage: z.string().max(5000).optional(),
+  // Overrides éditables avant envoi (valeurs pré-remplies du modèle côté UI).
+  // NON persistés : le modèle EmailTemplate n'est jamais modifié par cette route.
+  subject: z.string().max(300).optional(),
+  bodyText: z.string().max(50_000).optional(),
+  bodyHtml: z.string().max(200_000).optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -107,11 +112,24 @@ export async function POST(req: NextRequest) {
       customMessage: data.customMessage,
     };
 
-    // 4. Interpolation + composition (même chaîne que le cron/campagnes).
-    const subject = interpolateTemplate(template.subject, ctx);
-    const bodyText = interpolateTemplate(template.bodyText, ctx);
-    const rawHtml = template.htmlContent
-      ? interpolateTemplate(template.htmlContent, ctx)
+    // 4. Contenu effectif : overrides édités par l'admin (ponctuels, non
+    //    sauvegardés) avec fallback sur le contenu du modèle.
+    //    Pour un modèle HTML, l'UI édite bodyHtml (bodyText reste la version
+    //    texte du modèle). Pour un modèle texte, l'UI édite bodyText.
+    const isHtmlTemplate = template.htmlContent !== null;
+    const effectiveSubject = (data.subject ?? '').trim() || template.subject;
+    const effectiveBodyText = !isHtmlTemplate && (data.bodyText ?? '').trim()
+      ? data.bodyText!
+      : template.bodyText;
+    const effectiveHtml = isHtmlTemplate && (data.bodyHtml ?? '').trim()
+      ? data.bodyHtml!
+      : template.htmlContent;
+
+    // 5. Interpolation + composition (même chaîne que le cron/campagnes).
+    const subject = interpolateTemplate(effectiveSubject, ctx);
+    const bodyText = interpolateTemplate(effectiveBodyText, ctx);
+    const rawHtml = effectiveHtml
+      ? interpolateTemplate(effectiveHtml, ctx)
       : textToHtml(bodyText, 'fr');
     const html = composeEmailHtml({
       bodyHtml: rawHtml,
@@ -122,7 +140,7 @@ export async function POST(req: NextRequest) {
       subject,
     });
 
-    // 5. Envoi réel.
+    // 6. Envoi réel.
     const result = await sendEmail(gateway, { to: data.to, subject, html, text: bodyText });
     if (!result.success) {
       return errorResponse(
@@ -133,13 +151,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 6. Traçabilité — EmailLog (compte dans le plafond journalier SMTP) + audit.
+    // 7. Traçabilité — EmailLog (compte dans le plafond journalier SMTP) + audit.
+    //    "édité" = le contenu envoyé diffère du modèle (override ponctuel).
+    const wasEdited =
+      effectiveSubject !== template.subject ||
+      effectiveBodyText !== template.bodyText ||
+      effectiveHtml !== template.htmlContent;
     try {
       await prisma.emailLog.create({
         data: {
           email: data.to,
           trigger: 'manual',
-          templateName: `${template.name} (ponctuel)`,
+          templateName: `${template.name} (ponctuel${wasEdited ? ', édité' : ''})`,
           subject,
           bodyText,
           status: 'sent',
@@ -154,7 +177,7 @@ export async function POST(req: NextRequest) {
       action: 'send',
       entity: 'adhoc_email',
       entityId: template.id,
-      metadata: { to: data.to, templateName: template.name },
+      metadata: { to: data.to, templateName: template.name, edited: wasEdited },
       ipAddress: getClientIpFromHeaders(req.headers),
     });
 
