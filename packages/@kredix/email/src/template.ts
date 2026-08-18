@@ -97,6 +97,8 @@ export interface BrandContext {
   messengerUrl?: string;
   /** URL de prise de contact avec le conseiller — {{url_contact_conseiller}}. */
   advisorContactUrl?: string;
+  /** Durée de validité des offres en jours (setting offer_expiry_days) — {{date_expiration_offre}}. */
+  offerExpiryDays?: number;
 }
 
 /** Contexte conseiller (DEC-K5 multi-admin).
@@ -173,9 +175,11 @@ export function interpolateTemplate(text: string, ctx: InterpolationContext): st
   const dateEnvoiOffre = lead.offerSentAt
     ? new Date(lead.offerSentAt).toLocaleDateString(locale)
     : '';
-  // L'offre expire 14 jours après l'envoi (couvre les 3 relances J+3, J+6, J+9).
+  // L'offre expire N jours après l'envoi (setting offer_expiry_days, défaut 14
+  // — couvre les 3 relances J+3, J+6, J+9 avec marge). Fallback si absent/invalide.
+  const offerExpiryDays = brand?.offerExpiryDays && brand.offerExpiryDays > 0 ? brand.offerExpiryDays : 14;
   const dateExpirationOffre = lead.offerSentAt
-    ? new Date(new Date(lead.offerSentAt).getTime() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString(locale)
+    ? new Date(new Date(lead.offerSentAt).getTime() + offerExpiryDays * 24 * 60 * 60 * 1000).toLocaleDateString(locale)
     : '';
 
   // Variables conseiller (DEC-K5) : priorité admin assigné → settings CMS → fallback traduit.

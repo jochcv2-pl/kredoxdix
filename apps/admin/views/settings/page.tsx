@@ -46,6 +46,7 @@ const CADENCE_KEYS = {
   intervalMin: 'cadence_interval_min',
   intervalMax: 'cadence_interval_max',
   timeoutDays: 'cadence_timeout_days',
+  offerExpiryDays: 'offer_expiry_days',
 } as const
 
 const PROVIDER_LABEL: Record<Gateway['provider'], string> = {
@@ -207,6 +208,7 @@ export default function Settings() {
     { key: CADENCE_KEYS.intervalMin, value: settings[CADENCE_KEYS.intervalMin] ?? '', category: 'cadence' },
     { key: CADENCE_KEYS.intervalMax, value: settings[CADENCE_KEYS.intervalMax] ?? '', category: 'cadence' },
     { key: CADENCE_KEYS.timeoutDays, value: settings[CADENCE_KEYS.timeoutDays] ?? '', category: 'cadence' },
+    { key: CADENCE_KEYS.offerExpiryDays, value: settings[CADENCE_KEYS.offerExpiryDays] ?? '14', category: 'cadence' },
   ])
 
   // Sauvegarde section Tracking
@@ -792,6 +794,23 @@ export default function Settings() {
                   placeholder="10"
                   value={settings[CADENCE_KEYS.timeoutDays] ?? ''}
                   onChange={(e) => setSetting(CADENCE_KEYS.timeoutDays, e.target.value)}
+                />
+              </div>
+              <div className="set-row">
+                <div className="set-label">
+                  <b>Durée de validité des offres</b>
+                  <small>
+                    Variable email {'{{date_expiration_offre}}'} = date d&apos;envoi de l&apos;offre + N jours.
+                    Laisser vide ou 0 = 14 jours par défaut. À garder supérieur à la durée des relances (J+9).
+                  </small>
+                </div>
+                <input
+                  type="number"
+                  min="1"
+                  className="set-input"
+                  placeholder="14"
+                  value={settings[CADENCE_KEYS.offerExpiryDays] ?? ''}
+                  onChange={(e) => setSetting(CADENCE_KEYS.offerExpiryDays, e.target.value)}
                 />
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '12px', marginTop: '12px' }}>

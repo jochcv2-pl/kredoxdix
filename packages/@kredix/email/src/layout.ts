@@ -27,6 +27,8 @@ export interface EmailBrandData {
   messengerUrl: string;
   /** URL de contact conseiller (setting url_contact_conseiller) — {{url_contact_conseiller}}. */
   advisorContactUrl: string;
+  /** Durée de validité des offres en jours (setting offer_expiry_days, défaut 14). */
+  offerExpiryDays: number;
 }
 
 /**
@@ -34,7 +36,7 @@ export interface EmailBrandData {
  * Utilisé par tous les senders pour peupler le wrapper HTML + l'interpolation.
  */
 export async function loadBrandData(): Promise<EmailBrandData> {
-  const [siteName, logoUrl, siteUrl, contactEmail, agencyPhone, agencyAddress, advisorName, primaryColor, formUrl, messengerUrl, advisorContactUrl] =
+  const [siteName, logoUrl, siteUrl, contactEmail, agencyPhone, agencyAddress, advisorName, primaryColor, formUrl, messengerUrl, advisorContactUrl, offerExpiryDaysRaw] =
     await Promise.all([
       getSetting('site_name', 'Kredix'),
       getSetting('cms_logo_url', ''),
@@ -47,9 +49,13 @@ export async function loadBrandData(): Promise<EmailBrandData> {
       getSetting('url_formulaire', ''),
       getSetting('url_messenger', ''),
       getSetting('url_contact_conseiller', ''),
+      getSetting('offer_expiry_days', '14'),
     ]);
 
-  return { siteName, logoUrl, siteUrl, contactEmail, agencyPhone, agencyAddress, advisorName, primaryColor, formUrl, messengerUrl, advisorContactUrl };
+  // parseInt défensif : valeur vide ou non numérique en DB → défaut 14.
+  const offerExpiryDays = Number.parseInt(offerExpiryDaysRaw, 10);
+
+  return { siteName, logoUrl, siteUrl, contactEmail, agencyPhone, agencyAddress, advisorName, primaryColor, formUrl, messengerUrl, advisorContactUrl, offerExpiryDays: Number.isFinite(offerExpiryDays) ? offerExpiryDays : 14 };
 }
 
 /**
@@ -66,6 +72,7 @@ export function brandToContext(brand: EmailBrandData): BrandContext {
     formUrl: brand.formUrl,
     messengerUrl: brand.messengerUrl,
     advisorContactUrl: brand.advisorContactUrl,
+    offerExpiryDays: brand.offerExpiryDays,
   };
 }
 
