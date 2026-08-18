@@ -185,6 +185,15 @@ export function interpolateTemplate(text: string, ctx: InterpolationContext): st
   const telephoneConseiller = advisor?.phone || brand?.agencyPhone || '';
   const emailConseiller = advisor?.email || brand?.contactEmail || '';
 
+  // Nom complet du conseiller ({{nom_complet_conseiller}}) — même cascade :
+  // admin assigné (prénom + nom) → setting advisorName (déjà un nom complet)
+  // → lead.advisorName → fallback traduit.
+  const nomCompletConseiller = (advisor?.firstName || advisor?.lastName)
+    ? `${advisor?.firstName ?? ''} ${advisor?.lastName ?? ''}`.trim()
+    : (brand?.advisorName
+      || lead.advisorName
+      || (ADVISOR_FALLBACK_I18N[lang] ?? ADVISOR_FALLBACK_I18N.fr));
+
   // Type de prêt + unités traduites.
   const loanTypeLabel = translateLoanType(lead.loanType, lang);
   const durationUnit = DURATION_UNIT_I18N[lang] ?? DURATION_UNIT_I18N.fr;
@@ -230,6 +239,7 @@ export function interpolateTemplate(text: string, ctx: InterpolationContext): st
     '{{montant_pret}}': formatEuro(lead.amount, locale),
     '{{prenom_conseiller}}': prenomConseiller,
     '{{nom_conseiller}}': nomConseiller,
+    '{{nom_complet_conseiller}}': nomCompletConseiller,
     '{{telephone_conseiller}}': telephoneConseiller,
     '{{email_conseiller}}': emailConseiller,
     '{{adresse_siege}}': brand?.agencyAddress ?? '',
