@@ -14,25 +14,38 @@ import { join } from 'path';
 
 // =============================================================================
 // Fonts PDFKit — fix Docker/standalone : les .afm ne sont pas tracés par
-// Next.js standalone. Le Dockerfile.admin les copie vers /app/pdfkit-data/.
-// En dev local, pdfkit résout les fonts depuis son propre package.
+// Next.js standalone. Quatre sources, dans l'ordre :
+//   1. /app/pdfkit-data/               → copie fixe du Dockerfile.admin
+//                                         (fonts commises dans le repo s53)
+//   2. <cwd>/resources/pdfkit-data/    → dev local (cwd = apps/admin)
+//   3. <cwd>/apps/admin/resources/...  → standalone si cwd = /app
+//   4. node_modules via require.resolve → dev standard
+//   5. nom nu                          → pdfkit externe (serverExternalPackages)
+//                                         résout seul ses fonts tracées
+// NB : le nom nu en DERNIER recours uniquement — bundlé dans les chunks, il
+// produit ENOENT .next/server/chunks/data/Helvetica.afm (bug s53).
 // =============================================================================
 function resolvePdfkitFont(name: string): string {
   const fs = require('fs') as typeof import('fs');
+  const path = require('path') as typeof import('path');
 
-  // 1. Chemin fixe Docker standalone (/app/pdfkit-data/, copié par Dockerfile)
-  const dockerPath = `/app/pdfkit-data/${name}.afm`;
-  if (fs.existsSync(dockerPath)) return dockerPath;
+  const candidates = [
+    `/app/pdfkit-data/${name}.afm`,
+    path.join(process.cwd(), 'resources', 'pdfkit-data', `${name}.afm`),
+    path.join(process.cwd(), 'apps', 'admin', 'resources', 'pdfkit-data', `${name}.afm`),
+  ];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return p;
+  }
 
-  // 2. Chemin node_modules local (dev)
+  // node_modules local (dev) — pdfkit résout js/data depuis son package.
   try {
     const pdfkitDir = require.resolve('pdfkit');
-    const jsDataDir = join(pdfkitDir, '..', 'js', 'data');
-    const localPath = join(jsDataDir, `${name}.afm`);
+    const localPath = join(pdfkitDir, '..', 'js', 'data', `${name}.afm`);
     if (fs.existsSync(localPath)) return localPath;
   } catch { /* pdfkit non résolu */ }
 
-  // 3. Fallback : laisser pdfkit chercher (marche parfois selon la config)
+  // Fallback : nom nu (valable si pdfkit reste EXTERNE du bundle serveur).
   return name;
 }
 
