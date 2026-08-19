@@ -114,13 +114,15 @@ export async function POST(
       siteUrl,
       brand: brandToContext(brand),
       advisor: lead.assignedTo ?? undefined,
+      // Variables au format de la langue du modèle (leadLang sert à la sélection).
+      language: template.language || leadLang,
     };
 
     const subject = interpolateTemplate(template.subject, ctx);
     const bodyText = interpolateTemplate(template.bodyText, ctx);
     const rawHtml = template.htmlContent
       ? interpolateTemplate(template.htmlContent, ctx)
-      : textToHtml(bodyText, leadLang);
+      : textToHtml(bodyText, template.language || leadLang);
     const html = composeEmailHtml({
       bodyHtml: rawHtml,
       bodyText,

@@ -172,12 +172,12 @@ export async function sendClientLevelEmail(
     preferredLanguage: lead.preferredLanguage,
     advisorName: lead.assignedTo?.displayName ?? null,
   };
-  const ctx = { lead: leadData, siteUrl, brand: brandToContext(brand), advisor: lead.assignedTo };
+  const ctx = { lead: leadData, siteUrl, brand: brandToContext(brand), advisor: lead.assignedTo, language: template.language || 'fr' };
   const subject = interpolateTemplate(template.subject, ctx);
   const textBody = interpolateTemplate(template.bodyText, ctx);
   const rawHtml = template.htmlContent
     ? interpolateTemplate(template.htmlContent, ctx)
-    : textToHtml(textBody, lead.preferredLanguage || 'fr');
+    : textToHtml(textBody, template.language || 'fr');
 
   // Composition HTML : préserve le design des templates importés (document
   // complet), enveloppe les fragments de texte (textToHtml) avec le wrapper.

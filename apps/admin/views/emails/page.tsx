@@ -858,24 +858,36 @@ export default function Emails() {
     return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
-  /** Map variables → valeurs, basée sur SAMPLE puis surchargée par l'étape 1. */
+  /** Map variables → valeurs, basée sur SAMPLE puis surchargée par l'étape 1.
+   *  Les valeurs sensibles à la langue (montants, dates, type de prêt) suivent
+   *  la langue du modèle — même comportement que l'envoi réel. */
   function buildAdhocPreviewVars(): Record<string, string> {
     const prenom = adhocFirstName.trim() || SAMPLE['{{Prénom}}'];
     const nom = adhocLastName.trim() || SAMPLE['{{Nom}}'];
     const email = adhocTo.trim() || 'destinataire@exemple.com';
     const message = adhocMessage.trim() || '(message non renseigné)';
+
+    // Locale + valeurs localisées selon la langue du modèle (miroir template.ts).
+    const LOCALES: Record<string, string> = { fr: 'fr-FR', de: 'de-DE', en: 'en-IE', es: 'es-ES', pt: 'pt-PT', it: 'it-IT' };
+    const lang = adhocTarget?.language || 'fr';
+    const loc = LOCALES[lang] ?? 'fr-FR';
+    const fmtEur = (n: number) => new Intl.NumberFormat(loc, { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
+    const LOAN_TYPE_BY_LANG: Record<string, string> = { fr: 'immobilier', de: 'Immobilien', en: 'mortgage', es: 'hipoteca', pt: 'habitação', it: 'mutuo immobiliare' };
+
     return {
       ...SAMPLE,
       // Champs de l'étape 1 (PascalCase + snake_case)
       '{{Prénom}}': prenom, '{{Nom}}': nom, '{{Email}}': email, '{{Message}}': message,
       '{{prenom}}': prenom, '{{nom}}': nom,
-      // Variables snake_case courantes (valeurs d'exemple / neutres)
+      // Variables sensibles à la langue — formatées selon la langue du modèle
+      '{{Montant}}': fmtEur(210000), '{{Mensualité}}': fmtEur(1062),
+      '{{TypePrêt}}': LOAN_TYPE_BY_LANG[lang] ?? LOAN_TYPE_BY_LANG.fr,
       '{{nom_entreprise}}': 'Entreprise SAS',
       '{{reference_demande}}': 'KREDIX-XXXXXXXX',
-      '{{date_soumission}}': new Date().toLocaleDateString('fr-FR'),
-      '{{date_envoi_offre}}': new Date().toLocaleDateString('fr-FR'),
-      '{{date_expiration_offre}}': new Date(Date.now() + 14 * 864e5).toLocaleDateString('fr-FR'),
-      '{{type_pret}}': 'immobilier', '{{montant_pret}}': '210 000 €',
+      '{{date_soumission}}': new Date().toLocaleDateString(loc),
+      '{{date_envoi_offre}}': new Date().toLocaleDateString(loc),
+      '{{date_expiration_offre}}': new Date(Date.now() + 14 * 864e5).toLocaleDateString(loc),
+      '{{type_pret}}': LOAN_TYPE_BY_LANG[lang] ?? LOAN_TYPE_BY_LANG.fr, '{{montant_pret}}': fmtEur(210000),
       '{{prenom_conseiller}}': 'Marie', '{{nom_conseiller}}': 'Lefèvre',
       '{{nom_complet_conseiller}}': 'Marie Lefèvre',
       '{{initiales_conseiller}}': 'ML',
@@ -883,7 +895,7 @@ export default function Emails() {
       '{{email_conseiller}}': 'contact@kredix.fr',
       '{{adresse_siege}}': '12 rue de la Finance, 75001 Paris',
       '{{lien_desabonnement}}': 'https://kredix.fr/api/unsubscribe?t=…',
-      '{{lien_suivi}}': 'https://kredix.fr/fr/suivi?ref=KREDIX-XXXXXXXX&token=…',
+      '{{lien_suivi}}': `https://kredix.fr/${lang}/suivi?ref=KREDIX-XXXXXXXX&token=…`,
       '{{url_formulaire}}': 'https://kredix.fr/fr#demande',
       '{{url_messenger}}': 'https://m.me/kredix',
       '{{url_contact_conseiller}}': 'https://calendly.com/conseiller/rdv',

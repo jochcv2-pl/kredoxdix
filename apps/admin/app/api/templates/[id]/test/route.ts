@@ -40,6 +40,7 @@ export async function POST(
         htmlContent: true,
         bannerEnabled: true,
         isConfidential: true,
+        language: true,
       },
     });
 

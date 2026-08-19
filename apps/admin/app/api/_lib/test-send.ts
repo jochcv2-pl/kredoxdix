@@ -65,6 +65,8 @@ export async function sendTestEmail(
     htmlContent: string | null;
     bannerEnabled: boolean;
     isConfidential: boolean;
+    /** Langue du modèle — les variables du test suivent la langue de l'email. */
+    language?: string;
   },
   testEmail: string,
   adminId?: string,
@@ -82,6 +84,7 @@ export async function sendTestEmail(
     lead: TEST_LEAD,
     siteUrl,
     brand: brandToContext(brand),
+    language: template.language || 'fr',
   };
 
   // 3. Interpolation.
@@ -89,7 +92,7 @@ export async function sendTestEmail(
   const bodyText = interpolateTemplate(template.bodyText, ctx);
   const rawHtml = template.htmlContent
     ? interpolateTemplate(template.htmlContent, ctx)
-    : textToHtml(bodyText, 'fr');
+    : textToHtml(bodyText, template.language || 'fr');
 
   // 4. Composition finale (sans header/footer — les emails sont envoyés tels quels).
   const html = composeEmailHtml({

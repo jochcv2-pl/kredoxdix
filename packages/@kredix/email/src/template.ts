@@ -71,6 +71,15 @@ export interface InterpolationContext {
   brand?: BrandContext;
   /** Contexte conseiller (DEC-K5). Si présent, surcharge les variables conseiller. */
   advisor?: AdvisorContext | null;
+  /**
+   * Langue d'interpolation — override de lead.preferredLanguage.
+   * À remplir avec la LANGUE DU MODÈLE : les variables (dates, montants,
+   * type de prêt, fallbacks conseiller) doivent correspondre à la langue
+   * du contenu de l'email, pas à la préférence du destinataire.
+   * Ex : template DE envoyé à un lead FR → variables formatées en allemand
+   * (cohérentes avec le texte du modèle).
+   */
+  language?: string;
 }
 
 /** Variables marque disponibles dans les templates via {{NomSite}}, {{SiteUrl}}, etc. */
@@ -147,7 +156,8 @@ export function interpolateTemplate(text: string, ctx: InterpolationContext): st
   const { lead, siteUrl, customMessage, brand, advisor } = ctx;
   const unsubscribeUrl = buildUnsubscribeUrl(lead, siteUrl);
 
-  const lang = lead.preferredLanguage || 'fr';
+  // Langue de formatage : langue du MODÈLE (override) > préférence du lead > FR.
+  const lang = ctx.language ?? lead.preferredLanguage ?? 'fr';
   const locale = getLocale(lang);
 
   // Référence demande : prefix + 8 premiers chars du CUID.

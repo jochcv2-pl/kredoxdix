@@ -116,13 +116,16 @@ export async function POST(req: NextRequest) {
       lead: TEST_LEAD,
       siteUrl,
       brand: brandToContext(brand),
+      // Variables au format de la langue du template trouvé (peut être non-FR
+      // via le fallback) — cohérentes avec le contenu de l'email de test.
+      language: template.language || 'fr',
     };
 
     const subject = interpolateTemplate(template.subject, ctx);
     const bodyText = interpolateTemplate(template.bodyText, ctx);
     const rawHtml = template.htmlContent
       ? interpolateTemplate(template.htmlContent, ctx)
-      : textToHtml(bodyText, 'fr');
+      : textToHtml(bodyText, template.language || 'fr');
 
     const html = composeEmailHtml({
       bodyHtml: rawHtml,

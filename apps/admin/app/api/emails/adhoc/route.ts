@@ -64,6 +64,7 @@ export async function POST(req: NextRequest) {
         bodyText: true,
         htmlContent: true,
         bannerEnabled: true,
+        language: true,
       },
     });
     if (!template) {
@@ -104,12 +105,15 @@ export async function POST(req: NextRequest) {
         createdAt: new Date(),
         offerSentAt: null,
         unsubscribeToken: randomUUID(),
-        preferredLanguage: 'fr',
+        // Langue du lead virtuel = langue du modèle (les variables suivent
+        // la langue de l'email envoyé, pas une préférence FR codée en dur).
+        preferredLanguage: template.language || 'fr',
         advisorName: admin!.displayName ?? null,
       },
       siteUrl,
       brand: brandToContext(brand),
       customMessage: data.customMessage,
+      language: template.language || 'fr',
     };
 
     // 4. Contenu effectif : overrides édités par l'admin (ponctuels, non
@@ -130,7 +134,7 @@ export async function POST(req: NextRequest) {
     const bodyText = interpolateTemplate(effectiveBodyText, ctx);
     const rawHtml = effectiveHtml
       ? interpolateTemplate(effectiveHtml, ctx)
-      : textToHtml(bodyText, 'fr');
+      : textToHtml(bodyText, template.language || 'fr');
     const html = composeEmailHtml({
       bodyHtml: rawHtml,
       bodyText,

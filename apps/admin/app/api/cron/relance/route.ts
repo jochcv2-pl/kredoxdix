@@ -275,10 +275,10 @@ export async function POST(req: NextRequest) {
           }
 
           const siteUrl = await getSetting('site_url', 'http://localhost:3100');
-          const ctx = { lead: { ...lead, advisorName: lead.assignedTo?.displayName ?? null }, siteUrl, brand: brandToContext(brand), advisor: lead.assignedTo };
+          const ctx = { lead: { ...lead, advisorName: lead.assignedTo?.displayName ?? null }, siteUrl, brand: brandToContext(brand), advisor: lead.assignedTo, language: welcomeTemplate.language };
+
           const welcomeSubject = interpolateTemplate(welcomeTemplate.subject, ctx);
           const welcomeBody = interpolateTemplate(welcomeTemplate.bodyText, ctx);
-
           // IA (Agent Accueil) — sauf si template confidentiel
           let finalSubject = welcomeSubject;
           let finalBody = welcomeBody;
@@ -314,7 +314,7 @@ export async function POST(req: NextRequest) {
 
           const welcomeRawHtml = welcomeTemplate.htmlContent && !generated
             ? interpolateTemplate(welcomeTemplate.htmlContent, ctx)
-            : textToHtml(finalBody, lead.preferredLanguage || 'fr');
+            : textToHtml(finalBody, welcomeTemplate.language || 'fr');
 
           const welcomeHtml = composeEmailHtml({
             bodyHtml: welcomeRawHtml,
@@ -406,13 +406,13 @@ export async function POST(req: NextRequest) {
           }
 
           const siteUrl = await getSetting('site_url', 'http://localhost:3100');
-          const ctx = { lead: { ...lead, advisorName: lead.assignedTo?.displayName ?? null }, siteUrl, brand: brandToContext(brand), advisor: lead.assignedTo };
+          const ctx = { lead: { ...lead, advisorName: lead.assignedTo?.displayName ?? null }, siteUrl, brand: brandToContext(brand), advisor: lead.assignedTo, language: offerTemplate.language };
+
           const offerSubject = interpolateTemplate(offerTemplate.subject, ctx);
           const offerBody = interpolateTemplate(offerTemplate.bodyText, ctx);
           const offerRawHtml = offerTemplate.htmlContent
             ? interpolateTemplate(offerTemplate.htmlContent, ctx)
-            : textToHtml(offerBody, lead.preferredLanguage || 'fr');
-
+            : textToHtml(offerBody, offerTemplate.language || 'fr');
           const offerHtml = composeEmailHtml({
             bodyHtml: offerRawHtml,
             bodyText: offerBody,
@@ -499,10 +499,10 @@ export async function POST(req: NextRequest) {
 
         // d) Interpole les variables du template (fallback de base)
         const siteUrl = await getSetting('site_url', 'http://localhost:3100');
-        const ctx = { lead: { ...lead, advisorName: lead.assignedTo?.displayName ?? null }, siteUrl, brand: brandToContext(brand), advisor: lead.assignedTo };
+        const ctx = { lead: { ...lead, advisorName: lead.assignedTo?.displayName ?? null }, siteUrl, brand: brandToContext(brand), advisor: lead.assignedTo, language: template.language };
+
         const fallbackSubject = interpolateTemplate(template.subject, ctx);
         const fallbackBody = interpolateTemplate(template.bodyText, ctx);
-
         // d-bis) Génération IA — l'Agent Relance personnalise l'email.
         // Si le template est CONFIDENTIEL, l'IA est contournée : le template
         // est envoyé tel quel, sans que l'IA ne puisse en lire le contenu.
@@ -540,7 +540,7 @@ export async function POST(req: NextRequest) {
         }
         const relanceRawHtml = template.htmlContent && !generated
           ? interpolateTemplate(template.htmlContent, ctx)
-          : textToHtml(bodyText, lead.preferredLanguage || 'fr');
+          : textToHtml(bodyText, template.language || 'fr');
 
         const htmlContent = composeEmailHtml({
           bodyHtml: relanceRawHtml,

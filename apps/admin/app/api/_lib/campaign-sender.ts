@@ -283,12 +283,14 @@ export async function processCampaign(campaignId: string): Promise<void> {
         siteUrl,
         brand: brandToContext(brand),
         advisor: campaign.owner,
+        // Variables au format de la langue du modèle (cohérence contenu/variables).
+        language: template.language || 'fr',
       };
       const subject = interpolateTemplate(template.subject, ctx);
       const textBody = interpolateTemplate(template.bodyText, ctx);
       const rawHtml = template.htmlContent
         ? interpolateTemplate(template.htmlContent, ctx)
-        : textToHtml(textBody);
+        : textToHtml(textBody, template.language || 'fr');
 
       const html = composeEmailHtml({
         bodyHtml: rawHtml,
