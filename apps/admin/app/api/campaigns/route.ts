@@ -88,21 +88,40 @@ function buildRecipientWhere(source: string, leadIds: string[] | undefined) {
   }
 }
 
-// GET /api/campaigns — liste toutes les campagnes (template inclus).
-export async function GET() {
+// GET /api/campaigns — liste les campagnes paginées (template inclus).
+// Paramètres : ?page=1&pageSize=20 (max 200). Réponse : { campaigns, pagination }.
+export async function GET(req: NextRequest) {
   const [admin, deny] = await requireAuth();
   if (deny) return deny;
   try {
-    const campaigns = await prisma.campaign.findMany({
-      where: getCampaignScope(admin!),
-      orderBy: { createdAt: 'desc' },
-      include: {
-        template: { select: { name: true } },
-        domain: { select: { domain: true, fromEmail: true } },
-        gateway: { select: { id: true, label: true } },
+    const { searchParams } = new URL(req.url);
+    const page = Math.max(1, Number(searchParams.get('page')) || 1);
+    const pageSize = Math.min(200, Math.max(1, Number(searchParams.get('pageSize')) || 20));
+
+    const where = getCampaignScope(admin!);
+    const [campaigns, total] = await Promise.all([
+      prisma.campaign.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: {
+          template: { select: { name: true } },
+          domain: { select: { domain: true, fromEmail: true } },
+          gateway: { select: { id: true, label: true } },
+        },
+      }),
+      prisma.campaign.count({ where }),
+    ]);
+    return successResponse({
+      campaigns,
+      pagination: {
+        page,
+        pageSize,
+        total,
+        totalPages: Math.ceil(total / pageSize),
       },
     });
-    return successResponse(campaigns);
   } catch {
     return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500);
   }

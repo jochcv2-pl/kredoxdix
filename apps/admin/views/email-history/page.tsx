@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { Pagination } from '@/components/Pagination'
 
 interface EmailLog {
   id: string
@@ -61,32 +62,39 @@ export default function EmailHistory() {
 
   const [emailFilter, setEmailFilter] = useState('')
   const [triggerFilter, setTriggerFilter] = useState<string>('all')
+  // Pagination serveur (20/page).
+  const [page, setPage] = useState(1)
+  const [pagination, setPagination] = useState<{ page: number; pageSize: number; total: number; totalPages: number } | null>(null)
 
-  const fetchLogs = async () => {
+  const fetchLogs = async (targetPage?: number) => {
     setLoading(true)
     setError(null)
     try {
-      const params = new URLSearchParams()
+      // Sanitize : onClick={fetchLogs} passe l'Event → ignoré (pas un number).
+      const p = typeof targetPage === 'number' ? targetPage : page
+      const params = new URLSearchParams({ page: String(p), pageSize: '20' })
       if (emailFilter.trim()) params.set('email', emailFilter.trim())
       if (triggerFilter !== 'all') params.set('trigger', triggerFilter)
       const qs = params.toString()
-      const url = `/api/email-logs${qs ? `?${qs}` : ''}`
+      const url = `/api/email-logs?${qs}`
       const res = await fetch(url)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const json = await res.json()
-      setLogs(Array.isArray(json?.data) ? json.data : [])
+      setLogs(Array.isArray(json?.data?.logs) ? json.data.logs : [])
+      setPagination(json?.data?.pagination ?? null)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erreur de chargement')
       setLogs([])
+      setPagination(null)
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    fetchLogs()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [triggerFilter])
+    fetchLogs(page)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchLogs régénéré chaque rendu ; [triggerFilter, page] suffisent
+  }, [triggerFilter, page])
 
   const triggerOptions = Object.entries(TRIGGER_LABELS)
 
@@ -233,7 +241,7 @@ export default function EmailHistory() {
             value={emailFilter}
             onChange={(e) => setEmailFilter(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') fetchLogs()
+              if (e.key === 'Enter') { setPage(1); fetchLogs(1) }
             }}
           />
         </div>
@@ -243,7 +251,7 @@ export default function EmailHistory() {
           <select
             id="eh-trigger"
             value={triggerFilter}
-            onChange={(e) => setTriggerFilter(e.target.value)}
+            onChange={(e) => { setTriggerFilter(e.target.value); setPage(1) }}
           >
             <option value="all">Tous les types</option>
             {triggerOptions.map(([key, cfg]) => (
@@ -254,7 +262,7 @@ export default function EmailHistory() {
           </select>
         </div>
 
-        <button className="btn btn-primary" onClick={fetchLogs}>
+        <button className="btn btn-primary" onClick={() => { setPage(1); fetchLogs(1) }}>
           Actualiser
         </button>
 
@@ -352,6 +360,13 @@ export default function EmailHistory() {
               </table>
             </div>
           )}
+          <Pagination
+            page={pagination?.page ?? 1}
+            totalPages={pagination?.totalPages ?? 1}
+            total={pagination?.total}
+            loading={loading}
+            onChange={setPage}
+          />
         </div>
       </div>
     </section>

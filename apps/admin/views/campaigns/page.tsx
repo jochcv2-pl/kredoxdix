@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Modal } from '@/components/Modal'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { Icon } from '@/components/Icon'
+import { Pagination } from '@/components/Pagination'
 
 // =============================================================================
 // Types
@@ -204,20 +205,26 @@ export default function Campaigns({ onNavigate }: { onNavigate?: (view: string) 
     (c) => c.status === 'completed' || c.status === 'cancelled' || c.status === 'failed',
   )
 
-  // ---- Fetch campaigns ----
-  const fetchCampaigns = useCallback(async () => {
+  // ---- Fetch campaigns (paginé serveur, 20/page) ----
+  const [page, setPage] = useState(1)
+  const [pagination, setPagination] = useState<{ page: number; pageSize: number; total: number; totalPages: number } | null>(null)
+
+  const fetchCampaigns = useCallback(async (targetPage?: number) => {
     try {
-      const res = await fetch('/api/campaigns')
+      // Sanitize : certains callers passent un Event → ignoré (pas un number).
+      const p = typeof targetPage === 'number' ? targetPage : page
+      const res = await fetch(`/api/campaigns?page=${p}&pageSize=20`)
       const json = await res.json()
-      if (json.data) {
-        setCampaigns(json.data.map(mapCampaign))
+      if (json.data?.campaigns) {
+        setCampaigns(json.data.campaigns.map(mapCampaign))
+        setPagination(json.data.pagination ?? null)
       }
     } catch (e) {
       console.error('fetchCampaigns:', e)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [page])
 
   // ---- Fetch templates ----
   const fetchTemplates = useCallback(async () => {
@@ -264,11 +271,18 @@ export default function Campaigns({ onNavigate }: { onNavigate?: (view: string) 
 
   // ---- Chargement initial ----
   useEffect(() => {
-    fetchCampaigns()
+    fetchCampaigns(page)
     fetchTemplates()
     fetchMailDomains()
     fetchGateways()
-  }, [fetchCampaigns, fetchTemplates, fetchMailDomains, fetchGateways])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Changement de page → rechargement des campagnes.
+  useEffect(() => {
+    fetchCampaigns(page)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page])
 
   // ---- Polling quand une campagne est "sending" ----
   useEffect(() => {
@@ -923,6 +937,13 @@ export default function Campaigns({ onNavigate }: { onNavigate?: (view: string) 
                 </div>
               ))
             )}
+            <Pagination
+              page={pagination?.page ?? 1}
+              totalPages={pagination?.totalPages ?? 1}
+              total={pagination?.total}
+              loading={loading}
+              onChange={setPage}
+            />
           </div>
         </div>
       )}
@@ -991,6 +1012,13 @@ export default function Campaigns({ onNavigate }: { onNavigate?: (view: string) 
                 </tbody>
               </table>
             )}
+            <Pagination
+              page={pagination?.page ?? 1}
+              totalPages={pagination?.totalPages ?? 1}
+              total={pagination?.total}
+              loading={loading}
+              onChange={setPage}
+            />
           </div>
         </div>
       )}

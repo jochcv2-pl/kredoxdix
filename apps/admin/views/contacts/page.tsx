@@ -7,6 +7,7 @@ import type { ApplicableRate } from '@kredix/types'
 import { Modal } from '@/components/Modal'
 import { Icon } from '@/components/Icon'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { Pagination } from '@/components/Pagination'
 
 type ContactStatus = 'new' | 'contacted' | 'progress' | 'offer' | 'waiting' | 'client' | 'lost'
 
@@ -348,28 +349,44 @@ export default function Contacts() {
     dbRates.length > 0 ? dbRates : undefined,
   )
 
-  // ----- Chargement initial -----
-  const fetchContacts = useCallback(async () => {
+  // ----- Chargement initial (paginé, filtre statut côté serveur) -----
+  const [page, setPage] = useState(1)
+  const [pagination, setPagination] = useState<{ page: number; pageSize: number; total: number; totalPages: number } | null>(null)
+
+  const fetchContacts = useCallback(async (targetPage?: number) => {
     setLoading(true)
     setError(null)
     try {
+      // Sanitize : certains callers passent un Event → ignoré (pas un number).
+      const p = typeof targetPage === 'number' ? targetPage : page
       const scopeParam = isSuperAdmin ? `&scope=${scopeTab}` : ''
-      const res = await fetch(`/api/leads?pageSize=200${scopeParam}`)
+      const statusParam = statusFilter !== 'all' ? `&status=${statusFilter}` : ''
+      const res = await fetch(`/api/leads?pageSize=25&page=${p}${scopeParam}${statusParam}`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const json = await res.json()
       const leads: ApiLead[] = Array.isArray(json?.data?.leads) ? json.data.leads : []
       setContacts(leads.map(mapLeadToContact))
+      setPagination(json?.data?.pagination ?? null)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erreur de chargement')
       setContacts([])
+      setPagination(null)
     } finally {
       setLoading(false)
     }
-  }, [isSuperAdmin, scopeTab])
+  }, [isSuperAdmin, scopeTab, statusFilter, page])
 
+  // Changement de page / filtre / onglet → rechargement.
   useEffect(() => {
-    fetchContacts()
-  }, [fetchContacts])
+    fetchContacts(page)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, statusFilter, scopeTab, isSuperAdmin])
+
+  // Changement de filtre statut → retour page 1.
+  const handleStatusFilter = (s: string) => {
+    setStatusFilter(s)
+    setPage(1)
+  }
 
   // ----- Helpers de mise à jour persistée -----
   const patchStatus = async (id: string, status: ContactStatus): Promise<boolean> => {
@@ -759,9 +776,9 @@ export default function Contacts() {
     { key: 'loanType', label: 'Type de prêt', required: false },
   ]
 
-  const filteredContacts = statusFilter === 'all'
-    ? contacts
-    : contacts.filter((c) => c.status === statusFilter)
+  // Filtre statut appliqué côté serveur (cohérence pagination) — la liste
+  // chargée est déjà filtrée. Compteurs des badges = page courante.
+  const filteredContacts = contacts
 
   return (
     <section className="view" id="contacts">
@@ -800,7 +817,7 @@ export default function Contacts() {
           }}
         >
           {error}{' '}
-          <span className="link" onClick={fetchContacts}>Réessayer</span>
+          <span className="link" onClick={() => fetchContacts()}>Réessayer</span>
         </div>
       )}
 
@@ -808,7 +825,7 @@ export default function Contacts() {
       <div className="panel" style={{ marginBottom: 20 }}>
         <div className="panel-head">
           <h3>Pipeline de prospection</h3>
-          <span className="link" onClick={fetchContacts}>Actualiser</span>
+          <span className="link" onClick={() => fetchContacts()}>Actualiser</span>
         </div>
         <div className="panel-body" style={{ paddingTop: 16, paddingBottom: 16 }}>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -818,7 +835,7 @@ export default function Contacts() {
               return (
                 <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <button
-                    onClick={() => setStatusFilter(statusFilter === s ? 'all' : s)}
+                    onClick={() => handleStatusFilter(statusFilter === s ? 'all' : s)}
                     className={`badge ${cfg.class}`}
                     style={{ cursor: 'pointer', opacity: statusFilter === s || statusFilter === 'all' ? 1 : 0.5 }}
                   >
@@ -1068,7 +1085,7 @@ export default function Contacts() {
             {statusFilter !== 'all' && (
               <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--slate)', marginLeft: 8 }}>
                 · Filtré : {(STATUS_CONFIG[statusFilter as ContactStatus] ?? { label: statusFilter }).label}
-                <span className="link" style={{ marginLeft: 8 }} onClick={() => setStatusFilter('all')}>✕ Réinitialiser</span>
+                <span className="link" style={{ marginLeft: 8 }} onClick={() => handleStatusFilter('all')}>✕ Réinitialiser</span>
               </span>
             )}
           </h3>
@@ -1267,6 +1284,13 @@ export default function Contacts() {
               </tbody>
             </table>
           )}
+          <Pagination
+            page={pagination?.page ?? 1}
+            totalPages={pagination?.totalPages ?? 1}
+            total={pagination?.total}
+            loading={loading}
+            onChange={setPage}
+          />
         </div>
       </div>
 
@@ -1282,7 +1306,7 @@ export default function Contacts() {
           <label>Statut</label>
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => handleStatusFilter(e.target.value)}
           >
             <option value="all">Tous les statuts</option>
             <option value="new">Nouveau</option>

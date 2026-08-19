@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Icon } from '@/components/Icon'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { Pagination } from '@/components/Pagination'
 
 type LeadStatus = 'new' | 'contacted' | 'progress' | 'offer' | 'waiting' | 'client' | 'lost'
 
@@ -85,32 +86,40 @@ export default function Dossiers() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
+  // Pagination serveur (25/page).
+  const [page, setPage] = useState(1)
+  const [pagination, setPagination] = useState<{ page: number; pageSize: number; total: number; totalPages: number } | null>(null)
 
   // Envoi manuel de l'offre (PDF amortissement en PJ).
   const [offerTarget, setOfferTarget] = useState<Dossier | null>(null)
   const [offerSending, setOfferSending] = useState(false)
   const [offerError, setOfferError] = useState<string | null>(null)
 
-  const fetchDossiers = async () => {
+  const fetchDossiers = async (targetPage?: number) => {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch('/api/leads?pageSize=100')
+      // Sanitize : onClick={() => fetchDossiers()} passe l'Event → ignoré (pas un number).
+      const p = typeof targetPage === 'number' ? targetPage : page
+      const res = await fetch(`/api/leads?pageSize=25&page=${p}`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const json = await res.json()
       const leads: ApiLead[] = Array.isArray(json?.data?.leads) ? json.data.leads : []
       setDossiers(leads.map((l) => ({ ...l })))
+      setPagination(json?.data?.pagination ?? null)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erreur de chargement')
       setDossiers([])
+      setPagination(null)
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    fetchDossiers()
-  }, [])
+    fetchDossiers(page)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchDossiers (useCallback [page]) est couvert par [page]
+  }, [page])
 
   // Envoi manuel de l'offre de prêt (POST /api/leads/[id]/send-offer).
   const handleSendOffer = async () => {
@@ -140,11 +149,11 @@ export default function Dossiers() {
             Tous les dossiers
             {!loading && (
               <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--slate)', marginLeft: 8 }}>
-                · {dossiers.length} dossier{dossiers.length > 1 ? 's' : ''}
+                · {pagination ? pagination.total : dossiers.length} dossier{pagination ? (pagination.total > 1 ? 's' : '') : (dossiers.length > 1 ? 's' : '')}
               </span>
             )}
           </h3>
-          <span className="link" onClick={fetchDossiers}>Actualiser</span>
+          <span className="link" onClick={() => fetchDossiers()}>Actualiser</span>
         </div>
         <div className="panel-body">
           {error && (
@@ -159,7 +168,7 @@ export default function Dossiers() {
               }}
             >
               {error}{' '}
-              <span className="link" onClick={fetchDossiers}>Réessayer</span>
+              <span className="link" onClick={() => fetchDossiers()}>Réessayer</span>
             </div>
           )}
 
@@ -239,6 +248,13 @@ export default function Dossiers() {
               </table>
             </div>
           )}
+          <Pagination
+            page={pagination?.page ?? 1}
+            totalPages={pagination?.totalPages ?? 1}
+            total={pagination?.total}
+            loading={loading}
+            onChange={setPage}
+          />
         </div>
       </div>
 

@@ -8,6 +8,7 @@
 // simple String). On fait donc deux requêtes : leads, puis steps regroupées.
 // =============================================================================
 
+import { NextRequest } from 'next/server';
 import { prisma, LeadStatus } from '@kredix/db';
 import { successResponse, errorResponse, ERR } from '@/app/api/_lib/responses';
 import { requireAuth } from '../_lib/auth-server';
@@ -39,30 +40,40 @@ interface ClientListItem {
 }
 
 // GET /api/clients — liste paginée des clients + progression du parcours 7 niveaux.
-export async function GET() {
+// Paramètres : ?page=1&pageSize=20 (max 200). Réponse : { clients, pagination }.
+export async function GET(req: NextRequest) {
   const [admin, deny] = await requireAuth();
   if (deny) return deny;
   try {
-    const leads = await prisma.lead.findMany({
-      where: { ...getLeadScope(admin!), status: LeadStatus.client },
-      orderBy: { updatedAt: 'desc' },
-      take: 100,
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        phone: true,
-        city: true,
-        loanType: true,
-        amount: true,
-        monthlyPayment: true,
-        status: true,
-        updatedAt: true,
-        assignedToId: true,
-        assignedTo: { select: { displayName: true, role: true } },
-      },
-    });
+    const { searchParams } = new URL(req.url);
+    const page = Math.max(1, Number(searchParams.get('page')) || 1);
+    const pageSize = Math.min(200, Math.max(1, Number(searchParams.get('pageSize')) || 20));
+
+    const where = { ...getLeadScope(admin!), status: LeadStatus.client };
+    const [leads, total] = await Promise.all([
+      prisma.lead.findMany({
+        where,
+        orderBy: { updatedAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          phone: true,
+          city: true,
+          loanType: true,
+          amount: true,
+          monthlyPayment: true,
+          status: true,
+          updatedAt: true,
+          assignedToId: true,
+          assignedTo: { select: { displayName: true, role: true } },
+        },
+      }),
+      prisma.lead.count({ where }),
+    ]);
 
     // Récupère en une seule requête tous les ClientStep des leads concernés.
     const leadIds = leads.map((l) => l.id);
@@ -95,7 +106,15 @@ export async function GET() {
       };
     });
 
-    return successResponse(result);
+    return successResponse({
+      clients: result,
+      pagination: {
+        page,
+        pageSize,
+        total,
+        totalPages: Math.ceil(total / pageSize),
+      },
+    });
   } catch (err) {
     console.error('[GET /api/clients] Erreur:', err instanceof Error ? err.message : String(err));
     return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500);

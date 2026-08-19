@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { Pause, Play, Mail, AlertTriangle, CheckCircle, XCircle, SkipForward } from 'lucide-react'
+import { Pagination } from '@/components/Pagination'
 
 // =============================================================================
 // PipelineView — Observabilité du pipeline de relance email.
@@ -50,6 +51,12 @@ interface PipelineState {
     totalFailed: number
     totalSkipped: number
   }
+  logsPagination?: {
+    page: number
+    pageSize: number
+    total: number
+    totalPages: number
+  }
   activeCampaigns: Array<{
     id: string
     name: string
@@ -96,10 +103,12 @@ export default function PipelineView() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [toggling, setToggling] = useState(false)
+  // Pagination du panneau "Envois récents" (10/page, conservée à travers l'auto-refresh).
+  const [logsPage, setLogsPage] = useState(1)
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/pipeline/state', { cache: 'no-store' })
+      const res = await fetch(`/api/admin/pipeline/state?logsPage=${logsPage}`, { cache: 'no-store' })
       if (!res.ok) throw new Error('Échec du chargement')
       const body = await res.json()
       setState(body.data)
@@ -109,7 +118,7 @@ export default function PipelineView() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [logsPage])
 
   useEffect(() => {
     load()
@@ -249,7 +258,7 @@ export default function PipelineView() {
       {/* ===== KPIs ===== */}
       <div className="kpi-grid">
         <div className="kpi">
-          <div className="kpi-label">Envoyés aujourd'hui</div>
+          <div className="kpi-label">Envoyés aujourd&apos;hui</div>
           <div className="kpi-value">{state.sentToday}<span style={{ fontSize: 14, color: '#9ca3af' }}> / {state.dailyCap}</span></div>
           <div className="pipeline-quota-bar">
             <div
@@ -261,7 +270,7 @@ export default function PipelineView() {
         <div className="kpi">
           <div className="kpi-label">Dûs maintenant</div>
           <div className="kpi-value" style={{ color: state.queue.totalDue > 0 ? 'var(--blue)' : undefined }}>{state.queue.totalDue}</div>
-          <div className="kpi-sub">En attente d'envoi</div>
+          <div className="kpi-sub">En attente d&apos;envoi</div>
         </div>
         <div className="kpi">
           <div className="kpi-label">Programmés</div>
@@ -280,7 +289,7 @@ export default function PipelineView() {
         {/* Colonne gauche — File d'attente */}
         <div className="panel">
           <div className="panel-head">
-            <h3>File d'attente par étape</h3>
+            <h3>File d&apos;attente par étape</h3>
             {state.queue.nearTimeout > 0 && (
               <span className="badge b-wait" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <AlertTriangle size={12} /> {state.queue.nearTimeout} proche timeout
@@ -369,11 +378,13 @@ export default function PipelineView() {
           </div>
         </div>
 
-        {/* Colonne droite — Envois récents */}
+        {/* Colonne droite — Envois récents (paginés) */}
         <div className="panel">
           <div className="panel-head">
             <h3>Envois récents</h3>
-            <span style={{ fontSize: 12, color: '#9ca3af' }}>30 derniers</span>
+            <span style={{ fontSize: 12, color: '#9ca3af' }}>
+              {state.logsPagination ? `${state.logsPagination.total.toLocaleString('fr-FR')} au total` : ''}
+            </span>
           </div>
           <div className="panel-body" style={{ padding: 0 }}>
             {state.recentLogs.length === 0 ? (
@@ -426,11 +437,20 @@ export default function PipelineView() {
                       <span style={{ fontSize: 11, color: '#9ca3af', flexShrink: 0, width: 60, textAlign: 'right' }}>
                         {timeAgo(log.sentAt)}
                       </span>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
+                     </div>
+                   )
+                 })}
+               </div>
+             )}
+             {state.logsPagination && (
+               <Pagination
+                 page={state.logsPagination.page}
+                 totalPages={state.logsPagination.totalPages}
+                 total={state.logsPagination.total}
+                 loading={loading}
+                 onChange={setLogsPage}
+               />
+             )}
           </div>
         </div>
       </div>

@@ -17,11 +17,16 @@ import { getSetting, getSettingNumber, getSystemGateway } from '../../../_lib/se
 
 const DAY = 24 * 60 * 60 * 1000;
 
-export async function GET() {
+export async function GET(req: Request) {
   const [, deny] = await requireAdmin();
   if (deny) return deny;
 
   try {
+    // Pagination du panneau "Envois récents" (?logsPage=1, 10 par page).
+    const { searchParams } = new URL(req.url);
+    const logsPage = Math.max(1, Number(searchParams.get('logsPage')) || 1);
+    const logsPageSize = 10;
+
     const now = new Date();
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
@@ -102,24 +107,28 @@ export async function GET() {
       },
     });
 
-    // --- 30 derniers EmailLog ---
-    const recentLogs = await prisma.emailLog.findMany({
-      take: 30,
-      orderBy: { sentAt: 'desc' },
-      select: {
-        id: true,
-        email: true,
-        trigger: true,
-        templateName: true,
-        subject: true,
-        status: true,
-        error: true,
-        sentAt: true,
-        leadId: true,
-        gatewayLabel: true,
-        fromEmail: true,
-      },
-    });
+    // --- Derniers EmailLog (paginés — panneau "Envois récents") ---
+    const [recentLogs, logsTotal] = await Promise.all([
+      prisma.emailLog.findMany({
+        skip: (logsPage - 1) * logsPageSize,
+        take: logsPageSize,
+        orderBy: { sentAt: 'desc' },
+        select: {
+          id: true,
+          email: true,
+          trigger: true,
+          templateName: true,
+          subject: true,
+          status: true,
+          error: true,
+          sentAt: true,
+          leadId: true,
+          gatewayLabel: true,
+          fromEmail: true,
+        },
+      }),
+      prisma.emailLog.count(),
+    ]);
 
     // --- Stats agrégées ---
     const totalSent = await prisma.emailLog.count({ where: { status: 'sent' } });
@@ -208,6 +217,12 @@ export async function GET() {
         totalSkipped,
       },
       activeCampaigns,
+      logsPagination: {
+        page: logsPage,
+        pageSize: logsPageSize,
+        total: logsTotal,
+        totalPages: Math.ceil(logsTotal / logsPageSize),
+      },
     }, 200);
   } catch {
     return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500);

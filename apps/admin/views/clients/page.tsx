@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { Icon } from '@/components/Icon'
+import { Pagination } from '@/components/Pagination'
 
 // =============================================================================
 // Vue Clients — Parcours d'accompagnement (étapes configurables).
@@ -85,6 +86,9 @@ export default function Clients() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
   // Message de retour (succès/erreur) par client, affiché sous la carte.
   const [feedback, setFeedback] = useState<Record<string, { type: 'ok' | 'err'; msg: string }>>({})
+  // Pagination serveur (20/page).
+  const [page, setPage] = useState(1)
+  const [pagination, setPagination] = useState<{ page: number; pageSize: number; total: number; totalPages: number } | null>(null)
 
   const fetchPipelineSteps = useCallback(async () => {
     try {
@@ -99,13 +103,16 @@ export default function Clients() {
     }
   }, [])
 
-  const fetchClients = useCallback(async () => {
+  const fetchClients = useCallback(async (targetPage?: number) => {
     try {
       setError(null)
-      const res = await fetch('/api/clients')
+      // Sanitize : onClick={fetchClients} passe l'Event → ignoré (pas un number).
+      const p = typeof targetPage === 'number' ? targetPage : page
+      const res = await fetch(`/api/clients?pageSize=20&page=${p}`)
       const json = await res.json()
-      if (json.data) {
-        setClients(json.data)
+      if (json.data?.clients) {
+        setClients(json.data.clients)
+        setPagination(json.data.pagination ?? null)
       } else if (json.error) {
         setError(json.error)
       }
@@ -115,7 +122,7 @@ export default function Clients() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [page])
 
   useEffect(() => {
     Promise.all([fetchPipelineSteps(), fetchClients()])
@@ -459,6 +466,14 @@ export default function Clients() {
           })}
         </div>
       )}
+
+      <Pagination
+        page={pagination?.page ?? 1}
+        totalPages={pagination?.totalPages ?? 1}
+        total={pagination?.total}
+        loading={loading}
+        onChange={setPage}
+      />
 
       <ConfirmDialog
         isOpen={!!sendTarget}

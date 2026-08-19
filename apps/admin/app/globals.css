@@ -5092,6 +5092,29 @@ body {
 .tpl2-btn-dup:hover {
   background: #f5f3ff;
 }
+/* Pagination partagée (composant Pagination.tsx) */
+.pg-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 14px 0 4px;
+  flex-wrap: wrap;
+}
+.pg-btn {
+  font-size: 13px;
+  padding: 6px 14px;
+}
+.pg-info {
+  font-size: 13px;
+  color: var(--slate, #64748b);
+}
+.pg-info b {
+  color: var(--ink, #0f172a);
+}
+.pg-total {
+  color: var(--slate-light, #94a3b8);
+}
 /* En-têtes de groupes dans la liste des modèles (auto vs manuels) */
 .tpl-group-head {
   display: flex;

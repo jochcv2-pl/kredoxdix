@@ -7,13 +7,16 @@ import { getEmailLogScope } from '../_lib/scope';
 // =============================================================================
 // GET /api/email-logs
 // =============================================================================
-// Historique des emails envoyés (EmailLog).
+// Historique des emails envoyés (EmailLog), paginé.
 // Paramètres de requête (tous optionnels, combinables) :
 //   ?email=xxx   — filtre insensible à la casse (contains)
 //   ?leadId=xxx  — filtrage exact sur le lead
 //   ?trigger=xxx — filtrage exact sur le type de déclencheur
+//   ?page=1      — page (1-based)
+//   ?pageSize=20 — taille de page (max 200)
 //
-// Retourne les 100 derniers logs triés par sentAt DESC.
+// Réponse : { logs, pagination: { page, pageSize, total, totalPages } }
+// triés par sentAt DESC.
 // EmailLog.leadId est une simple String (pas une relation Prisma),
 // donc pas de `include` — les logs contiennent déjà email + trigger.
 // =============================================================================
@@ -26,6 +29,8 @@ export async function GET(req: NextRequest) {
     const email = searchParams.get('email');
     const leadId = searchParams.get('leadId');
     const trigger = searchParams.get('trigger');
+    const page = Math.max(1, Number(searchParams.get('page')) || 1);
+    const pageSize = Math.min(200, Math.max(1, Number(searchParams.get('pageSize')) || 20));
 
     // Scope multi-admin (DEC-K5) : un conseiller ne voit que les logs de ses leads.
     const where: Record<string, unknown> = { ...getEmailLogScope(admin!) };
@@ -33,13 +38,25 @@ export async function GET(req: NextRequest) {
     if (leadId) where.leadId = leadId;
     if (trigger) where.trigger = trigger;
 
-    const logs = await prisma.emailLog.findMany({
-      where,
-      orderBy: { sentAt: 'desc' },
-      take: 100,
-    });
+    const [logs, total] = await Promise.all([
+      prisma.emailLog.findMany({
+        where,
+        orderBy: { sentAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      prisma.emailLog.count({ where }),
+    ]);
 
-    return successResponse(logs);
+    return successResponse({
+      logs,
+      pagination: {
+        page,
+        pageSize,
+        total,
+        totalPages: Math.ceil(total / pageSize),
+      },
+    });
   } catch (e) {
     console.error('[EMAIL LOGS] Erreur:', e instanceof Error ? e.message : String(e));
     return errorResponse(ERR.INTERNAL.msg, ERR.INTERNAL.code, undefined, 500);
