@@ -60,7 +60,8 @@ export default function EmailHistory() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const [emailFilter, setEmailFilter] = useState('')
+  // Recherche nom OU email (résolution des leads par nom côté API).
+  const [searchFilter, setSearchFilter] = useState('')
   const [triggerFilter, setTriggerFilter] = useState<string>('all')
   // Pagination serveur (20/page).
   const [page, setPage] = useState(1)
@@ -73,7 +74,7 @@ export default function EmailHistory() {
       // Sanitize : onClick={fetchLogs} passe l'Event → ignoré (pas un number).
       const p = typeof targetPage === 'number' ? targetPage : page
       const params = new URLSearchParams({ page: String(p), pageSize: '20' })
-      if (emailFilter.trim()) params.set('email', emailFilter.trim())
+      if (searchFilter.trim()) params.set('search', searchFilter.trim())
       if (triggerFilter !== 'all') params.set('trigger', triggerFilter)
       const qs = params.toString()
       const url = `/api/email-logs?${qs}`
@@ -233,13 +234,13 @@ export default function EmailHistory() {
 
       <div className="eh-toolbar">
         <div className="eh-field">
-          <label htmlFor="eh-email">Rechercher par email</label>
+          <label htmlFor="eh-search">Rechercher (nom ou email)</label>
           <input
-            id="eh-email"
-            type="email"
-            placeholder="prospect@email.fr"
-            value={emailFilter}
-            onChange={(e) => setEmailFilter(e.target.value)}
+            id="eh-search"
+            type="search"
+            placeholder="Nom du prospect ou email…"
+            value={searchFilter}
+            onChange={(e) => setSearchFilter(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') { setPage(1); fetchLogs(1) }
             }}

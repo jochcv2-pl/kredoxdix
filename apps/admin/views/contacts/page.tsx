@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { calculateLoan } from '@kredix/simulator'
 import type { ApplicableRate } from '@kredix/types'
@@ -349,9 +349,23 @@ export default function Contacts() {
     dbRates.length > 0 ? dbRates : undefined,
   )
 
-  // ----- Chargement initial (paginé, filtre statut côté serveur) -----
+  // ----- Chargement initial (paginé, filtre statut + recherche côté serveur) -----
   const [page, setPage] = useState(1)
   const [pagination, setPagination] = useState<{ page: number; pageSize: number; total: number; totalPages: number } | null>(null)
+
+  // Recherche nom/email (debounce 350 ms — setSearchQuery + setPage batchés
+  // dans le même timeout → un seul rechargement).
+  const [searchInput, setSearchInput] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const onSearchChange = (value: string) => {
+    setSearchInput(value)
+    if (searchTimer.current) clearTimeout(searchTimer.current)
+    searchTimer.current = setTimeout(() => {
+      setSearchQuery(value.trim())
+      setPage(1)
+    }, 350)
+  }
 
   const fetchContacts = useCallback(async (targetPage?: number) => {
     setLoading(true)
@@ -361,7 +375,8 @@ export default function Contacts() {
       const p = typeof targetPage === 'number' ? targetPage : page
       const scopeParam = isSuperAdmin ? `&scope=${scopeTab}` : ''
       const statusParam = statusFilter !== 'all' ? `&status=${statusFilter}` : ''
-      const res = await fetch(`/api/leads?pageSize=25&page=${p}${scopeParam}${statusParam}`)
+      const searchParam = searchQuery ? `&search=${encodeURIComponent(searchQuery)}` : ''
+      const res = await fetch(`/api/leads?pageSize=25&page=${p}${scopeParam}${statusParam}${searchParam}`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const json = await res.json()
       const leads: ApiLead[] = Array.isArray(json?.data?.leads) ? json.data.leads : []
@@ -374,13 +389,13 @@ export default function Contacts() {
     } finally {
       setLoading(false)
     }
-  }, [isSuperAdmin, scopeTab, statusFilter, page])
+  }, [isSuperAdmin, scopeTab, statusFilter, page, searchQuery])
 
-  // Changement de page / filtre / onglet → rechargement.
+  // Changement de page / filtre / onglet / recherche → rechargement.
   useEffect(() => {
     fetchContacts(page)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, statusFilter, scopeTab, isSuperAdmin])
+  }, [page, statusFilter, scopeTab, isSuperAdmin, searchQuery])
 
   // Changement de filtre statut → retour page 1.
   const handleStatusFilter = (s: string) => {
@@ -1089,7 +1104,17 @@ export default function Contacts() {
               </span>
             )}
           </h3>
-          <span className="link" onClick={() => setFilterModalOpen(true)}>Filtrer</span>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <input
+              type="search"
+              className="pg-search-input"
+              placeholder="Rechercher un nom ou un email…"
+              value={searchInput}
+              onChange={(e) => onSearchChange(e.target.value)}
+              aria-label="Rechercher un prospect"
+            />
+            <span className="link" onClick={() => setFilterModalOpen(true)}>Filtrer</span>
+          </div>
         </div>
         <div className="panel-body">
           {loading ? (

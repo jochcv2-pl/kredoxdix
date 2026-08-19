@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Pause, Play, Mail, AlertTriangle, CheckCircle, XCircle, SkipForward } from 'lucide-react'
 import { Pagination } from '@/components/Pagination'
 
@@ -105,10 +105,25 @@ export default function PipelineView() {
   const [toggling, setToggling] = useState(false)
   // Pagination du panneau "Envois récents" (10/page, conservée à travers l'auto-refresh).
   const [logsPage, setLogsPage] = useState(1)
+  // Recherche nom/email du panneau (debounce 350 ms — conserve la recherche
+  // à travers l'auto-refresh 30 s car incluse dans les deps de load).
+  const [logsSearchInput, setLogsSearchInput] = useState('')
+  const [logsSearch, setLogsSearch] = useState('')
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const onLogsSearchChange = (value: string) => {
+    setLogsSearchInput(value)
+    if (searchTimer.current) clearTimeout(searchTimer.current)
+    searchTimer.current = setTimeout(() => {
+      setLogsSearch(value.trim())
+      setLogsPage(1)
+    }, 350)
+  }
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch(`/api/admin/pipeline/state?logsPage=${logsPage}`, { cache: 'no-store' })
+      const qs = new URLSearchParams({ logsPage: String(logsPage) })
+      if (logsSearch) qs.set('logsSearch', logsSearch)
+      const res = await fetch(`/api/admin/pipeline/state?${qs.toString()}`, { cache: 'no-store' })
       if (!res.ok) throw new Error('Échec du chargement')
       const body = await res.json()
       setState(body.data)
@@ -118,7 +133,7 @@ export default function PipelineView() {
     } finally {
       setLoading(false)
     }
-  }, [logsPage])
+  }, [logsPage, logsSearch])
 
   useEffect(() => {
     load()
@@ -378,7 +393,7 @@ export default function PipelineView() {
           </div>
         </div>
 
-        {/* Colonne droite — Envois récents (paginés) */}
+        {/* Colonne droite — Envois récents (paginés + recherche) */}
         <div className="panel">
           <div className="panel-head">
             <h3>Envois récents</h3>
@@ -386,11 +401,22 @@ export default function PipelineView() {
               {state.logsPagination ? `${state.logsPagination.total.toLocaleString('fr-FR')} au total` : ''}
             </span>
           </div>
+          <div style={{ padding: '10px 14px 0' }}>
+            <input
+              type="search"
+              className="pg-search-input"
+              style={{ width: '100%' }}
+              placeholder="Rechercher un prospect (nom ou email)…"
+              value={logsSearchInput}
+              onChange={(e) => onLogsSearchChange(e.target.value)}
+              aria-label="Rechercher dans les envois"
+            />
+          </div>
           <div className="panel-body" style={{ padding: 0 }}>
             {state.recentLogs.length === 0 ? (
               <div style={{ textAlign: 'center', padding: 40, color: '#9ca3af', fontSize: 13 }}>
                 <Mail size={32} style={{ opacity: 0.3, marginBottom: 8 }} />
-                <div>Aucun envoi pour le moment</div>
+                <div>{logsSearch ? 'Aucun envoi pour cette recherche' : 'Aucun envoi pour le moment'}</div>
               </div>
             ) : (
               <div className="pipeline-logs">

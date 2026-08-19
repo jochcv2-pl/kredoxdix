@@ -48,8 +48,17 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const page = Math.max(1, Number(searchParams.get('page')) || 1);
     const pageSize = Math.min(200, Math.max(1, Number(searchParams.get('pageSize')) || 20));
+    // Recherche nom ou email (contains insensible à la casse).
+    const search = searchParams.get('search')?.trim();
 
-    const where = { ...getLeadScope(admin!), status: LeadStatus.client };
+    const where: Record<string, unknown> = { ...getLeadScope(admin!), status: LeadStatus.client };
+    if (search) {
+      where.OR = [
+        { firstName: { contains: search, mode: 'insensitive' } },
+        { lastName: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+      ];
+    }
     const [leads, total] = await Promise.all([
       prisma.lead.findMany({
         where,

@@ -26,6 +26,29 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const logsPage = Math.max(1, Number(searchParams.get('logsPage')) || 1);
     const logsPageSize = 10;
+    // Recherche nom/email du panneau (?logsSearch=) — email du log OU logs des
+    // leads dont le prénom/nom correspond (jointure applicative, leadId String).
+    const logsSearch = (searchParams.get('logsSearch') || '').trim();
+    let logsWhere: Record<string, unknown> | undefined;
+    if (logsSearch) {
+      const matchingLeads = await prisma.lead.findMany({
+        where: {
+          OR: [
+            { firstName: { contains: logsSearch, mode: 'insensitive' } },
+            { lastName: { contains: logsSearch, mode: 'insensitive' } },
+          ],
+        },
+        select: { id: true },
+        take: 500,
+      });
+      const leadIds = matchingLeads.map((l) => l.id);
+      logsWhere = {
+        OR: [
+          { email: { contains: logsSearch, mode: 'insensitive' } },
+          ...(leadIds.length > 0 ? [{ leadId: { in: leadIds } }] : []),
+        ],
+      };
+    }
 
     const now = new Date();
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -110,6 +133,7 @@ export async function GET(req: Request) {
     // --- Derniers EmailLog (paginés — panneau "Envois récents") ---
     const [recentLogs, logsTotal] = await Promise.all([
       prisma.emailLog.findMany({
+        where: logsWhere,
         skip: (logsPage - 1) * logsPageSize,
         take: logsPageSize,
         orderBy: { sentAt: 'desc' },
@@ -127,7 +151,7 @@ export async function GET(req: Request) {
           fromEmail: true,
         },
       }),
-      prisma.emailLog.count(),
+      prisma.emailLog.count({ where: logsWhere ?? {} }),
     ]);
 
     // --- Stats agrégées ---

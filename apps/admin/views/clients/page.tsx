@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { Icon } from '@/components/Icon'
 import { Pagination } from '@/components/Pagination'
@@ -89,6 +89,18 @@ export default function Clients() {
   // Pagination serveur (20/page).
   const [page, setPage] = useState(1)
   const [pagination, setPagination] = useState<{ page: number; pageSize: number; total: number; totalPages: number } | null>(null)
+  // Recherche nom/email (debounce 350 ms — setters batchés → un seul fetch).
+  const [searchInput, setSearchInput] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const onSearchChange = (value: string) => {
+    setSearchInput(value)
+    if (searchTimer.current) clearTimeout(searchTimer.current)
+    searchTimer.current = setTimeout(() => {
+      setSearchQuery(value.trim())
+      setPage(1)
+    }, 350)
+  }
 
   const fetchPipelineSteps = useCallback(async () => {
     try {
@@ -108,7 +120,8 @@ export default function Clients() {
       setError(null)
       // Sanitize : onClick={fetchClients} passe l'Event → ignoré (pas un number).
       const p = typeof targetPage === 'number' ? targetPage : page
-      const res = await fetch(`/api/clients?pageSize=20&page=${p}`)
+      const searchParam = searchQuery ? `&search=${encodeURIComponent(searchQuery)}` : ''
+      const res = await fetch(`/api/clients?pageSize=20&page=${p}${searchParam}`)
       const json = await res.json()
       if (json.data?.clients) {
         setClients(json.data.clients)
@@ -122,7 +135,12 @@ export default function Clients() {
     } finally {
       setLoading(false)
     }
-  }, [page])
+  }, [page, searchQuery])
+
+  useEffect(() => {
+    Promise.all([fetchPipelineSteps(), fetchClients(page)])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, searchQuery])
 
   useEffect(() => {
     Promise.all([fetchPipelineSteps(), fetchClients()])
@@ -291,7 +309,16 @@ export default function Clients() {
           <h2>Clients</h2>
           <p>Parcours d&apos;accompagnement — {totalSteps} étapes</p>
         </div>
-        {!loading && !error && clients.length > 0 && totalSteps > 0 && (
+        <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
+          <input
+            type="search"
+            className="pg-search-input"
+            placeholder="Rechercher un nom ou un email…"
+            value={searchInput}
+            onChange={(e) => onSearchChange(e.target.value)}
+            aria-label="Rechercher un client"
+          />
+          {!loading && !error && clients.length > 0 && totalSteps > 0 && (
           <div style={{ display: 'flex', gap: 16 }}>
             <div style={{ textAlign: 'center', padding: '8px 18px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12 }}>
               <div style={{ fontSize: 24, fontWeight: 800, color: '#1e293b' }}>{clients.length}</div>
@@ -308,7 +335,8 @@ export default function Clients() {
               <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500, textTransform: 'uppercase' }}>Progression moy.</div>
             </div>
           </div>
-        )}
+          )}
+        </div>
       </div>
 
       {loading && <div className="clt-loading">Chargement des clients…</div>}

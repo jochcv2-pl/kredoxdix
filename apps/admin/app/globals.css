@@ -5115,6 +5115,26 @@ body {
 .pg-total {
   color: var(--slate-light, #94a3b8);
 }
+/* Barre de recherche partagée (prospects / clients / pipeline) */
+.pg-search-input {
+  padding: 7px 12px;
+  border: 1px solid var(--line, #cbd5e1);
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--ink, #1e293b);
+  outline: none;
+  min-width: 220px;
+  background: #fff;
+  transition: border-color .15s, box-shadow .15s;
+}
+.pg-search-input:focus {
+  border-color: var(--blue, #2b8bde);
+  box-shadow: 0 0 0 3px rgba(43, 139, 222, 0.12);
+}
+.pg-search-input::placeholder {
+  color: #94a3b8;
+}
 /* En-têtes de groupes dans la liste des modèles (auto vs manuels) */
 .tpl-group-head {
   display: flex;
